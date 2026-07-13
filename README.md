@@ -40,10 +40,47 @@ Read in order. Each phase feeds the next.
 
 Dashboard · Student · Teacher · Standards · Assessment · Differentiated Instruction (DI) · Collaborative Planning · Curriculum · Reporting · AI Coach.
 
+## The application
+
+The Phase 1 foundation is now in the repo — a runnable, Railway-ready MVP that already delivers the core *data-in → differentiated-instruction-out* loop.
+
+```
+apps/
+  api/   FastAPI + SQLAlchemy — auth, RBAC, audit log, standards, students,
+         dashboards, assessment import, auto DI grouping, 7-day plan generation
+  web/   Next.js + Tailwind — login + teacher dashboard (import, groups, plans)
+samples/ demo exit-ticket CSV
+```
+
+### What works today (on synthetic demo data)
+- Log in (JWT; SSO seam for production).
+- Teacher dashboard: class proficiency, lowest standards, intervention/enrichment lists.
+- **Import an exit-ticket CSV → mastery recomputed → DI groups auto-formed.**
+- Generate a **7-day DI plan** per group (ELL-aware; grounded template now, LLM when a key is set).
+- Principal dashboard: school health + standards needing remediation.
+- Every student-record access written to an append-only **audit log**.
+
+### Run locally
+```bash
+# API (defaults to SQLite — zero setup)
+cd apps/api && python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt && python -m app.seed
+uvicorn app.main:app --reload            # http://localhost:8000/docs
+
+# Web (separate terminal)
+cd apps/web && npm install
+NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev   # http://localhost:3000
+```
+Or the whole stack with Postgres: `docker compose up --build`.
+Demo logins: `teacher@avocado.edu` / `principal@avocado.edu` · `demo1234`.
+
+### Deploy
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for Railway setup (API + Web + Postgres).
+
 ## A note on scope and compliance (read before building)
 
 Avocado handles student PII covered by **FERPA**, Florida student-privacy statutes (**§1002.22 / §1002.222 F.S.**), and district data-governance rules. Any real deployment against live M-DCPS data requires a district data-sharing agreement and vendor approval. This design assumes those are pursued in parallel and bakes privacy-by-design in from day one. See [00-compliance-and-guardrails.md](docs/00-compliance-and-guardrails.md).
 
 ---
 
-*Status: Design phase. No production code committed yet — by design.*
+*Status: Phase 1 foundation built and running on synthetic data. Live-data pilot gated on the district data-sharing agreement (see roadmap).*

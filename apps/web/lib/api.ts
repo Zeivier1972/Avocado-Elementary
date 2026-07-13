@@ -1,0 +1,56 @@
+// Minimal API client. Base URL comes from NEXT_PUBLIC_API_URL (set per env).
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const TOKEN_KEY = "avocado_token";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string) {
+  window.localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken() {
+  window.localStorage.removeItem(TOKEN_KEY);
+}
+
+async function req(path: string, opts: RequestInit = {}) {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    ...(opts.headers as Record<string, string>),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_URL}${path}`, { ...opts, headers });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`${res.status}: ${msg}`);
+  }
+  return res.json();
+}
+
+export async function login(email: string, password: string) {
+  const body = new URLSearchParams({ username: email, password });
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok) throw new Error("Invalid email or password");
+  const data = await res.json();
+  setToken(data.access_token);
+  return data;
+}
+
+export const api = {
+  me: () => req("/auth/me"),
+  teacherDashboard: () => req("/dashboard/teacher"),
+  principalDashboard: () => req("/dashboard/principal"),
+  groups: () => req("/di/groups"),
+  generatePlan: (groupId: string) =>
+    req(`/di/groups/${groupId}/plan`, { method: "POST" }),
+  importAssessment: (form: FormData) =>
+    req("/assessments/import", { method: "POST", body: form }),
+};
