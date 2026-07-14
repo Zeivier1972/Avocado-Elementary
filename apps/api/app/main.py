@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.core.config import settings
+from app.db.migrate import ensure_columns
 from app.db.session import Base, engine
 from app.routers import (
     assessments,
@@ -24,6 +25,7 @@ from app.routers import (
 async def lifespan(app: FastAPI):
     # MVP: create tables on startup. Production migrates via Alembic (roadmap P1).
     Base.metadata.create_all(bind=engine)
+    ensure_columns(engine)  # additive column migrations for existing DBs
     yield
 
 

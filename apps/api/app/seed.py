@@ -11,6 +11,7 @@ import random
 from pathlib import Path
 
 from app.core.security import hash_password
+from app.db.migrate import ensure_columns
 from app.db.session import Base, SessionLocal, engine
 from app.models import (
     AssessmentDefinition,
@@ -75,8 +76,16 @@ def _load_pacing(db, tenant_id):
         print("  (pacing_g3.json missing — skipping pacing)")
         return 0
     p = json.loads(path.read_text())
+    existing = {
+        (pt.grade_level, pt.topic_code)
+        for pt in db.query(PacingTopic).filter(
+            PacingTopic.tenant_id == tenant_id
+        ).all()
+    }
     n = 0
     for order, t in enumerate(p.get("topics", [])):
+        if (p["grade"], t["topic_code"]) in existing:
+            continue  # already loaded — idempotent
         db.add(PacingTopic(
             tenant_id=tenant_id, subject=p["subject"], grade_level=p["grade"],
             topic_code=t["topic_code"], chapter=t.get("chapter", ""),
@@ -112,6 +121,7 @@ def run():
     """Idempotent seed: safe to run on every deploy. Adds any missing users,
     standards, and pacing without duplicating the student demo."""
     Base.metadata.create_all(bind=engine)
+    ensure_columns(engine)  # add any new columns to a pre-existing database
     db = SessionLocal()
     random.seed(7)
 
@@ -152,9 +162,7 @@ def run():
         std_objs[code] = s
         codes.add(code)
     n_math = _load_math_standards(db, codes)
-    n_pacing = 0
-    if not db.query(PacingTopic).first():
-        n_pacing = _load_pacing(db, district.id)
+    n_pacing = _load_pacing(db, district.id)  # idempotent per topic
     db.flush()
 
     # Student demo (ELA) — only build once, guarded by class existence.
