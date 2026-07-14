@@ -62,6 +62,10 @@ export const api = {
   schoolSummary: () => req("/admin/school/summary"),
   importRoster: (form: FormData) =>
     req("/admin/roster/import", { method: "POST", body: form }),
+  importExcel: (form: FormData) =>
+    req("/admin/import/excel", { method: "POST", body: form }),
+  reportsOverview: () => req("/reports/overview"),
+  gradeReport: (grade: string) => req(`/reports/grade/${grade}`),
   aiCheck: () => req("/coach/ai-check"),
   assistant: (message: string, history: any[]) =>
     req("/coach/assistant", {

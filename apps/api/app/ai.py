@@ -177,6 +177,9 @@ def _context_text(ctx: dict) -> str:
         f"| Classes: {ctx.get('classes',0)}",
         f"Students by grade: {ctx.get('by_grade', {})}",
     ]
+    if ctx.get("fast_math_proficiency_by_grade"):
+        lines.append("FAST Math % proficient (Level 3+) by grade & period: "
+                     f"{ctx['fast_math_proficiency_by_grade']}")
     if ctx.get("fast_levels"):
         lines.append(f"FAST Math achievement-level counts: {ctx['fast_levels']}")
     if ctx.get("teachers_sample"):

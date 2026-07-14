@@ -19,6 +19,7 @@ _ADDED_COLUMNS = {
         "lessons": "JSON",
     },
 }
+# student_assessments is a new table (create_all builds it) — no ALTERs needed.
 
 
 def ensure_columns(engine: Engine) -> None:

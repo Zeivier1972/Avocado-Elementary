@@ -231,6 +231,25 @@ class PacingTopic(Base, TimestampMixin):
     lessons: Mapped[list] = mapped_column(JSON, default=list)  # lesson outline
 
 
+class StudentAssessment(Base, TimestampMixin):
+    """Longitudinal assessment record — one row per student x assessment period.
+    Covers FAST PM1/2/3, iReady AP1/2/3, Topic assessments (TP), and STAR.
+    Value is stored as level (achievement level), scale_score, and/or percent,
+    depending on the assessment."""
+    __tablename__ = "student_assessments"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id"), index=True)
+    source: Mapped[str] = mapped_column(String, index=True)   # FAST|IREADY|TOPIC|STAR
+    subject: Mapped[str] = mapped_column(String, index=True)  # MATH|ELA
+    period: Mapped[str] = mapped_column(String, index=True)   # PM1|PM2|PM3|AP1..|TP1..
+    level: Mapped[float | None] = mapped_column(Float, nullable=True)
+    scale_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    label: Mapped[str] = mapped_column(String, default="")   # original column label
+    school_year: Mapped[str] = mapped_column(String, default="2025-2026")
+
+
 class PlcAgenda(Base, TimestampMixin):
     """An auto-generated collaborative-planning (PLC) agenda for a pacing week."""
     __tablename__ = "plc_agendas"

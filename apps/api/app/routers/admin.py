@@ -9,7 +9,16 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.deps import audit, get_current_user
-from app.models import ClassRoom, District, Enrollment, School, Student, User
+from app.import_excel import parse_workbook
+from app.models import (
+    ClassRoom,
+    District,
+    Enrollment,
+    School,
+    Student,
+    StudentAssessment,
+    User,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -224,6 +233,116 @@ async def import_roster(
         "enrollments_created": enroll_new,
         "errors": errors[:50], "error_count": len(errors),
         "column_mapping": fmap,
+    }
+
+
+@router.post("/import/excel")
+async def import_excel(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Import a district Excel workbook (Class Lists or Topic Assessment Tracker).
+    Upserts students and their longitudinal assessments (FAST / iReady / Topic).
+    Import Class Lists first so grades are established, then the Tracker."""
+    data = await file.read()
+    try:
+        records = parse_workbook(data)
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse workbook: {e}")
+    if not records:
+        raise HTTPException(400, "No student rows found. Check the file format.")
+
+    district = db.query(District).first()
+    school = db.query(School).filter(School.tenant_id == district.id).first()
+    tenant_id, school_id = district.id, school.id
+
+    # Merge parsed rows by student id (a student may appear on multiple sheets).
+    merged: dict[str, dict] = {}
+    for rec in records:
+        sid = rec["student"]["id"]
+        m = merged.setdefault(sid, {"student": rec["student"], "assessments": []})
+        # keep a non-empty grade if a later row provides one
+        if not m["student"].get("grade") and rec["student"].get("grade"):
+            m["student"]["grade"] = rec["student"]["grade"]
+        m["student"]["flags"] = {**m["student"].get("flags", {}),
+                                 **rec["student"].get("flags", {})}
+        m["assessments"].extend(rec["assessments"])
+
+    # Preload existing students + their assessments for the touched ids.
+    ids = list(merged.keys())
+    existing_students = {
+        s.district_student_id: s
+        for s in db.query(Student).filter(
+            Student.tenant_id == tenant_id,
+            Student.district_student_id.in_(ids)).all()
+    }
+    students_new = students_upd = asmt_new = asmt_upd = 0
+    by_grade: dict[str, int] = {}
+    by_type: dict[str, int] = {}
+
+    for sid, m in merged.items():
+        sd = m["student"]
+        stu = existing_students.get(sid)
+        if stu:
+            if sd.get("first_name"):
+                stu.first_name = sd["first_name"]
+            if sd.get("last_name"):
+                stu.last_name = sd["last_name"]
+            if sd.get("grade"):
+                stu.grade_level = sd["grade"]
+            stu.flags = {**(stu.flags or {}), **sd.get("flags", {})}
+            students_upd += 1
+        else:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id, district_student_id=sid,
+                first_name=sd.get("first_name", ""), last_name=sd.get("last_name", ""),
+                grade_level=sd.get("grade", ""), flags=sd.get("flags", {}))
+            db.add(stu)
+            db.flush()
+            existing_students[sid] = stu
+            students_new += 1
+        by_grade[stu.grade_level] = by_grade.get(stu.grade_level, 0) + 1
+
+        # Existing assessments for this student, keyed for idempotent upsert.
+        prior = {
+            (a.source, a.subject, a.period): a
+            for a in db.query(StudentAssessment).filter(
+                StudentAssessment.student_id == stu.id).all()
+        }
+        seen = set()
+        for a in m["assessments"]:
+            key = (a["source"], a["subject"], a["period"])
+            if key in seen:
+                continue
+            seen.add(key)
+            by_type[f"{a['source']}/{a['subject']}"] = \
+                by_type.get(f"{a['source']}/{a['subject']}", 0) + 1
+            rec = prior.get(key)
+            if rec:
+                if a.get("level") is not None:
+                    rec.level = a["level"]
+                if a.get("scale_score") is not None:
+                    rec.scale_score = a["scale_score"]
+                if a.get("percent") is not None:
+                    rec.percent = a["percent"]
+                asmt_upd += 1
+            else:
+                db.add(StudentAssessment(
+                    tenant_id=tenant_id, student_id=stu.id,
+                    source=a["source"], subject=a["subject"], period=a["period"],
+                    level=a.get("level"), scale_score=a.get("scale_score"),
+                    percent=a.get("percent"), label=a.get("label", "")))
+                asmt_new += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="assessments_excel",
+          purpose="assessment_import")
+    return {
+        "students_created": students_new, "students_updated": students_upd,
+        "assessments_created": asmt_new, "assessments_updated": asmt_upd,
+        "students_by_grade": dict(sorted(by_grade.items())),
+        "assessment_counts": dict(sorted(by_type.items())),
     }
 
 

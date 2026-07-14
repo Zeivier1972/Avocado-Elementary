@@ -158,6 +158,26 @@ def _school_context(db: Session, tenant_id: str) -> dict:
                 .filter(User.tenant_id == tenant_id, User.role == "teacher").all())
     topics = db.query(PacingTopic).filter(
         PacingTopic.tenant_id == tenant_id).all()
+    # FAST Math proficiency by grade (level 3+) for the assistant to reason on.
+    fast_by_grade: dict[str, dict] = {}
+    grade_of = {s.id: s.grade_level for s in students}
+    from app.models import StudentAssessment
+    for a in db.query(StudentAssessment).filter(
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == "MATH",
+            StudentAssessment.tenant_id == tenant_id).all():
+        if a.level is None or not (1 <= a.level <= 5):
+            continue
+        g = grade_of.get(a.student_id, "?")
+        d = fast_by_grade.setdefault(g, {}).setdefault(a.period, {"n": 0, "prof": 0})
+        d["n"] += 1
+        if a.level >= 3:
+            d["prof"] += 1
+    fast_summary = {
+        g: {p: f"{round(100*v['prof']/v['n'])}% (n={v['n']})"
+            for p, v in sorted(pd.items())}
+        for g, pd in sorted(fast_by_grade.items()) if g in ("K", "1", "2", "3")
+    }
     return {
         "school": school.name if school else "",
         "students": len(students),
@@ -169,6 +189,7 @@ def _school_context(db: Session, tenant_id: str) -> dict:
         "teachers_sample": [t.name for t in teachers[:15]],
         "pacing_topics": [f"G{t.grade_level} {t.topic_code} {t.name}" for t in topics],
         "standards_count": db.query(Standard).count(),
+        "fast_math_proficiency_by_grade": fast_summary,
     }
 
 
