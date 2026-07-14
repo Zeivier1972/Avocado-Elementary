@@ -89,6 +89,105 @@ def _artifacts_for_day(day: int) -> list[str]:
     return mapping.get(day, [])
 
 
+def generate_plc_agenda(topic: dict, standards: list[dict]) -> dict:
+    """Generate a collaborative-planning (PLC) agenda for a pacing week, grounded
+    in the topic's real benchmarks, learning target, misconceptions and vocab.
+    LLM when configured, else a structured template."""
+    if settings.ai_provider == "anthropic" and settings.ai_api_key:
+        got = _llm_agenda(topic, standards)
+        if got:
+            return got
+    return _template_agenda(topic, standards)
+
+
+def _template_agenda(topic: dict, standards: list[dict]) -> dict:
+    misconceptions = []
+    for s in standards:
+        if s.get("misconceptions"):
+            misconceptions.append({"standard": s["code"],
+                                   "note": s["misconceptions"][:240]})
+    return {
+        "generated_by": "template",
+        "ai_generated": False,
+        "title": f"PLC Planning — {topic['name']} ({topic.get('chapter','')})",
+        "week": topic.get("quarter", ""),
+        "focus_standards": [s["code"] for s in standards],
+        "learning_target": topic.get("learning_target", ""),
+        "sections": [
+            {"heading": "1. Norms & Objective (5 min)",
+             "items": ["Review norms",
+                       f"This week's focus: {topic['name']} — {topic.get('learning_target','')}"]},
+            {"heading": "2. Standards Deep-Dive (10 min)",
+             "items": [f"{s['code']}: {s['description'][:140]}" for s in standards]},
+            {"heading": "3. Success Criteria — what mastery looks like (10 min)",
+             "items": topic.get("success_criteria", []) or ["Define 'I can' statements"]},
+            {"heading": "4. Anticipated Misconceptions (10 min)",
+             "items": [f"{m['standard']}: {m['note']}" for m in misconceptions]
+                      or ["Discuss likely student errors"]},
+            {"heading": "5. Vocabulary Focus (5 min)",
+             "items": topic.get("vocabulary", [])},
+            {"heading": "6. Instructional Plan & Common Task (10 min)",
+             "items": ["Agree on the week's mini-lessons and a common formative task",
+                       "Plan small-group / DI supports for students below target"]},
+            {"heading": "7. OPM / Assessment Plan (5 min)",
+             "items": ["Agree on the Ongoing Progress Monitoring check for these benchmarks",
+                       "Set the reassessment date"]},
+            {"heading": "8. Teacher Commitments & Action Items (5 min)",
+             "items": ["Each teacher commits to one instructional move",
+                       "Assign action items and owners for next PLC"]},
+        ],
+        "note": "Editable draft — review before your planning meeting.",
+    }
+
+
+def _llm_agenda(topic: dict, standards: list[dict]) -> dict | None:
+    try:
+        import anthropic
+    except ImportError:
+        return None
+    try:
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        std_ctx = "\n".join(
+            f"- {s['code']}: {s['description']}"
+            + (f" | Misconceptions: {s['misconceptions'][:300]}" if s.get('misconceptions') else "")
+            for s in standards
+        )
+        prompt = (
+            "You are an elementary instructional coach preparing a weekly "
+            "collaborative planning (PLC) meeting with teachers, grounded ONLY in "
+            "the district pacing week below.\n\n"
+            f"Grade {topic.get('grade_level')} {topic.get('subject')} — "
+            f"{topic['topic_code']} {topic.get('chapter','')}: {topic['name']}\n"
+            f"Pacing window: {topic.get('quarter','')}\n"
+            f"Chapter learning target: {topic.get('learning_target','')}\n"
+            f"Success criteria (I can): {topic.get('success_criteria', [])}\n"
+            f"Vocabulary: {topic.get('vocabulary', [])}\n"
+            f"Focus benchmarks:\n{std_ctx}\n\n"
+            "Produce a concise, ready-to-run PLC agenda with timed sections: "
+            "objective, standards deep-dive, success criteria, anticipated "
+            "misconceptions, vocabulary, instructional plan + common formative "
+            "task, OPM/assessment plan, and teacher commitments/action items. "
+            "Ground everything in the benchmarks above. Do not invent standards."
+        )
+        msg = client.messages.create(
+            model=settings.ai_model, max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(b.text for b in msg.content if b.type == "text")
+        return {
+            "generated_by": settings.ai_model,
+            "ai_generated": True,
+            "title": f"PLC Planning — {topic['name']} ({topic.get('chapter','')})",
+            "week": topic.get("quarter", ""),
+            "focus_standards": [s["code"] for s in standards],
+            "learning_target": topic.get("learning_target", ""),
+            "content": text,
+            "note": "AI-generated draft — review before your planning meeting.",
+        }
+    except Exception:
+        return None
+
+
 def _llm_plan(standard: dict, group_size: int,
               student_profiles: list[dict]) -> dict | None:
     """Grounded LLM generation. Returns None on any failure so the caller falls

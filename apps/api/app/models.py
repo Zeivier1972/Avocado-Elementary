@@ -200,3 +200,38 @@ class AuditLog(Base):
     entity_id: Mapped[str | None] = mapped_column(String, nullable=True)
     purpose: Mapped[str | None] = mapped_column(String, nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+
+
+# --- Curriculum & pacing (Collaborative Planning) ----------------------------
+
+class PacingTopic(Base, TimestampMixin):
+    """A topic/chapter on the district pacing calendar — the unit of a planning
+    week. Mirrors the M-DCPS pacing guide structure (docs/G03 example)."""
+    __tablename__ = "pacing_topics"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    subject: Mapped[str] = mapped_column(String)  # MATH | ELA
+    grade_level: Mapped[str] = mapped_column(String, index=True)
+    topic_code: Mapped[str] = mapped_column(String)   # e.g. "TOPIC IX"
+    chapter: Mapped[str] = mapped_column(String, default="")   # e.g. "Chapter 9"
+    name: Mapped[str] = mapped_column(String)         # "Understand Fractions"
+    quarter: Mapped[str] = mapped_column(String, default="")   # nine-weeks label
+    week_order: Mapped[int] = mapped_column(Integer, default=0)  # calendar order
+    benchmarks: Mapped[list] = mapped_column(JSON, default=list)  # ["MA.3.FR.1.1", ...]
+    learning_target: Mapped[str] = mapped_column(Text, default="")
+    success_criteria: Mapped[list] = mapped_column(JSON, default=list)  # "I can..."
+    vocabulary: Mapped[list] = mapped_column(JSON, default=list)
+    source: Mapped[str] = mapped_column(String, default="")
+
+
+class PlcAgenda(Base, TimestampMixin):
+    """An auto-generated collaborative-planning (PLC) agenda for a pacing week."""
+    __tablename__ = "plc_agendas"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    pacing_topic_id: Mapped[str] = mapped_column(
+        ForeignKey("pacing_topics.id"), index=True
+    )
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    content: Mapped[dict] = mapped_column(JSON, default=dict)
+    ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)

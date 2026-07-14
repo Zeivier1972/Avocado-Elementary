@@ -1,0 +1,949 @@
+[
+ {
+  "code": "MA.1.AR.1.1",
+  "grade": "1",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Apply properties of addition to find a sum of three or more whole numbers.",
+  "clarifications": [
+   "Within this benchmark, the expectation is to apply the associative and commutative \nproperties of addition. It is not the expectation to name the properties or use parentheses. Refer to \nProperties of Operations, Equality and Inequality (Appendix D).",
+   "Instruction includes emphasis on using the properties to make a ten when adding three or \nmore numbers.",
+   "Addition is limited to sums within 20."
+  ],
+  "prerequisites": [
+   "MA.K.AR.1.1",
+   "MA.K.AR.1.2"
+  ],
+  "next": [
+   "MA.2.AR.2.1"
+  ],
+  "misconceptions": "\u2022 Students may not understand that when three numbers are rearranged the sum will still be \nthe same. In this case, open a class discussion by showing the following expressions A. \n3 + 9 + 4 and B. 9 + 4 + 3 and ask students what they notice about the expressions. \nOnce a student notices that they both expressions have the same exact numbers but that \nthe numbers are arranged in a different order ask, \u201cDo you think they will have the same \nsum?\u201d Have students share how they could solve the expressions using a strategy. Then \ndiscuss the sums of both equations being 16 and when one adds the same numbers \ntogether but in a different order it will always have the same total.",
+  "strategies": "The purpose of this benchmark is for students to explore addition and think flexibly when it \ncomes to adding three numbers together such as rearranging addends, looking for doubles, \nmaking a ten, etc. In Kindergarten, students find ways to make a ten when given a 1 to 9 digit. \nStudents also find ways to represent a given number from 0 to 10 as the sum of two numbers \n(MTR.2.1, MTR.5.1). \no Instruction includes use of manipulatives to model addition problems within 20 \n(MTR.5.1)."
+ },
+ {
+  "code": "MA.1.AR.1.2",
+  "grade": "1",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Solve addition and subtraction real-world problems using objects, drawings or \nequations to represent the problem.",
+  "clarifications": [
+   "Instruction includes understanding the context of the problem, as well as the quantities \nwithin the problem.",
+   "Students are not expected to independently read word problems.",
+   "Addition and subtraction are limited to sums within 20 and related subtraction facts. \nRefer to Situations Involving Operations with Numbers (Appendix A)."
+  ],
+  "prerequisites": [
+   "MA.K.AR.1.3"
+  ],
+  "next": [
+   "MA.2.AR.1.1"
+  ],
+  "misconceptions": "\u2022 Students may have difficulty modeling or solving problems that involve a change \nunknown or start unknown problem type. To help with this misconception, include the \nuse of Appendix A in instruction. \n\u2022 Students may look for key words rather than context and reasoning, which can lead to the \nwrong operation.",
+  "strategies": "The purpose of this benchmark is for students to start to apply their understanding of \nmathematical concepts as they critically apply their knowledge in visualizing and deciphering \nword problems. In Kindergarten, students solved real-world addition and subtraction problems \nwithin 10, with a focus on drawings and equations to represent problems. Students are not \nexpected to independently read word problems (MTR.7.1). \n\u2022 Instruction allows students to focus on context and apply reasoning to determine the \nappropriate operation (MTR.7.1). \n\u2022 Instruction includes helping students realize that there can be more than one \nrepresentation for a given problem which could be helpful for students t"
+ },
+ {
+  "code": "MA.1.AR.2.1",
+  "grade": "1",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Restate a subtraction problem as a missing addend problem using the \nrelationship between addition and subtraction.",
+  "clarifications": [
+   "Addition and subtraction are limited to sums within 20 and related subtraction facts."
+  ],
+  "prerequisites": [
+   "MA.K.AR.2.1"
+  ],
+  "next": [
+   "MA.2.AR.2.2"
+  ],
+  "misconceptions": "\u2022 Students may not recognize how an addition problem can help them solve a subtraction \nproblem. Guided practice with related facts may be helpful for students who do not \nrecognize this. \n\u2022 Students may solve the equation and look for the solution in the answer choices rather \nthan relying on reasoning.",
+  "strategies": "The purpose of this benchmark is to get students thinking about the relationships between \naddition and subtraction. In Kindergarten, students explored equations and developed an \n \n \n \n \nunderstanding of the equal sign by explaining why addition and subtraction equations are true \nusing objects and drawings. \n\u2022 Instruction may present equations in different forms such as \ud835\udc4e\ud835\udc4e + \ud835\udc4f\ud835\udc4f = \ud835\udc50\ud835\udc50 or \ud835\udc50\ud835\udc50 = \ud835\udc4e\ud835\udc4e + \ud835\udc4f\ud835\udc4f. \n\u2022 Instruction may include students using a related addition fact or a part-part-whole mat to \nhelp them find the missing addend in a subtraction equation."
+ },
+ {
+  "code": "MA.1.AR.2.2",
+  "grade": "1",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine and explain if equations involving addition or subtraction are true \nor false.",
+  "clarifications": [
+   "Instruction focuses on understanding of the equal sign.",
+   "Problem types are limited to an equation with no more than four terms. The sum or \ndifference can be on either side of the equal sign.",
+   "Addition and subtraction are limited to sums within 20 and related subtraction facts."
+  ],
+  "prerequisites": [
+   "MA.K.AR.2.1"
+  ],
+  "next": [
+   "MA.2.AR.2.1"
+  ],
+  "misconceptions": "\u2022 Students may not understand that the equal sign means \u201cthe same as,\u201d since they may \nthink the equal sign signals that the answer comes at the end. In these cases it can be \nbeneficial to use a scale where students can complete problems to discover if in fact they \nare equal.",
+  "strategies": "The purpose of this benchmark is for students to understand that the equal sign means \u201cthe same \nas.\u201d In Kindergarten, students used objects or drawings to explain why addition or subtraction \nequations are true or false. \n\u2022 Instruction should include a variety of problem types where the sum or difference can be \non either side of the equal sign. \n\u2022 Instruction may include the use of a balance with cubes to help students understand that \nthe equal sign means the same as (MTR.2.1, MTR.6.1). \no For example, 8 = 3 + 5 is true because 8 is the result of adding 5 and 3. \n \n \n\u2022 For example, 8 = 2 + 4 is false because 8 is more than 6, which is the result of \nadding 2 and 4. \n \n \n\u2022 For example, 8 ="
+ },
+ {
+  "code": "MA.1.AR.2.3",
+  "grade": "1",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine the unknown whole number in an addition or subtraction equation, \nrelating three whole numbers, with the unknown in any position.",
+  "clarifications": [
+   "Instruction begins the development of algebraic thinking skills where the symbolic \nrepresentation of the unknown uses any symbol other than a letter.",
+   "Problems include the unknown on either side of the equal sign.",
+   "Addition and subtraction are limited to sums within 20 and related subtraction facts. \nRefer to Situations Involving Operations with Numbers (Appendix A)."
+  ],
+  "prerequisites": [
+   "MA.K.AR.2.1"
+  ],
+  "next": [
+   "MA.2.AR.2.2"
+  ],
+  "misconceptions": "\u2022 Students may not understand that they can use addition to figure out a subtraction \nequation or use a subtraction to figure out an addition equation. In these cases, ask \nstudents to find the related facts for a given problem.",
+  "strategies": "The purpose of this benchmark is for students to deepen their understanding of the equal sign and \nbuild relational thinking when looking at equations. In Kindergarten, students used objects or \ndrawings to explain why addition or subtraction equations are true or false (MTR.5.1). \n\u2022 Instruction includes helping students to begin to develop the algebraic skill of \ndetermining a number that makes an equation true. \n\u2022 Within this benchmark, students are expected to understand the meaning of the equal sign \nand how equations are used to model mathematical situations and problems. \n\u2022 Instruction includes an unknown value in any position (MTR.2.1). \n\u2022 Instruction includes presenting equations in "
+ },
+ {
+  "code": "MA.1.DP.1.1",
+  "grade": "1",
+  "strand": "DP",
+  "subject": "MATH",
+  "description": "Collect data into categories and represent the results using tally marks or \npictographs.",
+  "clarifications": [
+   "Instruction includes connecting tally marks to counting by 5s.",
+   "Data sets include geometric figures that are categorized using their defining attributes \nand data from the classroom or school.",
+   "Pictographs are limited to single-unit scales."
+  ],
+  "prerequisites": [
+   "MA.K.DP.1.1"
+  ],
+  "next": [
+   "MA.2.DP.1.1"
+  ],
+  "misconceptions": "\u2022 Students may not recognize that when using tally marks they make a slash through four \ntally marks to represent a bundle of five tally marks.",
+  "strategies": "The purpose of this benchmark is to get students thinking about how they can organize \ninformation in a way that can be interpreted. In Kindergarten, students collected and sorted \nobjects. Student results are recorded by students either verbally or with written numerals or \ndrawings. The expectation is not for students to create a graph on their own (MTR.5.1). \n\u2022 Instruction includes providing opportunities for students to understand that bundling \ntally marks into groups of five allows for more efficient counting of larger data sets \n(MTR.5.1). \n\u2022 Instruction includes guiding students to skip count by 5s when using tally marks that \nhave been bundled into fives (MTR.3.1). \n\u2022 Instruction in"
+ },
+ {
+  "code": "MA.1.DP.1.2",
+  "grade": "1",
+  "strand": "DP",
+  "subject": "MATH",
+  "description": "Interpret data represented with tally marks or pictographs by calculating the \ntotal number of data points and comparing the totals of different categories.",
+  "clarifications": [
+   "Instruction focuses on the connection to addition and subtraction when calculating the \ntotal and comparing, respectively."
+  ],
+  "prerequisites": [
+   "MA.K.DP.1.1"
+  ],
+  "next": [
+   "MA.2.DP.1.2"
+  ],
+  "misconceptions": "\u2022 Students may misread or misinterpret data by not understanding the context of a question. \n\u2022 Students may try to solve an addition or subtraction problem by making an unnecessary \ndata display. \no For example, the following question does not require making a data display; \nJacob has 10 toy trucks and Courtney has 8 toy trucks. How many more trucks \ndoes Jacob have than Courtney? \n\u2022 Students may make minor errors when answering questions from the data. In these cases, \nit is helpful to have students write an equation that could be used to solve the problem. \n\u2022 When calculating the total number in the data set students may not recognize that they \nneed to add all categories together.",
+  "strategies": "The purpose of this benchmark is for students to begin to understand different displays of data \nand the information that they can represent. In Kindergarten, students collected and sorted \nobjects into categories. In grade 1, students compare the categories by counting the objects in \neach of the categories. Students report their results either verbally or with a written numeral or a \ndrawing. \n\u2022 Instruction includes providing opportunities for students to use addition and subtraction \nstrategies when interpreting a data representation (MTR.5.1). \n\u2022 Instruction includes questions that focus on the context of the situation (MTR.7.1). \n\u2022 Instruction includes opportunities for students to choo"
+ },
+ {
+  "code": "MA.1.FR.1.1",
+  "grade": "1",
+  "strand": "FR",
+  "subject": "MATH",
+  "description": "Partition circles and rectangles into two and four equal-sized parts. Name the \nparts of the whole using appropriate language including halves or fourths.",
+  "clarifications": [
+   "This benchmark does not require writing the equal sized parts as a fraction with a \nnumerator and denominator."
+  ],
+  "prerequisites": [
+   "MA.K.AR.1.2",
+   "MA.K.GR.1.1"
+  ],
+  "next": [
+   "MA.2.FR.1.1",
+   "MA.2.FR.1.2"
+  ],
+  "misconceptions": "\u2022 Students may have difficulty partitioning circles or rectangles into equal-sized parts; \nadditional guided practice may be helpful in these cases. \n\u2022 When a rectangle is divided into fourths using its diagonals students may have trouble \nseeing that all four p\narts are the same size. This should not be a point of contention, but it \nshould be an opportunity to explain to students that they will get a deeper understanding \nof this in later grades.",
+  "strategies": "The purpose of this benchmark is to introduce the initial idea of equal parts in the form of halves \nand fourths. While students are not expected to use a numerator or denominator, it is the first \nexposure for students to see circles and rectangles partitioned into two or four equal-sized parts \nwhich sets the stage for fractional understanding. In Kindergarten, students recognized how \ncombining two equal-sized triangles can form a rectangle. Also in Kindergarten, students learned \nthat whole numbers up to 10 could be broken apart into two other whole numbers (MTR.5.1). \n\u2022 Instruction includes the idea of part-whole\u202frelationships\u202fas supported by the model \n(MTR.5.1).\u202f\u202f \n\u2022 Instruction inclu"
+ },
+ {
+  "code": "MA.1.GR.1.1",
+  "grade": "1",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Identify, compare and sort two- and three-dimensional figures based on their \ndefining attributes. Figures are limited to circles, semi-circles, triangles, \nrectangles, squares, trapezoids, hexagons, spheres, cubes, rectangular prisms, \ncones and cylinders.",
+  "clarifications": [
+   "Instruction focuses on the defining attributes of a figure: whether it is closed or not; \nnumber of vertices, sides, edges or faces; and if it contains straight, curved or equal length sides or edges.",
+   "Instruction includes figures given in a variety of sizes, orientations and non-examples that \nlack one or more defining attributes.",
+   "Within this benchmark, the expectation is not to sort a combination of two- and three-\ndimensional figures at the same time or to define the attributes of trapezoids.",
+   "Instruction includes using formal and informal language to describe the defining \nattributes of figures when comparing and sorting."
+  ],
+  "prerequisites": [
+   "MA.K.GR.1.1"
+  ],
+  "next": [
+   "MA.2.GR.1.1",
+   "MA.2.GR.1.2"
+  ],
+  "misconceptions": "\u2022 Students may only recognize a figure by its size or orientation. In these cases, students \nneed practice in locating figures by a defining attribute like \u201cfind the two-dimensional \nfigures with three vertices\u201d rather than find the triangles.",
+  "strategies": "The purpose of this benchmark is for students to recognize figures by their defining attributes as \nthis will help them sort figures based on attributes rather than orientation, color or size. In \nKindergarten, students identified circles, triangles, rectangles, squares, spheres, cubes, cones, \nand cylinders by a defining attribute (MTR.2.1, MTR.5.1). \n\u2022 Instruction includes a variety of examples and non-examples that lack a defining \nattribute. \n\u2022 While the K-12 Glossary uses the inclusive definition of a trapezoid, students will not \nformally identify or classify trapezoids until grade 3."
+ },
+ {
+  "code": "MA.1.GR.1.3",
+  "grade": "1",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Compose and decompose two- and three-dimensional figures. Figures are \nlimited to semi-circles, triangles, rectangles, squares, trapezoids, hexagons, \ncubes, rectangular prisms, cones and cylinders.",
+  "clarifications": [
+   "Instruction focuses on the understanding of spatial relationships relating to part-whole, \nand on the connection to breaking apart numbers and putting them back together.",
+   "Composite figures are composed without gaps or overlaps.",
+   "Within this benchmark, it is not the expectation to compose two- and three- dimensional \nfigures at the same time."
+  ],
+  "prerequisites": [
+   "MA.K.GR.1.5"
+  ],
+  "next": [
+   "MA.2.GR.1.3",
+   "MA.3.GR.2.4"
+  ],
+  "misconceptions": "\u2022 Students may not initially recognize that a figure can be made using other figures. Class \nactivities should promote exploring what figures could make a given figure. \n\u2022 For example, using pattern blocks a student could manipulate two triangles to \nmake a square, four triangles to make a rectangle, or six triangles to make a \nhexagon.",
+  "strategies": "The purpose of this benchmark is to promote students\u2019 spatial reasoning. Students should begin \nto see figures as compositions of other figures. In Kindergarten, students combined triangles, \nrectangles, and squares to form composite figures. \n\u2022 Instruction should include guiding students to ensure that when composing a new three- \ndimensional figure those figures should have one set of the faces touching without gaps \nor overlaps. \no For example, the flat surface of a cone touching one face of a cube. \n\u2022 Instruction includes making a connection to partitioning shapes."
+ },
+ {
+  "code": "MA.1.NSO.1.1",
+  "grade": "1",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Starting at a given number, count forward and backwards within 120 by ones. \nSkip count by 2s to 20 and by 5s to 100.",
+  "clarifications": [
+   "Instruction focuses on the connection to addition as \u201ccounting on\u201d and subtraction as \n\u201ccounting back.\u201d",
+   "Instruction also focuses on the recognition of patterns within skip counting which helps \nbuild a foundation for multiplication in later grades.",
+   "Instruction includes recognizing counting sequences using visual charts, such as a 120 \nchart, to emphasize base 10 place value."
+  ],
+  "prerequisites": [
+   "MA.K.NSO.2.1"
+  ],
+  "next": [
+   "MA.2.AR.3.2"
+  ],
+  "misconceptions": "\u2022 Students may omit numbers when counting in a sequence. \n\u2022 Students may not understand how to use visual charts to answer questions.",
+  "strategies": "The purpose of this benchmark is for students to interact with patterns found in counting. In \nKindergarten, students recited number names to 100, counted forwards within 100 and \nbackwards within 20. In Kindergarten, students also built the understanding that successive \nnumbers refer to quantities one larger, and built the foundation for addition and subtraction \n(MTR.5.1). \n\u2022 Instruction builds the foundation for strategies of addition and subtraction through \ncounting forwards and backwards (MTR.5.1). \n\u2022 Instruction includes skip counting within this benchmark which builds to repeated \naddition, the basis for multiplication (MTR 3.1)."
+ },
+ {
+  "code": "MA.1.NSO.1.4",
+  "grade": "1",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Plot, order and compare whole numbers up to 100.",
+  "clarifications": [
+   "When comparing numbers, instruction includes using a number line and using place \nvalues of the tens and ones digits.",
+   "Within this benchmark, the expectation is to use terms (e.g., less than, greater than, \nbetween or equal to) and symbols (<, > or =)."
+  ],
+  "prerequisites": [
+   "MA.K.NSO.2.3"
+  ],
+  "next": [
+   "MA.2.NSO.1.3"
+  ],
+  "misconceptions": "\u2022 Students may not recognize that a number\u2019s value is directly related to its placement on a \nnumber line. In these cases, having students build a number using base ten manipulatives \nprior to plotting the number onto a number lines could be helpful.",
+  "strategies": "The purpose of this benchmark is for students to understand that the value of a digit is impacted \nby its position in a number. A three in the tens place has a value of 30 while a 3 in the ones place \nhas a value of 3. In Kindergarten, students located, ordered and compared numbers from 0 to 20 \nusing the same number line. Students fill in missing numbers on a number a line. Kindergarten \nstudents are not expected to use the relational symbols =, > or < when comparing numbers \n(MTR.5.1). \n\u2022 Instruction may include students modeling the numbers with manipulatives to compare \ngiven numbers prior to placing them on the number line or after placing them on a \nnumber line. \n\u2022 Instruction may incl"
+ },
+ {
+  "code": "MA.1.NSO.2.2",
+  "grade": "1",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Add two whole numbers with sums from 0 to 20, and subtract using related \nfacts with procedural reliability.",
+  "clarifications": [
+   "Instruction focuses on helping a student choose a method they can use reliably.",
+   "Instruction includes situations involving adding to, putting together, comparing and \ntaking from."
+  ],
+  "prerequisites": [
+   "MA.K.NSO.3.2"
+  ],
+  "next": [
+   "MA.2.NSO.2.1",
+   "MA.2.NSO.2.3"
+  ],
+  "misconceptions": "\u2022 Students may reverse the minuend and subtrahend in the ones, from the assumption the \nminuend must be larger than the subtrahend (i.e., for 12 \u2212 5, finding 15 \u2212 2). In these \ncases is it important for students to use concrete manipulates such as base ten blocks as \nthey must exchange a tens rod for ten ones so that they may physically take away from \nthe ones place.",
+  "strategies": "The purpose of this benchmark is for students to recognize the relationship between addition and \nsubtraction and to use that relationship as a possible strategy (i.e., if 12 + 3 is 15, then 15 \u2212 3 is \n12). In Kindergarten, students explored adding two numbers between 0 and 10 and related \nsubtraction facts and added two one-digit numbers with sums from 0 to 10 and used related \nsubtraction facts with procedural reliability. \n\u2022 Instruction focuses on students choosing reliable methods to find the sum. \n\u2022 Instruction encourages students to use strategies that move them towards building \nefficiency, but need not include the use of an algorithm. \n\u2022 Instruction includes the explicit use of strat"
+ },
+ {
+  "code": "MA.1.NSO.2.4",
+  "grade": "1",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Explore the addition of a two-digit number and a one-digit number with sums \nto 100.",
+  "clarifications": [
+   "Instruction focuses on combining ones and tens and composing new tens from ones, \nwhen needed.",
+   "Instruction includes the use of manipulatives, number lines, drawings or models."
+  ],
+  "prerequisites": [
+   "MA.K.NSO.2.1",
+   "MA.K.NSO.3.1"
+  ],
+  "next": [
+   "MA.2.NSO.2.3"
+  ],
+  "misconceptions": "\u2022 Students may inaccurately compose new tens when they have more than 9 ones. In these \ncases it is important for students to use concrete manipulatives such as base ten blocks as \nthey exchange tens ones for a single ten rod in order to visually see the ones units making \na new ten.",
+  "strategies": "The purpose of this benchmark is for students to critically think about choosing a strategy that \nmakes sense based on their given numbers. In Kindergarten, instruction focused on adding single \ndigit whole numbers up to 10. Students recited number names to 100 and counted forward and \nbackward within 20. \n\u2022 Instruction includes guiding students to appropriate and more efficient strategies. \nStrategies may include, but are not limited to, counting on, skip-counting, decomposing \nand composing, combining ones and tens, and composing new tens from ones when \nneeded (MTR.2.1, MTR.5.1). \n\u2022 The expectation for instruction does not include the use of an algorithm, but students \nshould not be preve"
+ },
+ {
+  "code": "MA.1.NSO.2.5",
+  "grade": "1",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Explore subtraction of a one-digit number from a two-digit number.",
+  "clarifications": [
+   "Instruction focuses on utilizing the number line as a tool for subtraction through \n\u201ccounting on\u201d or \u201ccounting back.\u201d The process of counting on highlights subtraction as a missing addend \nproblem.",
+   "Instruction includes the use of manipulatives, drawings or equations to decompose tens \nand regroup ones, when needed."
+  ],
+  "prerequisites": [
+   "MA.K.NSO.2.1",
+   "MA.K.NSO.3.1"
+  ],
+  "next": [
+   "MA.2.NSO.2.3"
+  ],
+  "misconceptions": "\u2022 Students may reverse the minuend and subtrahend in the ones, from the assumption the \nminuend must be larger than the subtrahend (i.e., for 12 \u2212 5, finding 15 \u2212 2). In these \ncases is it important for students to use concrete manipulates such as base ten blocks as \nthey must exchange a tens rod for ten ones so that they may physically take away from \nthe ones place. \n \n\u2022 Students may fail to subtract a ten from the difference when decomposing a ten to gain \nenough ones to subtract the ones. In these cases, it can be helpful for students to use base \n \n \n \n \nten blocks to manipulate the exchange of a single tens rod for ten one units to subtract.",
+  "strategies": "The purpose of this benchmark is to deepen students\u2019 understanding of place value while \nstudents explore subtraction. There is no expectation of procedural reliability until grade 2 within \nthis given range. In Kindergarten, students explored subtracting within 20 and subtracting within \n10 with procedural reliability. In Kindergarten students counted forward to 100 by 1s and 10s \nand backward by 1s within 20. \n\u2022 Instruction focuses on choosing a strategy that makes sense to the student based on the \ngiven numbers, while guiding students to appropriate and more efficient strategies \n(MTR.2.1, MTR.5.1). \no Strategies include counting back, skip-counting, decomposing and composing, \nsubtracti"
+ },
+ {
+  "code": "MA.2.AR.1.1",
+  "grade": "2",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Solve one- and two-step addition and subtraction real-world problems.",
+  "clarifications": [
+   "Instruction includes understanding the context of the problem, as well as the quantities \nwithin the problem.",
+   "Problems include creating real-world situations based on an equation.",
+   "Addition and subtraction are limited to sums up to 100 and related differences. Refer to \nSituations Involving Operations with Numbers (Appendix A)."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.AR.1.2",
+   "MA.3.AR.1.2"
+  ],
+  "misconceptions": "\u2022 Students may have difficulty interpreting the quantities in the context of the problem or \nmisidentifying the operation needed to solve the problem. \n\u2022 Students may interpret a start or change unknown problem as a result unknown problem. \n\u2022 Students may look for key words which can lead to the wrong operation and cause students \nto ignore context and reasoning.",
+  "strategies": "The purpose of this benchmark is to provide opportunities for students to solve various real-world \nsituation types involving addition and subtraction. In grade 1, students solved real-world addition \nand subtraction problems within 20 (MTR.7.1). \n\u2022 Instruction includes experience with all situation types involving addition and subtraction. \n\u2022 Mastery of all situation types, as shown in Appendix A, is expected at by the end of this \ngrade level. \n\u2022 Instruction leads students to focus on context and apply reasoning to determine the \nappropriate operation. \n\u2022 Instruction includes the use of number lines, drawings, diagrams or models to represent \nproblem context."
+ },
+ {
+  "code": "MA.2.AR.2.1",
+  "grade": "2",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine and explain whether equations involving addition and subtraction are true or false.",
+  "clarifications": [
+   "Instruction focuses on understanding of the equal sign.",
+   "Problem types are limited to an equation with three or four terms. The sum or difference can \nbe on either side of the equal sign.",
+   "Addition and subtraction are limited to sums up to 100 and related differences."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.AR.2.2",
+   "MA.3.AR.2.2"
+  ],
+  "misconceptions": "\u2022 Students may not understand the equal sign means \u201cthe same as\u201d and only relate it to \u201cthe \nanswer is.\u201d \n\u2022 Students may think the equal sign requires them to do something.",
+  "strategies": "The purpose of this benchmark is to further develop an understanding of the equal sign by \nexamining equations. In grade 1, students determined and explained whether equations involving \naddition and subtraction within 20 were true or false. \n\u2022 Instruction includes the use of manipulatives or drawings to show balanced equations. \n\u2022 Instruction includes equations where the minuend, subtrahend or addends are on either side \nof the equal sign. \n\u2022 Instruction includes equations in different forms such as \ud835\udc4e + \ud835\udc4f = \ud835\udc50 or \ud835\udc50 = \ud835\udc4e + \ud835\udc4f. \n\u2022 Instruction includes examples of equations that are false."
+ },
+ {
+  "code": "MA.2.AR.2.2",
+  "grade": "2",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine the unknown whole number in an addition or subtraction equation, relating three or four whole numbers, with the unknown in any position.",
+  "clarifications": [
+   "Instruction extends the development of algebraic thinking skills where the symbolic \nrepresentation of the unknown uses any symbol other than a letter.",
+   "Problems include having the unknown on either side of the equal sign.",
+   "Addition and subtraction are limited to sums up to 100 and related differences. Refer to \nSituations Involving Operations with Numbers (Appendix A)."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.AR.2.3",
+   "MA.3.AR.2.3"
+  ],
+  "misconceptions": "\u2022 Students may confuse the value on one side of the equation with an unknown number. \n\u2022 Students may think equivalent values have to look identical. \n\u2022 Students may incorrectly use compensation to add or subtract.",
+  "strategies": "The purpose of this benchmark is to build relational thinking. In grade 1, students determined an \nunknown whole number in an addition or subtraction problem within 20. \n\u2022 Instruction includes an unknown value in any position. \n\u2022 Instruction includes compensation of values to balance equations. \n\u2022 Instruction includes the use of number lines, drawings, or models to solve addition and \nsubtraction problems."
+ },
+ {
+  "code": "MA.2.AR.3.1",
+  "grade": "2",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Represent an even number using two equal groups or two equal addends. \n Represent an odd number using two equal groups with one left over or two \nequal addends plus 1.",
+  "clarifications": [
+   "Instruction focuses on the connection of recognizing even and odd numbers using skip \ncounting, arrays and patterns in the ones place.",
+   "Addends are limited to whole numbers less than or equal to 12."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.2.1",
+   "MA.3.AR.3.1"
+  ],
+  "misconceptions": "\u2022 Students may think a number is odd if the doubles addition fact involves odd numbers.",
+  "strategies": "The purpose of this benchmark is to introduce the concept of even and odd numbers by building \non students' understanding of equal groups and equal addends while continuing to build their \nautomaticity with basic facts. This work lays the foundation for understanding multiples of 2 \n(MTR.5.1). \n\u2022 Instruction includes the use of arrays to show equal groups in rows and columns. \n\u2022 Instruction includes the use of manipulatives, drawings, models, or equations to show a \nnumber as even or odd. \n\u2022 Instruction includes numbers no larger than 25. \n\u2022 Instruction includes building the foundation for patterns in grade 3."
+ },
+ {
+  "code": "MA.2.AR.3.2",
+  "grade": "2",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Use repeated addition to find the total number of objects in a collection of \n equal groups. Represent the total number of objects using rectangular arrays \nand equations.",
+  "clarifications": [
+   "Instruction includes making a connection between arrays and repeated addition, which \nbuilds a foundation for multiplication.",
+   "The total number of objects is limited to 25."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.2.1",
+   "MA.3.NSO.2.2",
+   "MA.K.NSO.1.1"
+  ],
+  "misconceptions": "\u2022 Students may mistakenly add the number of rows and columns instead of the number of \nobjects in each row. \n\u2022 Students may count the array total as the perimeter instead of the area. \n\u2022 Students may not recognize that when rows and columns are rearranged in arrays the \ntotal number of objects in the array remains the same.",
+  "strategies": "The purpose of this benchmark is to connect the idea of repeated addition as a way to represent \nequal groups. At this grade level, students are also introduced to the array as a model for \narranging groups into equal rows and equal columns. \n\u2022 Instruction includes the language of rows and columns to reinforce the number of groups \nand the number of objects in each group. The number of groups can be represented by \nthe number of rows with the number of objects in each group being represented by the \nsize of the row (the number of columns), or the number of objects in each group can be \nrepresented by the number of columns and the number of objects in a group represented \nby the size of a col"
+ },
+ {
+  "code": "MA.2.DP.1.1",
+  "grade": "2",
+  "strand": "DP",
+  "subject": "MATH",
+  "description": "Collect, categorize and represent data using tally marks, tables, pictographs or bar graphs. Use appropriate titles, labels and units.",
+  "clarifications": [
+   "Data displays can be represented both horizontally and vertically. Scales on graphs are \nlimited to ones, fives or tens."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.DP.1.1",
+   "MA.3.DP.1.1"
+  ],
+  "misconceptions": "\u2022 Students may formulate questions that involve only mathematical data. \n\u2022 Students may ignore categories and only list data points. \no For example, students may be collecting data on favorite color (8 red, 5 blue, 7 \ngreen) and may only list 8, 5 and 7. \n\u2022 Students may put the data totals in the incorrect categories. \n\u2022 Students may misrepresent the count for each data point.",
+  "strategies": "The purpose of this benchmark is to gather, sort, represent and make comparisons about data \nusing several methods. In grade 1, representation of data was limited to tally marks and \npictographs. At this grade level, students will select the most appropriate representation, use \nappropriate titles, labels and units. \n\u2022 Instruction includes context for data representations. \n\u2022 Instruction includes understanding that different types of graphs are useful in \nrepresenting different contexts. \n\u2022 Instruction includes the understanding that data can show trends or frequency."
+ },
+ {
+  "code": "MA.2.DP.1.2",
+  "grade": "2",
+  "strand": "DP",
+  "subject": "MATH",
+  "description": "Interpret data represented with tally marks, tables, pictographs or bar graphs including solving addition and subtraction problems.",
+  "clarifications": [
+   "Addition and subtraction problems are limited to whole numbers with sums within 100 \nand related differences.",
+   "Data displays can be represented both horizontally and vertically. Scales on graphs are \nlimited to ones, fives or tens."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.DP.1.2",
+   "MA.3.DP.1.2"
+  ],
+  "misconceptions": "\u2022 Students may miscount the number of pictures in a pictograph graph or misread the \nheight of a bar in a bar graph. \n\u2022 Students may think that one picture of an item in a pictograph represents only one item.",
+  "strategies": "The purpose of this benchmark is to extend the work of grade 1 to interpretation of various data \nrepresentations and solving problems involving addition and subtraction. \n\u2022 Instruction includes questions that focus on the context of the situation. \n\u2022 Instruction includes the idea that a picture can represent a single piece of data or a fixed \namount. \n\u2022 Interpretation of data includes both factual and reasoning-based questions."
+ },
+ {
+  "code": "MA.2.FR.1.1",
+  "grade": "2",
+  "strand": "FR",
+  "subject": "MATH",
+  "description": "Partition circles and rectangles into two, three or four equal-sized parts. Name \n the parts using appropriate language, and describe the whole as two halves, \nthree thirds or four fourths.",
+  "clarifications": [
+   "Within this benchmark, the expectation is not to write the equal-sized parts as a fraction \nwith a numerator and denominator.",
+   "Problems include mathematical and real-world context."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.FR.1.1",
+   "MA.3.FR.1.1"
+  ],
+  "misconceptions": "\u2022 Students may have difficulty partitioning into equal-sized parts. \n\u2022 Students may not understand that the parts can be equal parts even if they do not look \nidentical.",
+  "strategies": "The purpose of this benchmark is to extend the work from grade 1 of partitioning circles and \nrectangles. At this grade level, students will partition into three equal-sized parts, name the parts \nas three thirds and describe the whole (MTR.5.1). \n\u2022 Instruction includes the use of manipulatives such as geoboards, fraction circles, pattern \nblocks or color tiles, along with contextual sharing situations. \n\u2022 Instruction includes the idea of part-whole relationships as supported by a model. \n\u2022 Naming the parts is based on the number of equal parts that make the whole. \n\u2022 Students are not expected to use formal fraction notation until grade 3."
+ },
+ {
+  "code": "MA.2.GR.1.1",
+  "grade": "2",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Identify and draw two-dimensional figures based on their defining attributes. \n. Figures are limited to triangles, rectangles, squares, pentagons, hexagons and \noctagons.",
+  "clarifications": [
+   "Within this benchmark, the expectation includes the use of rulers and straight edges."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.GR.1.1",
+   "MA.1.GR.1.2",
+   "MA.3.GR.1.2"
+  ],
+  "misconceptions": "\u2022 Students may misidentify a figure based on a non-defining attribute. \n\u2022 Students may not recognize figures that have been rotated or that are irregular.",
+  "strategies": "The purpose of this benchmark is to build on the work of grade 1 by including the task of \ndrawing specific two-dimensional figures based on a defined attribute. At this grade level, five-\nand eight-sided figures have been included and a ruler would be used to create straight edges. \n\u2022 Instruction includes experience with a variety of examples and non-examples that lack a \ndefining attribute. \n\u2022 Instruction includes defining attributes such as numbers of sides, sides of equal length or \nnumber of vertices, whether they are closed or not and whether the edges are curved or \nstraight."
+ },
+ {
+  "code": "MA.2.GR.1.2",
+  "grade": "2",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Categorize two-dimensional figures based on the number and length of sides, \n number of vertices, whether they are closed or not and whether the edges are \ncurved or straight.",
+  "clarifications": [
+   "Instruction focuses on using formal and informal language to describe defining attributes \nwhen categorizing."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.GR.1.1",
+   "MA.3.GR.1.2"
+  ],
+  "misconceptions": "\u2022 Students may not realize figures can be categorized in more than one way. \n\u2022 Students may have difficulty categorizing figures that are considered irregular.",
+  "strategies": "The purpose of this benchmark is for students to work specifically with two-dimensional figures \nto categorize them based on their attributes. \n\u2022 Instruction includes a variety of examples and non-examples which lack defining \nattributes. \n\u2022 Instruction includes the understanding that some figures may share the attributes of \nanother figure, possibly creating subcategories. For example, squares form a \nsubcategory of rectangles. \n\u2022 Instruction is not limited to polygons."
+ },
+ {
+  "code": "MA.2.GR.1.3",
+  "grade": "2",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Identify line(s) of symmetry for a two-dimensional figure.",
+  "clarifications": [
+   "Instruction focuses on the connection between partitioning two-dimensional figures and \nsymmetry.",
+   "Problem types include being given an image and determining whether a given line is a \nline of symmetry or not."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.GR.1.3",
+   "MA.3.GR.1.3"
+  ],
+  "misconceptions": "\u2022 Students may assume a figure has the same number of lines of symmetry as sides or that \na figure with more sides has more lines of symmetry. \n\u2022 Students may assume all diagonals are lines of symmetry. \n\u2022 Students may think two halves will always create a line of symmetry. \n\u2022 Students may think all figures have a line of symmetry.",
+  "strategies": "The purpose of this benchmark is to introduce the concept of line symmetry in two-dimensional \nfigures. \n\u2022 Instruction includes the idea that a line of symmetry decomposes a figure into mirror \nimages. \n\u2022 Instruction explores line symmetry through familiar figures such as triangles, rectangles, \nsquares, pentagons, hexagons and octagons, but is not limited to polygons."
+ },
+ {
+  "code": "MA.2.GR.2.1",
+  "grade": "2",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Explore perimeter as an attribute of a figure by placing unit segments along \n. the boundary without gaps or overlaps. Find perimeters of rectangles by \ncounting unit segments.",
+  "clarifications": [
+   "Instruction emphasizes the conceptual understanding that perimeter is an attribute that \ncan be measured for a two-dimensional figure.",
+   "Instruction includes real-world objects, such as picture frames or desktops."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.3.GR.2.3"
+  ],
+  "misconceptions": "\u2022 Students may miscount or double count the number of unit segments.",
+  "strategies": "The purpose of this benchmark is to introduce the concept of perimeter as a measurement \nattribute along the exterior of a two-dimensional figure that can be determined by counting unit \nsegments (MTR.5.1). \n\u2022 Instruction includes the understanding that the measurement is only valid when units are \nplaced and counted without space or overlay. \n\u2022 Instruction includes informal language of length and width."
+ },
+ {
+  "code": "MA.2.GR.2.2",
+  "grade": "2",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Find the perimeter of a polygon with whole-number side lengths. Polygons are limited to triangles, rectangles, squares and pentagons.",
+  "clarifications": [
+   "Instruction includes the connection to the associative and commutative properties of \naddition. Refer to Properties of Operations, Equality and Inequality (Appendix D).",
+   "Within this benchmark, the expectation is not to use a formula to find perimeter.",
+   "Instruction includes cases where the side lengths are given or measured to the nearest \nunit.",
+   "Perimeter cannot exceed 100 units and responses include the appropriate units."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.3.GR.2.3"
+  ],
+  "misconceptions": "\u2022 Students may misalign the ruler with the object and measure an object from 1 instead of \n0. \n\u2022 Students may count all tick marks, not just the whole-unit marks, when reading a ruler. \n\u2022 Students may leave gaps when measuring objects. \n\u2022 Students may need support in making the connection to the commutative and associative \nproperties when determining the perimeter of a figure.",
+  "strategies": "The purpose of this benchmark is for students to use the attribute of side length to find the \nperimeter in the context of familiar two-dimensional figures. \n\u2022 Instruction includes the use of properties of addition to help students think and solve \nflexibly. \n\u2022 Instruction includes the use of a number of sides as a defining attribute of triangles, \nrectangles, squares and pentagons to help them solve problems. \n\u2022 Instruction includes recognizing that when given a rectangle the opposite side lengths \nare the same \n\u2022 Instruction includes using linear tools such as toothpicks, straws, popsicle sticks, etc. to \nexplore perimeter as additive. \no For example, students can be given dimensions of a "
+ },
+ {
+  "code": "MA.2.NSO.1.3",
+  "grade": "2",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Plot, order and compare whole numbers up to 1,000.",
+  "clarifications": [
+   "When comparing numbers, instruction includes using a number line and using place \nvalues of the hundreds, tens and ones digits.",
+   "Within this benchmark, the expectation is to use terms (e.g., less than, greater than, \nbetween or equal to) and symbols (<, > or =)."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.1.4",
+   "MA.3.NSO.1.3"
+  ],
+  "misconceptions": "\u2022 Students may incorrectly plot a three-digit numbers in a number line. \n\u2022 Students may not understand that a representation of a smaller portion of a number line \n(200 \u2212 220) may have the same physical size as a representation of a larger number line \n(0 \u2212 1,000). \n\u2022 Students may have difficulty comparing two numbers that have the same digits in a \ndifferent order (i.e., 852 and 582).",
+  "strategies": "The purpose of this benchmark is to extend the place value work of plot, order and compare from \ngrade 1 by increasing the number set to 1,000. \n\u2022 Instruction includes the use of numbers presented in multiple ways and different forms. \n\u2022 Instruction includes the understanding that the value of a digit is impacted by its position \nin a number. \n\u2022 Instruction includes the use of place value charts, place value cards, place value disks, \nplace value chips and base ten blocks (MTR.2.1). \n\u2022 Instruction includes the use of number lines using benchmark numbers to support \ncomparing. \n\u2022 Instruction includes the understanding that numbers can be reordered in both ascending \nand descending order."
+ },
+ {
+  "code": "MA.2.NSO.1.4",
+  "grade": "2",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Round whole numbers from 0 to 100 to the nearest 10.",
+  "clarifications": [
+   "Within the benchmark, the expectation is to understand that rounding is a process that \nproduces a number with a similar value that is less precise but easier to use."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.1.4",
+   "MA.3.NSO.1.4"
+  ],
+  "misconceptions": "\u2022 Students may round down instead of up when there is a 5 in the ones place. \n\u2022 Students may not be able to identify which two tens a number is between. \n\u2022 For example, a student may not be able to determine that 72 is between 70 and 80. \n\u2022 Students may look at the digit in the tens place to determine how to round, rather than the \nones place.",
+  "strategies": "The purpose of this benchmark is to introduce rounding as an estimation strategy, creating a \nnumber that is easier to compute mentally. \n\u2022 Instruction includes the use of a number line to help students determine the nearest 10. \n\u2022 Instruction includes the use of real-world context to help students make sense of how a \nrounded number may be less precise but easier to use. \n\u2022 Instruction includes cases where students must provide numbers that would round to a \ngiven number."
+ },
+ {
+  "code": "MA.2.NSO.2.3",
+  "grade": "2",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Add two whole numbers with sums up to 100 with procedural reliability. \n Subtract a whole number from a whole number, each no larger than 100, with \nprocedural reliability.",
+  "clarifications": [
+   "Instruction focuses on helping a student choose a method they can use reliably."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.2.4",
+   "MA.1.NSO.2.5",
+   "MA.3.NSO.2.1"
+  ],
+  "misconceptions": "\u2022 Students may regroup ones incorrectly or forget to regroup the ones. \n\u2022 Students may always think it is necessary to subtract the lesser digit from the greater digit. \n\u2022 Students who use a vertical method may record the total sum of the digits in a place value \ninstead of regrouping.",
+  "strategies": "The purpose of this benchmark is for students to develop and use reliable methods to add or \nsubtract within 100. Students in grade 1 worked in the exploration stage which heavily relied on \nthe use of manipulatives and drawings. \n\u2022 Instruction includes the understanding that when adding it is sometimes necessary to \ncombine ones and compose a new ten from those ones. \n\u2022 Instruction includes the understanding that when subtracting it is sometimes necessary to \ndecompose tens and regroup ones. \n\u2022 Instruction includes using the relationship between addition and subtraction to find \ndifferences. \n\u2022 Instruction includes strategies that support decomposing and composing numbers in \nmultiple ways "
+ },
+ {
+  "code": "MA.2.NSO.2.4",
+  "grade": "2",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Explore the addition of two whole numbers with sums up to 1,000. Explore the \n subtraction of a whole number from a whole number, each no larger than \n1,000.",
+  "clarifications": [
+   "Instruction includes the use of manipulatives, number lines, drawings, properties of \noperations or place value.",
+   "Instruction focuses on composing and decomposing ones, tens and hundreds when \nneeded."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.2.4",
+   "MA.1.NSO.2.5",
+   "MA.3.NSO.2.1"
+  ],
+  "misconceptions": "\u2022 Students may try to apply properties of addition, such as the commutative property, to \nsolve subtraction problems. \n\u2022 Students may regroup but also include an additional, unnecessary ten or hundred. \n\u2022 Students may incorrectly add or subtract because they have lost track of the value of \ndigits.",
+  "strategies": "The purpose of this benchmark is to extend the exploration of addition and subtraction of two \nwhole numbers work from grade 1 to include a number set through 1,000. \n\u2022 Instruction includes the use of two- or three-digit numbers to add and subtract. \n\u2022 Instruction includes the use of the commutative property of addition. \n\u2022 It is not the expectation for students to use a standard algorithm. Instruction focuses on \nstrategies supported by manipulatives, number lines, base ten blocks, place value and \ndrawings. \n\u2022 Instruction includes helping students understand that when adding it is sometimes \nnecessary to combine ones or tens and compose a new ten or new hundred. \n\u2022 Instruction includes hel"
+ },
+ {
+  "code": "MA.3.FR.1.1",
+  "grade": "3",
+  "strand": "FR",
+  "subject": "MATH",
+  "description": "Represent and interpret unit fractions in the form 1/n as the quantity formed by one part when a whole is partitioned into n equal parts.",
+  "clarifications": [
+   "This benchmark emphasizes conceptual understanding through the use of manipulatives or visual models.",
+   "Instruction focuses on representing a unit fraction as part of a whole, part of a set, a point on a number line, a visual model or in fractional notation.",
+   "Denominators are limited to 2, 3, 4, 5, 6, 8, 10 and 12."
+  ],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.FR.1.2",
+  "grade": "3",
+  "strand": "FR",
+  "subject": "MATH",
+  "prerequisites": [
+   "MA.2.FR.1.1"
+  ],
+  "next": [],
+  "misconceptions": "",
+  "strategies": "",
+  "description": "Represent and interpret fractions, including fractions greater than one, in the form of m/n as the result of adding the unit fraction 1/n to itself m times.",
+  "clarifications": [
+   "Instruction emphasizes conceptual understanding through the use of manipulatives or visual models, including circle graphs, to represent fractions.",
+   "Denominators are limited to 2, 3, 4, 5, 6, 8, 10 and 12."
+  ]
+ },
+ {
+  "code": "MA.3.FR.1.3",
+  "grade": "3",
+  "strand": "FR",
+  "subject": "MATH",
+  "description": "Read and write fractions, including fractions greater than one, using standard form, numeral-word form and word form.",
+  "clarifications": [
+   "Instruction focuses on making connections to reading and writing numbers to develop the understanding that fractions are numbers and to support algebraic thinking in later grades.",
+   "Denominators are limited to 2, 3, 4, 5, 6, 8, 10 and 12."
+  ],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.K.AR.1.1",
+  "grade": "K",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "For any number from 1 to 9, find the number that makes 10 when added to the \ngiven number.",
+  "clarifications": [
+   "Instruction includes creating a ten using manipulatives, number lines, models and \ndrawings."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.AR.1.1"
+  ],
+  "misconceptions": "\uf0b7 Students may not connect pairs of addends through the commutative property.",
+  "strategies": "\uf0b7 The purpose of this benchmark is to explore addition and lay a foundation for fluency in later \ngrades. This benchmark provides the foundation for the strategy of making a 10 that can be used \nas the scale of addition increases in later grades (MTR.5.1). \n\uf0b7 Instruction allows students to flexibly discover addends that make 10 using strategies and \nmanipulatives. Strategies and manipulatives include addition and subtraction facts, \ncounting with fingers, ten frames, number lines, models and drawings (MTR.2.1). \n\uf0b7 Instruction includes the use of the commutative property (not by name) as a strategy for \nadding. \no For example, allow students to discover that 7 + 3 = 10 and 3 + 7 = 10 to build"
+ },
+ {
+  "code": "MA.K.AR.1.2",
+  "grade": "K",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Given a number from 0 to 10, find the different ways it can be represented as \nthe sum of two numbers.",
+  "clarifications": [
+   "Instruction includes the exploration of finding possible pairs to make a sum using \nmanipulatives, objects, drawings and expressions; and understanding how the different representations are \nrelated to each other."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.AR.1.1",
+   "MA.1.NSO.2.1"
+  ],
+  "misconceptions": "\uf0b7 Students may not connect pairs of addends through the commutative property. Though \nthere is no expectation that students name the commutative property, they should begin to \ndiscover the connections and patterns and recognize that if \ud835\udc4e + \ud835\udc4f = 10, then \ud835\udc4f + \ud835\udc4e =\n10. \n\uf0b7 Students may not recognize that multiple pairs of addends represent the same sum. \n\uf0b7 Students may not recognize that the two numbers don\u2019t have to be different. \no For example, if the given number is 8 a student may not think to represent it \nas 4 + 4.",
+  "strategies": "The purpose of this benchmark is to allow students to continue to flexibly discover various sums \nas they work towards procedural reliability in Kindergarten, and automaticity in grade 1 \n(MTR.2.1, MTR.5.1). \n\uf0b7 Instruction allows students to see multiple ways to add numbers to make a given number, \nsuch as 1 + 3, 2 + 2, and 3 + 1 are all ways to make 4 (MTR.2.1). \n\uf0b7 Instruction includes the use of manipulatives and pictorial representations. \n\uf0b7 Instruction includes the use of context to provide a purpose for adding (MTR.7.1). \n\uf0b7 Instruction includes making connections to subtraction equations related to addition \nequations (MTR.5.1). \n\uf0b7 Items include equations with one or both addends unknow"
+ },
+ {
+  "code": "MA.K.AR.1.3",
+  "grade": "K",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Solve addition and subtraction real-world problems using objects, drawings or \nequations to represent the problem.",
+  "clarifications": [
+   "Instruction includes understanding the context of the problem, as well as the quantities \nwithin the problem.",
+   "Students are not expected to independently read word problems.",
+   "Addition and subtraction are limited to sums within 10 and related subtraction facts. \nRefer to Situations Involving Operations with Numbers (Appendix A)."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.AR.1.2"
+  ],
+  "misconceptions": "\uf0b7 Students may not yet have an understanding of the equal sign when attempting to use \nequations as a strategy (see MA.K.AR.2.1).",
+  "strategies": "The purpose of this benchmark is to allow students to continue to flexibly discover various sums \nas they work towards procedural reliability in Kindergarten, and automaticity in grade 1. This \nbenchmark allows students the opportunity to deepen understanding of addition and subtraction \nby connecting the concepts to real-world situations. Though this should not be the first exposure \nto contextual addition and subtraction problems, this benchmark provides the opportunity for \nmaking it explicit (MTR.7.1). \n\uf0b7 Instruction includes the relationship between addition and subtraction, providing \nopportunities for discovering subtraction facts that are related to addition facts \n(MTR.5.1). \n\uf0b7 Inst"
+ },
+ {
+  "code": "MA.K.AR.2.1",
+  "grade": "K",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Explain why addition or subtraction equations are true using objects or \ndrawings.",
+  "clarifications": [
+   "Instruction focuses on the understanding of the equal sign.",
+   "Problem types are limited to an equation with two or three terms. The sum or difference \ncan be on either side of the equal sign.",
+   "Addition and subtraction are limited to sums within 20 and related subtraction facts."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.AR.2.1",
+   "MA.1.AR.2.2"
+  ],
+  "misconceptions": "\uf0b7 Students may think that \u201cequals\u201d just means to compute, and may not recognize \nequations and expressions represented in non-standard ways, such as with pictures or \nmanipulatives.",
+  "strategies": "The purpose of this benchmark is to provide explicit opportunities for students to deepen \nunderstanding by justifying their solutions and explaining strategies they have chosen, as well as \ndeveloping an understanding of the equal sign (MTR.6.1, MTR.4.1). \n\uf0b7 Instruction may present equations in different forms, such as \ud835\udc4e + \ud835\udc4f = \ud835\udc50 or \ud835\udc50 = \ud835\udc4e + \ud835\udc4f \n(MTR.2.1). \n\uf0b7 Instruction focuses on understanding and supporting, not only identifying whether or not \nan equation is true. \n\uf0b7 Instruction helps students understand that the equal sign does not mean to compute, but \nrelates quantities to one another. \n\uf0b7 Instruction includes the use of context to provide a purpose for adding or subtracting, and \nto sup"
+ },
+ {
+  "code": "MA.K.DP.1.1",
+  "grade": "K",
+  "strand": "DP",
+  "subject": "MATH",
+  "description": "Collect and sort objects into categories and compare the categories by counting \nthe objects in each category. Report the results verbally, with a written numeral \nor with drawings.",
+  "clarifications": [
+   "Instruction focuses on supporting work in counting.",
+   "Instruction includes geometric figures that can be categorized using their defining \nattributes.",
+   "Within this benchmark, it is not the expectation for students to construct formal \nrepresentations or graphs on their own."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.DP.1.1",
+   "MA.1.DP.1.2"
+  ],
+  "misconceptions": "\uf0b7 Students may not clearly define categories for sorting objects which may lead to \ninaccurate data collection as objects fit into multiple categories. \n\uf0b7 When students are presented with objects to be sorted into predefined categories, they \nmay be frustrated that some objects don\u2019t fit into any category.",
+  "strategies": "The purpose of this benchmark is to develop a foundation for statistical thinking, as well as \nproviding a context to support the development of counting skills (MTR.5.1). \n\uf0b7 Instruction reinforces the counting and comparing benchmarks within the Number Sense \nand Operations strand (MTR.5.1). \n\uf0b7 Instruction reinforces the identifying and sorting of figures benchmarks within the \nGeometric Reasoning strand (MTR.5.1)."
+ },
+ {
+  "code": "MA.K.GR.1.1",
+  "grade": "K",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": ". \nIdentify two- and three-dimensional figures regardless of their size or \norientation. Figures are limited to circles, triangles, rectangles, squares, \nspheres, cubes, cones and cylinders",
+  "clarifications": [
+   "Instruction includes a wide variety of circles, triangles, rectangles, squares, spheres, \ncubes, cones and cylinders.",
+   "Instruction includes a variety of non-examples that lack one or more defining attributes.",
+   "Two-dimensional figures can be either filled, outlined or both."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.GR.1.1"
+  ],
+  "misconceptions": "\uf0b7 Students may only recognize figures in a specific orientation or angle distribution (i.e., \nrecognizing isosceles triangles but not scalene). \n\uf0b7 Students may not recognize that a square is also a rectangle. \n\uf0b7 Students may sort objects by size when asked to sort by shape. \no For example, students may place large circles with large triangles, or separate \nlarge triangles and small triangles.",
+  "strategies": "The purpose of this benchmark is to help students identify specific two- and three-dimensional \nfigures, and to make connections between the figures (MTR.2.1, MTR.5.1). \n\uf0b7 It is not the expectation of this benchmark to make distinctions between two- and three-\ndimensional figures. \n\uf0b7 Instruction focuses on using a variety of figures including different orientations, such as \nscalene, isosceles and equilateral triangles, to build the understanding of triangles. (There \nis no expectation that students learn these terms, but it is important they recognize \nvarious types of triangles.) (MTR.2.1) \n\uf0b7 Instruction for rectangles and squares includes their similarities and differences, and the \nrelat"
+ },
+ {
+  "code": "MA.K.GR.1.2",
+  "grade": "K",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Compare two-dimensional figures based on their similarities, differences and \npositions. Sort two-dimensional figures based on their similarities and \ndifferences. Figures are limited to circles, triangles, rectangles and squares.",
+  "clarifications": [
+   "Instruction includes exploring figures in a variety of sizes and orientations.",
+   "Instruction focuses on using informal language to describe relative positions and the \nsimilarities or differences between figures when comparing and sorting."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.GR.1.1"
+  ],
+  "misconceptions": "\uf0b7 Students may not understand that all squares are also classified as rectangles; however, \nonly specific rectangles (with sides that are the same length) are also classified as \nsquares. \n\uf0b7 Students may sort figures separately because of orientation and/or size rather than the \nidentified attributes of the figures.",
+  "strategies": "The purpose of this benchmark is for students to build on their understanding of classification of \ntwo-dimensional figures by finding similarities and differences between shapes (MTR.5.1). \n\uf0b7 Instruction includes opportunities for students to sort images based on various criteria, \nsuch as same number of sides, and figures with all straight sides (MTR.2.1, MTR.5.1). \n\uf0b7 Instruction includes helping students describe objects based on relative positions. \nRelative position refers to students identifying left/right, in front of/behind, apart and \nabove/below. When comparing figures students should understand that relative position \ncan change even though the other features of the figures stay t"
+ },
+ {
+  "code": "MA.K.GR.1.3",
+  "grade": "K",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Compare three-dimensional figures based on their similarities, differences and \npositions. Sort three-dimensional figures based on their similarities and \ndifferences. Figures are limited to spheres, cubes, cones and cylinders.",
+  "clarifications": [
+   "Instruction includes exploring figures in a variety of sizes and orientations.",
+   "Instruction focuses on using informal language to describe relative positions and the \nsimilarities or differences between figures when comparing and sorting."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.GR.1.1"
+  ],
+  "misconceptions": "\uf0b7 Students may sort figures separately because of orientation and size rather than the \nidentified attributes of the figures. \n\uf0b7 Students may inaccurately name and sort three-dimensional figures based on the names \nof their two-dimensional faces.",
+  "strategies": "The purpose of this benchmark is for students to build on their understanding of classification of \nthree-dimensional figures by finding similarities and differences between shapes. \n\uf0b7 Instruction focuses on sorting and classifying three-dimensional figures. \n\uf0b7 Instruction includes opportunities for students to sort figures based on various criteria, \nsuch as same number of faces and figures with all flat sides (MTR.5.1). \n\uf0b7 Instruction includes figures of various sizes and orientations, and may include non-\nstandard versions of figures as well (MTR.2.1). \n\uf0b7 Relative position refers to students identifying left/right, in front of/behind, apart and \nabove/below when comparing shapes."
+ },
+ {
+  "code": "MA.K.GR.1.5",
+  "grade": "K",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Combine two-dimensional figures to form a given composite figure. Figures \nused to form a composite shape are limited to triangles, rectangles and squares.",
+  "clarifications": [
+   "This benchmark is intended to develop the understanding of spatial relationships."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.GR.1.3"
+  ],
+  "misconceptions": "\uf0b7 Students may attempt to compose figures without regard to aligning sides or vertices. The \noverlap may cause difficulty in naming or describing the new composite figures. \n\uf0b7 Students may avoid lining the edges of two figures if the sides aren\u2019t the same length. \no For example, it could be appropriate to join several rectangles of various sizes to \nmake a figure that looks like a building with towers.",
+  "strategies": "The purpose of this benchmark is to allow students opportunities to discover further connections \nand patterns with two-dimensional figures. Students should have an opportunity to investigate \ncombining figures in a variety of sizes and orientations (MTR.2.1, MTR.5.1). \n\uf0b7 Instruction includes composite figures that may be named based on previous benchmarks, \nas well as those not included in previous benchmarks, though there is no expectation of a \nformal name for new composite shapes outside of previously named figures. \no For example, a triangle and square forming a pentagon, may not need to be \nformally identified as a pentagon. Two triangles that form a rectangle can be \nformally identifi"
+ },
+ {
+  "code": "MA.K.NSO.1.1",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Given a group of up to 20 objects, count the number of objects in that group \nand represent the number of objects with a written numeral. State the number \nof objects in a rearrangement of that group without recounting.",
+  "clarifications": [
+   "Instruction focuses on developing an understanding of cardinality and one-to-one \ncorrespondence.",
+   "Instruction includes counting objects and pictures presented in a line, rectangular array, \ncircle or scattered arrangement. Objects presented in a scattered arrangement are limited to 10.",
+   "Within this benchmark, the expectation is not to write the number in word form."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.1.1"
+  ],
+  "misconceptions": "\uf0b7 Students may inaccurately report the number of objects in a set that has been rearranged \neven though the number was accurately counted before the set was rearranged (i.e., \nconservation of cardinality). \n\uf0b7 Students may recount the number of objects in a set that has been rearranged even though \nthe number was accurately counted before the set was rearranged. \n\uf0b7 Students may recount a group of objects when asked \u201chow many,\u201d rather than reporting \nthe last number counted. \n\uf0b7 Students may not be systematic in their counting. \no For example, a student may double count or skip numbers.",
+  "strategies": "The purpose of this benchmark is to help students develop an understanding of cardinality: the \nprinciple that the last number when counted in a set represents the total number within the set, \nand that the number of objects in a set remains the same regardless of the arrangement of the set. \nAdditionally, this benchmark allows students to begin recognizing and writing numerals. \n\uf0b7 Instruction includes the use of manipulatives, pictorial representations and real-world \ncontexts to provide a purpose for counting (MTR.2.1, MTR.7.1). \n\uf0b7 Instruction includes symbolic representation of numbers 0 \u2013 20 (MTR.7.1)."
+ },
+ {
+  "code": "MA.K.NSO.1.2",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Given a number from 0 to 20, count out that many objects.",
+  "clarifications": [
+   "Instruction includes giving a number verbally or with a written numeral."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.1.1"
+  ],
+  "misconceptions": "\uf0b7 Students may skip or repeat numbers when counting out objects. \no For example, a student may say \u201c14, 15, 17.\u201d \n\uf0b7 Students may lose track of which objects have been counted.",
+  "strategies": "The purpose of this benchmark is to help students further develop the concept that counting gives \nthe number of objects in a set and to reinforce the counting sequence. Students should count out \na given number of objects, and if the counted set is rearranged or moved, students should restate \nthe number of objects without counting. \n\uf0b7 Instruction includes the use of manipulatives and pictorial representations. \n\uf0b7 Instruction may use ten-frames or similar organizers to help students organize their \ncounting (MTR.5.1). \n\uf0b7 Instruction includes context to provide a purpose for counting (MTR.7.1)."
+ },
+ {
+  "code": "MA.K.NSO.1.3",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Identify positions of objects within a sequence using the words \u201cfirst,\u201d \n\u201csecond,\u201d \u201cthird,\u201d \u201cfourth\u201d or \u201cfifth.\u201d",
+  "clarifications": [
+   "Instruction includes the understanding that rearranging a group of objects does not change \nthe total number of objects but may change the order of an object in that group."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.3.AR.3.3"
+  ],
+  "misconceptions": "\uf0b7 Students may not be able to connect the positional terms (first, second, etc.) to the \nobject\u2019s position after rearrangement. \no For example, a set from left to rights shows an elephant, pig and dolphin. When \nrearranged the students still identifies the dolphin as \u201cthird\u201d regardless of \nsequence. \n\uf0b7 Students may give similar objects the same order number especially if they are next to \neach other in the sequence.",
+  "strategies": "The purpose of this benchmark is to develop students\u2019 vocabulary for describing the position of \nobjects in a set (i.e., ordinality). This benchmark reinforces further development of cardinality \u2013 \neven though objects in a set may switch positions, the total numbers of objects in the set remain \nthe same. \n\uf0b7 For mastery of this benchmark, instruction does not need to include students writing the \npositional word names. \n\uf0b7 Instruction includes specificity of sequence relative to the starting position and direction \n(first from the left, etc.) \n\uf0b7 Instruction may include sets larger than five as students identify the positions first \nthrough fifth. (Many students may be comfortable with using t"
+ },
+ {
+  "code": "MA.K.NSO.1.4",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Compare the number of objects from 0 to 20 in two groups using the terms less \nthan, equal to or greater than.",
+  "clarifications": [
+   "Instruction focuses on matching, counting and the connection to addition and subtraction.",
+   "Within this benchmark, the expectation is not to use the relational symbols =, > or <."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.1.4"
+  ],
+  "misconceptions": "\uf0b7 Students may confuse the size of objects with the number of objects when comparing.",
+  "strategies": "The purpose of this benchmark is to develop student understanding of comparing numbers and \nvalues relative to others. This benchmark may be used to connect to the counting sequence, \nforwards and backwards, and to addition and subtraction as strategies to compare numbers. \n\uf0b7 Instructions encourage students to explain \u201chow they know\u201d a number is greater than, \nless than or equal to (MTR.6.1). \no For example, a student could explain that 5 is after 3 so 5 is greater than 3. A \nstudent could also pair objects one-to-one to determine that 5 is greater than 3. \n\uf0b7 Instruction allows for students to compare sets and demonstrate their thinking using \nvarious strategies, such as addition and subtrac"
+ },
+ {
+  "code": "MA.K.NSO.2.1",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Recite the number names to 100 by ones and by tens. Starting at a given \nnumber, count forward within 100 and backward within 20.",
+  "clarifications": [
+   "When counting forward by ones, students are to say the number names in the standard \norder and understand that each successive number refers to a quantity that is one larger. When counting \nbackward, students are to understand that each succeeding number in the count sequence refers to a \nquantity that is one less.",
+   "Within this benchmark, the expectation is to recognize and count to 100 by the end of \nKindergarten."
+  ],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "\uf0b7 Students may have difficulty moving from one group of tens to the next. \no For example, knowing that 30 comes after 29. Students may have to recount by \ntens to determine the next ten when counting through to 100. \n\uf0b7 Students may be confused by the different pattern of word names for the \u201cteens.\u201d",
+  "strategies": "The purpose of this benchmark is to deepen student understanding of the counting sequence by \n1s and 10s, both forwards and backwards, and to connect the counting sequence to place value. \nThis benchmark will be a foundation as students begin to explore strategies for adding and \nsubtracting. Developing fluency in counting (MTR.3.1) will allow students to use strategies to \ncount on and count back, and fluency counting by 10s will be a foundation in building place \nvalue and related addition and subtraction strategies. \n\uf0b7 Instruction focuses on building understanding of numbers, not just their conventional \nnames and sequence. \no For example, 11 can be described as 10 and 1; 20 as 2 tens and"
+ },
+ {
+  "code": "MA.K.NSO.2.3",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Locate, order and compare numbers from 0 to 20 using the number line and \nterms less than, equal to or greater than.",
+  "clarifications": [
+   "Within this benchmark, the expectation is not to use the relational symbols =, > or <.",
+   "When comparing numbers from 0 to 20, both numbers are plotted on the same number \nline.",
+   "When locating numbers on the number line, the expectation includes filling in a missing \nnumber by counting from left to right on the number line."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.1.4"
+  ],
+  "misconceptions": "\uf0b7 Students may assume that all number lines start at 0 or 1. \n\uf0b7 When looking at number lines with hash marks, students may number the spaces between \nthe hash marks instead of the hash marks.",
+  "strategies": "The purpose of this benchmark is to build on knowledge from comparing in MA.K.NSO.1.4 and \nto introduce the number line. This benchmark will deepen student understanding of the \nrelationship between numbers, as well as provide the foundation for the number line as a strategy \nfor operations later on. \n\uf0b7 Instruction includes varied orientations and ranges of the number line. \no For example, given number lines can be horizontal, vertical, starting at 0, starting \nat another number, include blanks or an open number line (MTR.5.1). \n\uf0b7 Instruction includes making a connection to measurement when comparing numbers on a \nnumber line, which will help prepare students for using rulers in later grades"
+ },
+ {
+  "code": "MA.K.NSO.3.1",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Explore addition of two whole numbers from 0 to 10, and related subtraction \nfacts.",
+  "clarifications": [
+   "Instruction includes objects, fingers, drawings, number lines and equations.",
+   "Instruction focuses on the connection that addition is \u201cputting together\u201d or \u201ccounting on\u201d \nand that subtraction is \u201ctaking apart\u201d or \u201ctaking from.\u201d Refer to Situations Involving Operations with \nNumbers (Appendix A).",
+   "Within this benchmark, it is the expectation that one problem can be represented in \nmultiple ways and understanding how the different representations are related to each other."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.2.1",
+   "MA.1.NSO.2.2"
+  ],
+  "misconceptions": "\uf0b7 Students may confuse addition situations with subtraction situations based on \u201ccue\u201d or \n\u201ckey\u201d words. \no For example, in the word problem \u201cSteve has 7 crayons. Steve has 3 more \ncrayons than Joane. How many crayons does Joane have?\u201d the word \u201cmore\u201d may \nmake students think to add, though the context is actually subtraction. \n\uf0b7 Students may think there is only one correct way of solving a problem. Many problems \ncan be solved by using addition or subtraction. \n\uf0b7 After mastering one addition or subtraction situation students may feel that there are no \nothers to learn.",
+  "strategies": "The purpose of this benchmark is to begin building strategies for addition and subtraction using \nskills developed through previous benchmarks; such as counting forwards and backwards, \ncounting objects and using number lines. Procedural reliability with these same addition and \nsubtraction facts is expected in MA.K.NSO.3.2, and automaticity is to be achieved in grade 1 \n(MA.1.NSO.2.1). \n\uf0b7 Instruction encourages students to use and explore various strategies as they begin to \ndiscover which strategies are best for them and best for given situations (MTR.5.1, \nMTR.2.1). \no Strategies include the use of manipulatives; the use of fingers, counting both sets \nseparately and combining or removing"
+ },
+ {
+  "code": "MA.K.NSO.3.2",
+  "grade": "K",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Add two one-digit whole numbers with sums from 0 to 10 and subtract using \nrelated facts with procedural reliability.",
+  "clarifications": [
+   "Instruction focuses on helping a student choose a method they can use reliably."
+  ],
+  "prerequisites": [],
+  "next": [
+   "MA.1.NSO.2.1"
+  ],
+  "misconceptions": "\uf0b7 Students may not see the value in counting on (and becoming more efficient) when \ndetermining the number of objects in two sets that have been combined. \n\uf0b7 When using the count on strategy, students may always start with the first number rather \nthan the larger number.",
+  "strategies": "\uf0b7 The purpose of this benchmark is to build upon the exploration of MA.K.NSO.3.1 and provide \nstudents with opportunities to become more efficient in their selection and use of strategies. The \ngoal is not to be fluent with addition and subtraction, but rather to build the foundation for \nfluency in later grades (MTR.3.1). \n\uf0b7 Instruction includes the use of manipulatives and pictorial representations. \n\uf0b7 Instruction allows students to continue exploring various strategies for addition and \nsubtraction, discovering strategies that allow them to become more efficient (MTR.2.1). \n\uf0b7 Instruction includes the use of discussions where students share strategies with one \nanother (MTR.4.1). \n\uf0b7 Though"
+ }
+]

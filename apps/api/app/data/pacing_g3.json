@@ -1,0 +1,42 @@
+{
+ "grade": "3",
+ "subject": "MATH",
+ "course": "Grade 3 Mathematics",
+ "source": "M-DCPS 2025-2026 District Pacing Guide",
+ "topics": [
+  {
+   "topic_code": "TOPIC IX",
+   "chapter": "Chapter 9",
+   "name": "Understand Fractions (Chapter 9)",
+   "quarter": "Second and Third Nine Weeks",
+   "benchmarks": [
+    "MA.3.FR.1.1",
+    "MA.3.FR.1.2",
+    "MA.3.FR.1.3"
+   ],
+   "learning_target": "Understand fractions.",
+   "success_criteria": [
+    "identify a unit fraction.",
+    "explain how equal parts are used to name and write",
+    "model fractions less than or greater than 1.",
+    "describe a fraction as a sum of unit fractions."
+   ],
+   "vocabulary": [
+    "denominator",
+    "eighths",
+    "fifths",
+    "fraction",
+    "mixed number",
+    "numeral-word",
+    "form",
+    "numerator",
+    "sixths",
+    "tenths",
+    "twelfths",
+    "unit fraction",
+    "whole",
+    "whole numbers"
+   ]
+  }
+ ]
+}

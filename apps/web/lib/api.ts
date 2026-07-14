@@ -53,4 +53,21 @@ export const api = {
     req(`/di/groups/${groupId}/plan`, { method: "POST" }),
   importAssessment: (form: FormData) =>
     req("/assessments/import", { method: "POST", body: form }),
+  coachDashboard: () => req("/coach/dashboard"),
+  pacingTopic: (topicId: string) => req(`/pacing/${topicId}`),
+  generateAgenda: (topicId: string) =>
+    req(`/coach/agenda/${topicId}`, { method: "POST" }),
 };
+
+const COACH_ROLES = [
+  "math_coach",
+  "reading_coach",
+  "instructional_coach",
+  "principal",
+  "ap",
+  "district_admin",
+];
+
+export function homeForRole(role: string): string {
+  return COACH_ROLES.includes(role) ? "/coach" : "/dashboard";
+}

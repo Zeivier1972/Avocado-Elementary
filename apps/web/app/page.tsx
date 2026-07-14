@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import { api, homeForRole, login } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,7 +17,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/dashboard");
+      const me = await api.me();
+      router.push(homeForRole(me.role));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -69,7 +70,7 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </button>
           <p className="text-xs text-gray-400 text-center pt-2">
-            Demo: teacher@avocado.edu / principal@avocado.edu · demo1234
+            Demo: coach@ · teacher@ · principal@avocado.edu · demo1234
           </p>
         </form>
       </div>

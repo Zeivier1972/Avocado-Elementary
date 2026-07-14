@@ -10,9 +10,11 @@ from app.db.session import Base, engine
 from app.routers import (
     assessments,
     auth,
+    coach,
     dashboard,
     di,
     health,
+    pacing,
     standards,
     students,
 )
@@ -40,7 +42,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (health, auth, standards, students, dashboard, assessments, di):
+for r in (health, auth, standards, students, dashboard, assessments, di,
+          pacing, coach):
     app.include_router(r.router)
 
 
