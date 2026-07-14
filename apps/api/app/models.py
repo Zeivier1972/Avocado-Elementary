@@ -222,6 +222,13 @@ class PacingTopic(Base, TimestampMixin):
     success_criteria: Mapped[list] = mapped_column(JSON, default=list)  # "I can..."
     vocabulary: Mapped[list] = mapped_column(JSON, default=list)
     source: Mapped[str] = mapped_column(String, default="")
+    # Quick Facts (from the collaborative planning guide format)
+    time_frame: Mapped[str] = mapped_column(String, default="")
+    topic_focus: Mapped[str] = mapped_column(Text, default="")
+    ald_focus: Mapped[str] = mapped_column(String, default="")
+    mtr_practices: Mapped[list] = mapped_column(JSON, default=list)
+    materials: Mapped[list] = mapped_column(JSON, default=list)
+    lessons: Mapped[list] = mapped_column(JSON, default=list)  # lesson outline
 
 
 class PlcAgenda(Base, TimestampMixin):

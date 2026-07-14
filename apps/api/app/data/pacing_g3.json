@@ -5,6 +5,115 @@
  "source": "M-DCPS 2025-2026 District Pacing Guide",
  "topics": [
   {
+   "topic_code": "TOPIC 7",
+   "chapter": "Chapter 7",
+   "name": "Place Value and Rounding",
+   "quarter": "First Nine Weeks",
+   "benchmarks": [
+    "MA.3.NSO.1.1",
+    "MA.3.NSO.1.2",
+    "MA.3.NSO.1.4"
+   ],
+   "learning_target": "I can read, write, model, compare, and round numbers up to 10,000.",
+   "success_criteria": [
+    "Identify each digit's value (e.g., in 4,582 the 5 means fifty... 500).",
+    "Represent a number using base-ten models.",
+    "Write numbers in standard, word, and expanded form.",
+    "Compare numbers using >, <, = correctly.",
+    "Round numbers to the nearest ten or hundred using place value reasoning."
+   ],
+   "vocabulary": [
+    "place value",
+    "standard form",
+    "expanded form",
+    "word form",
+    "digit",
+    "round",
+    "compare",
+    "base-ten",
+    "thousands",
+    "hundreds",
+    "tens",
+    "ones"
+   ],
+   "time_frame": "~10 instructional days + CFA & Review",
+   "topic_focus": "Understanding place value up to 10,000 and rounding to the nearest ten and hundred",
+   "ald_focus": "ALD Level 3 In-Class Practice only",
+   "mtr_practices": [
+    "MTR 2.1 (Representation)",
+    "MTR 4.1 (Talk About Math)",
+    "MTR 5.1 (Use Patterns)",
+    "MTR 7.1 (Real-World Application)"
+   ],
+   "materials": [
+    "Place value charts",
+    "base-ten blocks",
+    "place value disks",
+    "number lines",
+    "mini-whiteboards",
+    "digit cards"
+   ],
+   "lessons": [
+    {
+     "code": "7.1",
+     "title": "Place Value to the Thousands",
+     "benchmarks": [
+      "MA.3.NSO.1.1"
+     ],
+     "focus": "Understanding the value of each digit in a 4-digit number."
+    },
+    {
+     "code": "7.2",
+     "title": "Read & Write Numbers in Standard, Word & Expanded Form",
+     "benchmarks": [
+      "MA.3.NSO.1.1"
+     ],
+     "focus": "Writing numbers in multiple forms; zero as a placeholder."
+    },
+    {
+     "code": "7.3",
+     "title": "Model & Represent Numbers (Base-Ten Models)",
+     "benchmarks": [
+      "MA.3.NSO.1.1"
+     ],
+     "focus": "Representing numbers up to 10,000 using models, pictures, place value charts."
+    },
+    {
+     "code": "7.4",
+     "title": "Compare Numbers to 10,000 Using >, <, =",
+     "benchmarks": [
+      "MA.3.NSO.1.2"
+     ],
+     "focus": "Comparing using place value reasoning."
+    },
+    {
+     "code": "7.5",
+     "title": "Round to Nearest Ten",
+     "benchmarks": [
+      "MA.3.NSO.1.4"
+     ],
+     "focus": "Rounding to the nearest 10 using the ones digit."
+    },
+    {
+     "code": "7.6",
+     "title": "Round to Nearest Hundred",
+     "benchmarks": [
+      "MA.3.NSO.1.4"
+     ],
+     "focus": "Rounding to the nearest 100 using the tens digit."
+    },
+    {
+     "code": "7.7",
+     "title": "Problem Solving with Place Value & Rounding",
+     "benchmarks": [
+      "MA.3.NSO.1.1",
+      "MA.3.NSO.1.4"
+     ],
+     "focus": "Estimate, calculate, check reasonableness in real-world problems."
+    }
+   ]
+  },
+  {
    "topic_code": "TOPIC IX",
    "chapter": "Chapter 9",
    "name": "Understand Fractions (Chapter 9)",

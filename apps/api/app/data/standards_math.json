@@ -655,6 +655,64 @@
   "strategies": ""
  },
  {
+  "code": "MA.3.NSO.1.1",
+  "description": "Read and write numbers from 0 to 10,000 using standard form, expanded form and word form.",
+  "clarifications": [
+   "Students explain the value of each digit based on place (e.g., in 4,582 the 5 means 500, not 5).",
+   "Students should understand zero as a placeholder (e.g., in 4,209 the 0 indicates no tens)."
+  ],
+  "misconceptions": "Student reads the digit instead of its value (says the 6 in 3,674 is '6'). Fix: use base-ten blocks and label each place value. Student writes incorrect expanded form (4,582 = 4+5+8+2). Fix: model expanded form using a place value chart and blocks.",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "prerequisites": [
+   "MA.2.NSO.1.1",
+   "MA.2.NSO.1.2"
+  ],
+  "next": [
+   "MA.4.NSO.1.1"
+  ],
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.NSO.1.2",
+  "description": "Compare and order whole numbers up to 10,000 using place value and the symbols >, < and =.",
+  "clarifications": [
+   "Comparisons must be based on place value, not memorized. Compare from the highest place value first (e.g., 7,214 > 6,998 because 7 thousands > 6 thousands)."
+  ],
+  "misconceptions": "Student compares numbers using only the first digit (says 3,912 > 12,000 because 3 > 1). Fix: compare starting with the thousands place first and align digits on a place value chart.",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "prerequisites": [
+   "MA.2.NSO.1.1",
+   "MA.2.NSO.1.2"
+  ],
+  "next": [
+   "MA.4.NSO.1.1"
+  ],
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.NSO.1.4",
+  "description": "Round whole numbers from 0 to 1,000 to the nearest 10 or 100.",
+  "clarifications": [
+   "Rounding is choosing the closest ten or hundred; students determine which benchmark the number is nearest to (e.g., 76 rounds to 80; 342 rounds to 300)."
+  ],
+  "misconceptions": "Student rounds down when the digit is 5 (rounds 65 to 60). Fix: 5 means round up; use a number line showing midpoints. Student rounds based on the wrong place. Fix: to the nearest 10 use the ones digit; to the nearest 100 use the tens digit.",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "prerequisites": [
+   "MA.2.NSO.1.1",
+   "MA.2.NSO.1.2"
+  ],
+  "next": [
+   "MA.4.NSO.1.1"
+  ],
+  "strategies": ""
+ },
+ {
   "code": "MA.K.AR.1.1",
   "grade": "K",
   "strand": "AR",

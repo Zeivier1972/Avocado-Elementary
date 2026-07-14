@@ -67,5 +67,11 @@ def get_topic(
         "quarter": t.quarter, "learning_target": t.learning_target,
         "success_criteria": t.success_criteria, "vocabulary": t.vocabulary,
         "source": t.source,
+        "quick_facts": {
+            "time_frame": t.time_frame, "topic_focus": t.topic_focus,
+            "key_benchmarks": t.benchmarks, "ald_focus": t.ald_focus,
+            "mtr_practices": t.mtr_practices, "materials": t.materials,
+        },
+        "lessons": t.lessons,
         "standards": _resolve_standards(db, t.benchmarks),
     }

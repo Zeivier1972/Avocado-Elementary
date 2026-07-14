@@ -86,6 +86,12 @@ def _load_pacing(db, tenant_id):
             success_criteria=t.get("success_criteria", []),
             vocabulary=t.get("vocabulary", []),
             source=p.get("source", ""),
+            time_frame=t.get("time_frame", ""),
+            topic_focus=t.get("topic_focus", ""),
+            ald_focus=t.get("ald_focus", ""),
+            mtr_practices=t.get("mtr_practices", []),
+            materials=t.get("materials", []),
+            lessons=t.get("lessons", []),
         ))
         n += 1
     return n

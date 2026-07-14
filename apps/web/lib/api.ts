@@ -57,6 +57,8 @@ export const api = {
   pacingTopic: (topicId: string) => req(`/pacing/${topicId}`),
   generateAgenda: (topicId: string) =>
     req(`/coach/agenda/${topicId}`, { method: "POST" }),
+  generateGuide: (topicId: string) =>
+    req(`/coach/guide/${topicId}`, { method: "POST" }),
 };
 
 const COACH_ROLES = [

@@ -89,6 +89,149 @@ def _artifacts_for_day(day: int) -> list[str]:
     return mapping.get(day, [])
 
 
+def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
+    """Generate a full lesson-by-lesson Collaborative Planning Guide matching the
+    M-DCPS format (Quick Facts, benchmark clarifications, misconceptions, and a
+    per-lesson breakdown with Teaching Strategy, CPA model, ALD Level 3 example,
+    CFU, You Do, Exit Ticket). Grounded in the pacing guide + B1G-M content."""
+    std_by_code = {s["code"]: s for s in standards}
+    quick_facts = {
+        "time_frame": topic.get("time_frame", ""),
+        "topic_focus": topic.get("topic_focus", ""),
+        "key_benchmarks": [s["code"] for s in standards],
+        "ald_focus": topic.get("ald_focus", "ALD Level 3 In-Class Practice"),
+        "mtr_practices": topic.get("mtr_practices", []),
+        "materials": topic.get("materials", []),
+    }
+    clarifications = [
+        {"code": s["code"], "description": s.get("description", ""),
+         "clarifications": s.get("clarifications", [])}
+        for s in standards
+    ]
+    misconceptions = [
+        {"code": s["code"], "note": s["misconceptions"]}
+        for s in standards if s.get("misconceptions")
+    ]
+    base = {
+        "title": f"Grade {topic.get('grade_level','')} Collaborative Planning Guide — "
+                 f"{topic['topic_code']}: {topic['name']}",
+        "grade_level": topic.get("grade_level", ""),
+        "subject": topic.get("subject", ""),
+        "quick_facts": quick_facts,
+        "learning_goal": topic.get("learning_target", ""),
+        "success_criteria": topic.get("success_criteria", []),
+        "benchmark_clarifications": clarifications,
+        "common_misconceptions": misconceptions,
+    }
+
+    if settings.ai_provider == "anthropic" and settings.ai_api_key:
+        lessons = _llm_lessons(topic, standards)
+        if lessons is not None:
+            base.update({"generated_by": settings.ai_model, "ai_generated": True,
+                         "lessons": lessons,
+                         "note": "AI-generated draft — review with your team before teaching."})
+            return base
+
+    # Template fallback: grounded skeleton from the pacing lesson outline.
+    base.update({"generated_by": "template", "ai_generated": False,
+                 "lessons": _template_lessons(topic, std_by_code),
+                 "note": "Structured draft — add instructional detail with your team."})
+    return base
+
+
+def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
+    out = []
+    for L in topic.get("lessons", []):
+        code = (L.get("benchmarks") or [""])[0]
+        s = std_by_code.get(code, {})
+        out.append({
+            "code": L.get("code", ""), "title": L.get("title", ""),
+            "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", ""),
+            "learning_goal": f"I can {L.get('title','').lower()}.",
+            "success_criteria": [],
+            "benchmark_clarification": (s.get("clarifications") or [""])[0],
+            "misconceptions": [{"misconception": s.get("misconceptions", ""), "fix": ""}]
+                              if s.get("misconceptions") else [],
+            "teaching_strategy": [], "cpa": {"concrete": "", "pictorial": "", "abstract": ""},
+            "level3_example": "", "cfu": [], "you_do": "", "exit_ticket": "",
+        })
+    return out
+
+
+def _llm_lessons(topic: dict, standards: list[dict]) -> list[dict] | None:
+    """Ask the LLM for the per-lesson breakdown as strict JSON, grounded in the
+    benchmarks. Returns None on any failure (caller falls back to template)."""
+    try:
+        import anthropic
+    except ImportError:
+        return None
+    try:
+        import json as _json
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        std_ctx = "\n".join(
+            f"- {s['code']}: {s.get('description','')}"
+            + (f"\n    Clarifications: {' | '.join(s.get('clarifications', []))}" if s.get('clarifications') else "")
+            + (f"\n    Common misconceptions: {s['misconceptions']}" if s.get('misconceptions') else "")
+            + (f"\n    Instructional strategies (B1G-M): {s['strategies']}" if s.get('strategies') else "")
+            for s in standards
+        )
+        outline = topic.get("lessons") or []
+        outline_txt = "\n".join(
+            f"- Lesson {L.get('code')}: {L.get('title')} "
+            f"(benchmarks {', '.join(L.get('benchmarks', []))}; focus: {L.get('focus','')})"
+            for L in outline
+        ) or "Design a logical sequence of 5-7 lessons covering the benchmarks."
+        schema = (
+            '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
+            '"learning_goal":"I can ...","success_criteria":["..."],'
+            '"benchmark_clarification":"... with a worked example",'
+            '"misconceptions":[{"misconception":"...","fix":"..."}],'
+            '"teaching_strategy":["step 1","step 2"],'
+            '"cpa":{"concrete":"...","pictorial":"...","abstract":"..."},'
+            '"level3_example":"student explanation at ALD Level 3",'
+            '"cfu":["..."],"you_do":"independent practice task",'
+            '"exit_ticket":"one problem with the answer"}]'
+        )
+        prompt = (
+            "You are an elementary math instructional coach writing a lesson-by-lesson "
+            "Collaborative Planning Guide for teachers, grounded ONLY in the Florida "
+            "B.E.S.T. benchmarks and pacing content below. Use the CPA (Concrete-"
+            "Pictorial-Abstract) model and ALD Level 3 proficiency examples.\n\n"
+            f"Grade {topic.get('grade_level')} {topic.get('subject')} — "
+            f"{topic['topic_code']}: {topic['name']}\n"
+            f"Topic learning goal: {topic.get('learning_target','')}\n"
+            f"Success criteria: {topic.get('success_criteria', [])}\n"
+            f"Vocabulary: {topic.get('vocabulary', [])}\n"
+            f"MTR practices: {topic.get('mtr_practices', [])}\n"
+            f"Materials: {topic.get('materials', [])}\n\n"
+            f"Benchmarks (with B1G-M detail):\n{std_ctx}\n\n"
+            f"Lesson outline to expand:\n{outline_txt}\n\n"
+            "For EACH lesson produce: student-friendly learning goal, success "
+            "criteria, a benchmark clarification with a worked example, likely "
+            "misconceptions with fixes, a step-by-step teaching strategy, a CPA "
+            "model (concrete/pictorial/abstract), an ALD Level 3 proficiency "
+            "example, checks for understanding, a 'You Do' task, and a single "
+            "exit-ticket problem with its answer. Ground everything in the "
+            "benchmarks; do not invent standards or student data.\n\n"
+            f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
+        )
+        msg = client.messages.create(
+            model=settings.ai_model, max_tokens=8000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(b.text for b in msg.content if b.type == "text").strip()
+        if text.startswith("```"):
+            text = text.split("```", 2)[1]
+            text = text[4:] if text.startswith("json") else text
+            text = text.rsplit("```", 1)[0] if "```" in text else text
+        start, end = text.find("["), text.rfind("]")
+        if start == -1 or end == -1:
+            return None
+        return _json.loads(text[start:end + 1])
+    except Exception:
+        return None
+
+
 def generate_plc_agenda(topic: dict, standards: list[dict]) -> dict:
     """Generate a collaborative-planning (PLC) agenda for a pacing week, grounded
     in the topic's real benchmarks, learning target, misconceptions and vocab.
