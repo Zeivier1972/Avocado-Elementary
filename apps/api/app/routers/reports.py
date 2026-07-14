@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.deps import get_current_user
-from app.models import Student, StudentAssessment, User
+from app.models import (
+    Standard,
+    Student,
+    StudentAssessment,
+    StudentBenchmarkResult,
+    User,
+)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -97,6 +103,119 @@ def overview(
             "fast_ela": _fast_summary(gr, "ELA"),
         }
     return {"by_grade": result}
+
+
+@router.get("/fast/{grade}")
+def fast_analysis(
+    grade: str,
+    subject: str = "MATH",
+    period: str = "PM1",
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Expert FAST item analysis for a grade: overall, by domain, by benchmark
+    (focus standards), by student, plus target students for growth to Level 3+.
+    """
+    subject, period = subject.upper(), period.upper()
+    students = db.query(Student).filter(
+        Student.tenant_id == user.tenant_id, Student.grade_level == grade).all()
+    sids = {s.id for s in students}
+    name = {s.id: f"{s.first_name.title()} {s.last_name.title()}" for s in students}
+
+    items = [r for r in db.query(StudentBenchmarkResult).filter(
+        StudentBenchmarkResult.tenant_id == user.tenant_id,
+        StudentBenchmarkResult.subject == subject,
+        StudentBenchmarkResult.period == period).all() if r.student_id in sids]
+    summ = [a for a in db.query(StudentAssessment).filter(
+        StudentAssessment.tenant_id == user.tenant_id,
+        StudentAssessment.source == "FAST",
+        StudentAssessment.subject == subject,
+        StudentAssessment.period == period).all() if a.student_id in sids]
+
+    if not items and not summ:
+        return {"grade": grade, "subject": subject, "period": period,
+                "has_data": False}
+
+    # Overall + level distribution.
+    levels = [int(a.level) for a in summ if a.level is not None]
+    dist = {str(i): levels.count(i) for i in range(1, 6)}
+    l3 = sum(1 for x in levels if x >= 3)
+    tot_e = sum(r.points_earned for r in items)
+    tot_p = sum(r.points_possible for r in items) or 1
+
+    # By domain (category) and by benchmark.
+    dom = defaultdict(lambda: [0.0, 0.0])
+    bench = defaultdict(lambda: [0.0, 0.0])
+    for r in items:
+        dom[r.category][0] += r.points_earned
+        dom[r.category][1] += r.points_possible
+        bench[r.benchmark_code][0] += r.points_earned
+        bench[r.benchmark_code][1] += r.points_possible
+
+    by_domain = sorted(
+        [{"domain": k, "pct": round(100 * e / p), "points_possible": int(p)}
+         for k, (e, p) in dom.items() if p],
+        key=lambda x: x["pct"])
+    std_desc = {s.code: s.description for s in db.query(Standard).all()}
+    by_benchmark = sorted(
+        [{"benchmark": k, "pct": round(100 * e / p),
+          "n": int(p), "description": std_desc.get(k, "")}
+         for k, (e, p) in bench.items() if p],
+        key=lambda x: x["pct"])
+
+    # Per student: total %, benchmarks assessed, level, domain %s.
+    per_student_items = defaultdict(lambda: [0.0, 0.0, 0])
+    per_student_dom = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
+    for r in items:
+        ps = per_student_items[r.student_id]
+        ps[0] += r.points_earned
+        ps[1] += r.points_possible
+        ps[2] += 1
+        d = per_student_dom[r.student_id][r.category]
+        d[0] += r.points_earned
+        d[1] += r.points_possible
+    level_of = {a.student_id: a.level for a in summ}
+    scale_of = {a.student_id: a.scale_score for a in summ}
+    per_student = []
+    for sid in sids:
+        e, p, n = per_student_items.get(sid, [0, 0, 0])
+        per_student.append({
+            "student_id": sid, "name": name.get(sid, ""),
+            "level": level_of.get(sid), "scale_score": scale_of.get(sid),
+            "benchmarks_assessed": n,
+            "percent_score": round(100 * e / p) if p else None,
+            "domain_pct": {k: round(100 * de / dp) if dp else None
+                           for k, (de, dp) in per_student_dom.get(sid, {}).items()},
+        })
+    per_student.sort(key=lambda x: (x["percent_score"] is None, x["percent_score"] or 0))
+
+    # Target students: Level 2 closest to Level 3 (bubble), then lowest Level 1.
+    bubble = sorted(
+        [p for p in per_student if p["level"] == 2],
+        key=lambda x: -(x["scale_score"] or 0))
+    lowest = [p for p in per_student if p["level"] == 1][:15]
+
+    return {
+        "grade": grade, "subject": subject, "period": period, "has_data": True,
+        "overall": {
+            "students": len(students),
+            "students_tested": len(levels),
+            "overall_pct_correct": round(100 * tot_e / tot_p, 1),
+            "level_distribution": dist,
+            "pct_level_3_plus": round(100 * l3 / len(levels)) if levels else 0,
+            "avg_scale_score": round(sum(a.scale_score for a in summ
+                                     if a.scale_score) / max(1, len(summ))),
+            "goal": "All students Level 3+ by PM3",
+        },
+        "by_domain": by_domain,
+        "by_benchmark": by_benchmark,
+        "focus_standards": by_benchmark[:8],
+        "per_student": per_student,
+        "target_students": {
+            "bubble_level2": bubble[:15],
+            "lowest_level1": lowest,
+        },
+    }
 
 
 @router.get("/grade/{grade}")

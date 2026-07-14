@@ -12,13 +12,21 @@ export default function ReportsPage() {
   const [me, setMe] = useState<any>(null);
   const [grade, setGrade] = useState("3");
   const [report, setReport] = useState<any>(null);
+  const [fast, setFast] = useState<any>(null);
+  const [period, setPeriod] = useState("PM1");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  async function load(g: string) {
+  async function load(g: string, p = period) {
     setReport(null);
+    setFast(null);
     try {
-      setReport(await api.gradeReport(g));
+      const [rep, fa] = await Promise.all([
+        api.gradeReport(g),
+        api.fastAnalysis(g, "MATH", p).catch(() => null),
+      ]);
+      setReport(rep);
+      setFast(fa);
     } catch {
       /* ignore */
     }
@@ -137,6 +145,36 @@ export default function ReportsPage() {
           ))}
         </div>
 
+        {/* FAST item analysis */}
+        {fast && fast.has_data && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-bold text-gray-800">
+                FAST Math Item Analysis
+              </h2>
+              <div className="flex gap-1">
+                {["PM1", "PM2", "PM3"].map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => {
+                      setPeriod(p);
+                      load(grade, p);
+                    }}
+                    className={`px-3 py-1 rounded text-sm font-semibold border ${
+                      period === p
+                        ? "bg-avocado text-white border-avocado"
+                        : "bg-white text-gray-600 border-gray-200"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <FastAnalysis fast={fast} />
+          </div>
+        )}
+
         {!report && <div className="text-gray-400">Loading report…</div>}
 
         {report && (
@@ -231,6 +269,133 @@ export default function ReportsPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function FastAnalysis({ fast }: { fast: any }) {
+  const o = fast.overall;
+  const dist = o.level_distribution || {};
+  const maxD = Math.max(1, ...Object.values(dist).map((n: any) => n));
+  return (
+    <div className="space-y-4">
+      {/* Overall */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid md:grid-cols-4 gap-4">
+        <div>
+          <div className="text-xs text-gray-500">% Level 3+ ({fast.period})</div>
+          <div
+            className={`text-4xl font-bold ${
+              o.pct_level_3_plus >= 50 ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {o.pct_level_3_plus}%
+          </div>
+          <div className="text-xs text-gray-400">Goal: all L3+ by PM3</div>
+        </div>
+        <div className="md:col-span-2">
+          <div className="text-xs text-gray-500 mb-1">
+            Achievement level distribution ({o.students_tested} tested)
+          </div>
+          <div className="flex items-end gap-2 h-20">
+            {["1", "2", "3", "4", "5"].map((lv) => (
+              <div key={lv} className="flex-1 text-center">
+                <div className="h-14 flex items-end justify-center">
+                  <div
+                    className={`w-full rounded-t ${
+                      Number(lv) >= 3 ? "bg-green-500" : "bg-red-400"
+                    }`}
+                    style={{ height: `${((dist[lv] || 0) / maxD) * 100}%` }}
+                  />
+                </div>
+                <div className="text-xs font-semibold">{dist[lv] || 0}</div>
+                <div className="text-[10px] text-gray-400">L{lv}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500">Overall % correct</div>
+          <div className="text-2xl font-bold text-gray-800">
+            {o.overall_pct_correct}%
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Avg scale {o.avg_scale_score}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* By domain */}
+        <Card title="Performance by Domain">
+          <div className="space-y-2">
+            {fast.by_domain.map((d: any) => (
+              <div key={d.domain}>
+                <div className="flex justify-between text-xs mb-0.5">
+                  <span className="text-gray-700">{d.domain}</span>
+                  <span className="font-semibold">{d.pct}%</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded">
+                  <div
+                    className={`h-2 rounded ${
+                      d.pct >= 60 ? "bg-green-500" : d.pct >= 40 ? "bg-yellow-500" : "bg-red-500"
+                    }`}
+                    style={{ width: `${d.pct}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Focus standards */}
+        <Card title="Focus Standards (lowest benchmarks)">
+          <div className="space-y-1.5">
+            {fast.focus_standards.map((b: any) => (
+              <div key={b.benchmark} className="flex items-start gap-2 text-sm">
+                <span className="text-red-600 font-bold w-10">{b.pct}%</span>
+                <div>
+                  <span className="font-medium">{b.benchmark}</span>
+                  {b.description && (
+                    <span className="text-gray-500 text-xs"> — {b.description}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Target students */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card title="🎯 Bubble — Level 2 closest to Level 3">
+          <TargetList rows={fast.target_students.bubble_level2} showScale />
+        </Card>
+        <Card title="Lowest — Level 1 needing intensive support">
+          <TargetList rows={fast.target_students.lowest_level1} />
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function TargetList({ rows, showScale }: { rows: any[]; showScale?: boolean }) {
+  if (!rows || rows.length === 0)
+    return <p className="text-sm text-gray-400">None.</p>;
+  return (
+    <table className="w-full text-sm">
+      <tbody>
+        {rows.map((s: any) => (
+          <tr key={s.student_id} className="border-b border-gray-50">
+            <td className="py-1">{s.name}</td>
+            <td className="py-1 text-right text-gray-500">{s.percent_score}%</td>
+            {showScale && (
+              <td className="py-1 text-right text-gray-400 text-xs">
+                {s.scale_score}
+              </td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

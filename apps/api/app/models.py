@@ -250,6 +250,25 @@ class StudentAssessment(Base, TimestampMixin):
     school_year: Mapped[str] = mapped_column(String, default="2025-2026")
 
 
+class StudentBenchmarkResult(Base, TimestampMixin):
+    """Item/benchmark-level result from a FAST item export — one row per
+    student x test item, tagged with its B.E.S.T. benchmark. Enables analysis
+    by benchmark, by domain (category), and by student."""
+    __tablename__ = "student_benchmark_results"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id"), index=True)
+    source: Mapped[str] = mapped_column(String, default="FAST")
+    subject: Mapped[str] = mapped_column(String, index=True)   # MATH|ELA
+    period: Mapped[str] = mapped_column(String, index=True)    # PM1|PM2|PM3
+    category: Mapped[str] = mapped_column(String, default="")  # domain/reporting category
+    benchmark_code: Mapped[str] = mapped_column(String, index=True)  # MA.3.FR.1.3
+    points_earned: Mapped[float] = mapped_column(Float, default=0)
+    points_possible: Mapped[float] = mapped_column(Float, default=0)
+    item_index: Mapped[int] = mapped_column(Integer, default=0)
+    school_year: Mapped[str] = mapped_column(String, default="2025-2026")
+
+
 class PlcAgenda(Base, TimestampMixin):
     """An auto-generated collaborative-planning (PLC) agenda for a pacing week."""
     __tablename__ = "plc_agendas"

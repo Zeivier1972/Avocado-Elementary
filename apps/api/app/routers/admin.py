@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.deps import audit, get_current_user
+from app.fast_import import detect as detect_fast
+from app.fast_import import parse_fast_export
 from app.import_excel import parse_workbook
 from app.models import (
     ClassRoom,
@@ -17,6 +19,7 @@ from app.models import (
     School,
     Student,
     StudentAssessment,
+    StudentBenchmarkResult,
     User,
 )
 
@@ -246,16 +249,20 @@ async def import_excel(
     Upserts students and their longitudinal assessments (FAST / iReady / Topic).
     Import Class Lists first so grades are established, then the Tracker."""
     data = await file.read()
+    district = db.query(District).first()
+    school = db.query(School).filter(School.tenant_id == district.id).first()
+    tenant_id, school_id = district.id, school.id
+
+    # FLDOE FAST item-level export gets its own richer path (benchmark results).
+    if detect_fast(data):
+        return _import_fast_export(db, data, tenant_id, school_id, user)
+
     try:
         records = parse_workbook(data)
     except Exception as e:
         raise HTTPException(400, f"Could not parse workbook: {e}")
     if not records:
         raise HTTPException(400, "No student rows found. Check the file format.")
-
-    district = db.query(District).first()
-    school = db.query(School).filter(School.tenant_id == district.id).first()
-    tenant_id, school_id = district.id, school.id
 
     # Merge parsed rows by student id (a student may appear on multiple sheets).
     merged: dict[str, dict] = {}
@@ -343,6 +350,79 @@ async def import_excel(
         "assessments_created": asmt_new, "assessments_updated": asmt_upd,
         "students_by_grade": dict(sorted(by_grade.items())),
         "assessment_counts": dict(sorted(by_type.items())),
+    }
+
+
+def _import_fast_export(db, data, tenant_id, school_id, user):
+    """Store a FLDOE FAST item export: FAST scale/level summary + per-benchmark
+    item results (for domain/benchmark analysis)."""
+    parsed = parse_fast_export(data)
+    subject, period = parsed["subject"], parsed["period"]
+    ids = [s["district_student_id"] for s in parsed["students"]]
+    existing = {
+        s.district_student_id: s
+        for s in db.query(Student).filter(
+            Student.tenant_id == tenant_id,
+            Student.district_student_id.in_(ids)).all()
+    }
+    students_new = items_new = 0
+    for sd in parsed["students"]:
+        sid = sd["district_student_id"]
+        stu = existing.get(sid)
+        flags = {}
+        if sd.get("ell") and sd["ell"].lower() not in ("no", "n", ""):
+            flags["ell"] = sd["ell"]
+        if sd.get("ese") and sd["ese"][:1] not in ("N", "n", ""):
+            flags["ese"] = True
+        if not stu:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id, district_student_id=sid,
+                first_name=sd.get("first_name", ""), last_name=sd.get("last_name", ""),
+                grade_level=(sd.get("grade") or "").strip(), flags=flags)
+            db.add(stu)
+            db.flush()
+            existing[sid] = stu
+            students_new += 1
+        else:
+            if sd.get("grade"):
+                stu.grade_level = sd["grade"].strip()
+            stu.flags = {**(stu.flags or {}), **flags}
+
+        # FAST summary assessment (level + scale), idempotent per period.
+        summ = (db.query(StudentAssessment).filter(
+            StudentAssessment.student_id == stu.id,
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == subject,
+            StudentAssessment.period == period).first())
+        if not summ:
+            summ = StudentAssessment(
+                tenant_id=tenant_id, student_id=stu.id, source="FAST",
+                subject=subject, period=period)
+            db.add(summ)
+        summ.level = sd.get("level")
+        summ.scale_score = sd.get("scale_score")
+
+        # Replace prior benchmark results for this student/subject/period.
+        db.query(StudentBenchmarkResult).filter(
+            StudentBenchmarkResult.student_id == stu.id,
+            StudentBenchmarkResult.subject == subject,
+            StudentBenchmarkResult.period == period).delete()
+        for idx, it in enumerate(sd["items"]):
+            db.add(StudentBenchmarkResult(
+                tenant_id=tenant_id, student_id=stu.id, source="FAST",
+                subject=subject, period=period, category=it["category"],
+                benchmark_code=it["benchmark_code"],
+                points_earned=it["earned"], points_possible=it["possible"],
+                item_index=idx))
+            items_new += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="fast_export",
+          purpose="assessment_import")
+    return {
+        "format": "FAST item export", "subject": subject, "period": period,
+        "students": len(parsed["students"]), "students_created": students_new,
+        "benchmark_results_created": items_new,
     }
 
 
