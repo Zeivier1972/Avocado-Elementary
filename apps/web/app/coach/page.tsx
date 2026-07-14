@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, getToken } from "@/lib/api";
+import { api, clearToken, downloadGuideDocx, getToken } from "@/lib/api";
+
+const GRADES = ["K", "1", "2", "3"];
 
 export default function CoachPage() {
   const router = useRouter();
@@ -11,6 +13,17 @@ export default function CoachPage() {
   const [topic, setTopic] = useState<any>(null);
   const [guide, setGuide] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [grade, setGrade] = useState("3");
+  const [summary, setSummary] = useState<any>(null);
+  const [rosterMsg, setRosterMsg] = useState("");
+
+  async function loadSummary() {
+    try {
+      setSummary(await api.schoolSummary());
+    } catch {
+      /* summary is best-effort */
+    }
+  }
 
   useEffect(() => {
     if (!getToken()) {
@@ -23,10 +36,36 @@ export default function CoachPage() {
         setMe(u);
         return api.coachDashboard();
       })
-      .then(setDash)
+      .then((d) => {
+        setDash(d);
+        loadSummary();
+      })
       .catch(() => router.push("/"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function onRoster(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setRosterMsg("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const r = await api.importRoster(form);
+      setRosterMsg(
+        `Loaded ${r.students_created} new / ${r.students_updated} updated students · ` +
+          `${r.teachers_created} teachers · ${r.classes_created} classes` +
+          (r.error_count ? ` · ${r.error_count} row error(s)` : "")
+      );
+      loadSummary();
+    } catch (err) {
+      setRosterMsg("Import failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+      e.target.value = "";
+    }
+  }
 
   async function openWeek(id: string) {
     setGuide(null);
@@ -74,16 +113,82 @@ export default function CoachPage() {
 
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-xl font-bold text-gray-800 mb-1">Collaborative Planning</h1>
-        <p className="text-sm text-gray-500 mb-5">
+        <p className="text-sm text-gray-500 mb-4">
           Pacing calendar · {dash.subjects.join(" / ")} · plan the week with your teachers
         </p>
+
+        {/* School roster */}
+        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 flex flex-wrap items-center gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <div className="text-sm font-semibold text-gray-700">School Roster</div>
+            {summary ? (
+              <div className="text-xs text-gray-500">
+                {summary.students} students · {summary.teachers} teachers ·{" "}
+                {summary.classes} classes
+                {summary.by_grade &&
+                  Object.keys(summary.by_grade).length > 0 &&
+                  " · by grade: " +
+                    Object.entries(summary.by_grade)
+                      .map(([g, n]) => `${g}=${n}`)
+                      .join("  ")}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-400">No roster loaded yet.</div>
+            )}
+          </div>
+          <label className="inline-block bg-gray-800 hover:bg-black text-white text-sm font-semibold rounded-lg px-3 py-2 cursor-pointer">
+            {busy ? "Working…" : "Upload Population CSV ⬆"}
+            <input type="file" accept=".csv" onChange={onRoster} className="hidden" disabled={busy} />
+          </label>
+          {rosterMsg && (
+            <div className="w-full text-xs text-gray-600">{rosterMsg}</div>
+          )}
+        </div>
+
+        {/* Grade folders */}
+        <div className="flex gap-2 mb-4">
+          {GRADES.map((g) => {
+            const count = dash.planning_weeks.filter(
+              (w: any) => w.grade_level === g
+            ).length;
+            return (
+              <button
+                key={g}
+                onClick={() => {
+                  setGrade(g);
+                  setTopic(null);
+                  setGuide(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
+                  grade === g
+                    ? "bg-avocado text-white border-avocado"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-avocado"
+                }`}
+              >
+                {g === "K" ? "Kindergarten" : `Grade ${g}`}
+                <span className="ml-1 text-xs opacity-70">({count})</span>
+              </button>
+            );
+          })}
+        </div>
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Pacing calendar */}
           <div className="md:col-span-1">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">Planning Weeks</h2>
+            <h2 className="text-sm font-semibold text-gray-700 mb-2">
+              {grade === "K" ? "Kindergarten" : `Grade ${grade}`} · Planning Weeks
+            </h2>
             <div className="space-y-2">
-              {dash.planning_weeks.map((w: any) => (
+              {dash.planning_weeks.filter((w: any) => w.grade_level === grade)
+                .length === 0 && (
+                <div className="text-sm text-gray-400 bg-white border border-dashed border-gray-200 rounded-xl p-4">
+                  No pacing guide loaded for this grade yet. Send the pacing guide
+                  and it will appear here.
+                </div>
+              )}
+              {dash.planning_weeks
+                .filter((w: any) => w.grade_level === grade)
+                .map((w: any) => (
                 <button
                   key={w.id}
                   onClick={() => openWeek(w.id)}
@@ -194,7 +299,15 @@ function Fact({ label, value }: { label: string; value: string }) {
 function GuideView({ guide }: any) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5">
-      <h2 className="font-bold text-gray-800">{guide.title}</h2>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="font-bold text-gray-800">{guide.title}</h2>
+        <button
+          onClick={() => downloadGuideDocx(guide)}
+          className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-3 py-2"
+        >
+          ⬇ Download Word (.docx)
+        </button>
+      </div>
       <p className="text-xs text-gray-500 mb-3">
         {guide.ai_generated
           ? `AI-generated draft (${guide.generated_by})`

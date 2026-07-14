@@ -1,8 +1,9 @@
 """Coach section — collaborative planning: pacing calendar + PLC agendas."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.ai import generate_planning_guide, generate_plc_agenda
+from app.export_docx import guide_to_docx
 from app.db.session import get_db
 from app.deps import audit, get_current_user
 from app.models import PacingTopic, PlcAgenda, User
@@ -114,3 +115,19 @@ def generate_guide(
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=record.id, purpose="collaborative_planning")
     return {"topic": t.name, "guide": guide}
+
+
+@router.post("/guide/export/docx")
+def export_guide_docx(
+    guide: dict,
+    user: User = Depends(_require_coach),
+):
+    """Render a (already-generated) planning guide to an editable Word document."""
+    data = guide_to_docx(guide)
+    fname = (guide.get("title", "planning-guide")
+             .replace(" ", "_").replace("—", "-")[:80] + ".docx")
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )

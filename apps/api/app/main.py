@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.db.migrate import ensure_columns
 from app.db.session import Base, engine
 from app.routers import (
+    admin,
     assessments,
     auth,
     coach,
@@ -45,7 +46,7 @@ app.add_middleware(
 )
 
 for r in (health, auth, standards, students, dashboard, assessments, di,
-          pacing, coach):
+          pacing, coach, admin):
     app.include_router(r.router)
 
 

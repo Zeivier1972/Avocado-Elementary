@@ -59,7 +59,33 @@ export const api = {
     req(`/coach/agenda/${topicId}`, { method: "POST" }),
   generateGuide: (topicId: string) =>
     req(`/coach/guide/${topicId}`, { method: "POST" }),
+  schoolSummary: () => req("/admin/school/summary"),
+  importRoster: (form: FormData) =>
+    req("/admin/roster/import", { method: "POST", body: form }),
 };
+
+// Download the planning guide as a Word document (blob, not JSON).
+export async function downloadGuideDocx(guide: any) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/coach/guide/export/docx`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(guide),
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (guide.title || "planning-guide").replace(/[^\w]+/g, "_") + ".docx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 const COACH_ROLES = [
   "math_coach",
