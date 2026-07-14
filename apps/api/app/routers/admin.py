@@ -19,20 +19,42 @@ ADMIN_ROLES = {"principal", "ap", "district_admin", "instructional_coach",
 # Flexible header matching: canonical field -> accepted header spellings.
 FIELD_ALIASES = {
     "student_id": ["student_district_id", "district_student_id", "student_id",
-                   "studentid", "student number", "local id", "id", "id number"],
+                   "studentid", "student number", "student id", "local id",
+                   "id", "id number"],
     "first_name": ["first_name", "firstname", "first", "student first name"],
     "last_name": ["last_name", "lastname", "last", "student last name"],
     "grade": ["grade", "grade_level", "gradelevel", "grd", "grade level"],
     "teacher_email": ["teacher_email", "teacheremail", "teacher e-mail"],
-    "teacher_name": ["teacher", "teacher_name", "teachername",
+    "teacher_name": ["teacher", "teacher_name", "teachername", "teacher name",
                      "homeroom teacher", "teacher last name"],
-    "class_name": ["class", "homeroom", "classroom", "section", "room", "class name"],
-    "subject": ["subject", "content", "course"],
-    "ell": ["ell", "esol", "lep", "ell level"],
-    "ese": ["ese", "exceptionality", "swd", "sped"],
+    "class_name": ["class", "homeroom", "classroom", "section", "room",
+                   "class name", "class section number"],
+    "course": ["course title", "course", "course name"],
+    "subject": ["subject", "content"],
+    "ell": ["ell", "esol", "lep", "ell level", "esol level"],
+    "ese": ["ese", "exceptionality", "swd", "sped", "ese exceptionality"],
     "plan504": ["504", "plan_504", "504 plan"],
     "mtss": ["mtss", "tier", "mtss_tier", "mtss tier"],
+    "fast_math_scale": ["fast math scale score", "math scale score",
+                        "fast math scale"],
+    "fast_math_level": ["fast math achievement level", "math achievement level",
+                        "fast math level"],
 }
+
+
+COURSE_SUBJECT = [
+    ("math", "MATH"), ("reading", "ELA"), ("language arts", "ELA"),
+    ("writing", "ELA"), ("ela", "ELA"), ("science", "SCIENCE"),
+    ("social", "SOCIAL_STUDIES"), ("homeroom", "HOMEROOM"),
+]
+
+
+def _subject_from_course(course: str, fallback: str) -> str:
+    c = (course or "").lower()
+    for key, subj in COURSE_SUBJECT:
+        if key in c:
+            return subj
+    return fallback
 
 
 def _norm(s: str) -> str:
@@ -82,6 +104,7 @@ async def import_roster(
     errors: list[str] = []
     teacher_cache: dict[str, User] = {}
     class_cache: dict[tuple, ClassRoom] = {}
+    student_cache: dict[str, Student] = {}
 
     def get(row, field):
         col = fmap.get(field)
@@ -91,22 +114,34 @@ async def import_roster(
         sid = get(row, "student_id")
         fn, ln = get(row, "first_name"), get(row, "last_name")
         grade = get(row, "grade").upper().replace("GRADE", "").strip() or ""
-        grade = "K" if grade in ("K", "KG", "KINDER", "KINDERGARTEN") else grade
+        if grade in ("K", "KG", "KINDER", "KINDERGARTEN", "0", "00"):
+            grade = "K"
+        elif grade in ("PK", "PRE-K", "PREK"):
+            grade = "PK"
         if not sid or not fn:
             errors.append(f"row {i}: missing student id or name")
             continue
 
         flags = {}
-        if get(row, "ell"):
-            flags["ell"] = get(row, "ell")
-        if get(row, "ese").lower() in ("y", "yes", "true", "1", "ese"):
+        ell = get(row, "ell")
+        if ell and ell not in ("0", "z", "zz"):
+            flags["ell"] = ell
+        ese = get(row, "ese")
+        if ese and ese.lower() not in ("n", "no", "none", "0"):
             flags["ese"] = True
+            flags["ese_code"] = ese
         if get(row, "plan504").lower() in ("y", "yes", "true", "1"):
             flags["504"] = True
         if get(row, "mtss"):
             flags["mtss_tier"] = get(row, "mtss")
+        fast_scale = get(row, "fast_math_scale")
+        fast_level = get(row, "fast_math_level")
+        if fast_scale and fast_scale.isdigit():
+            flags["fast_math_scale"] = int(fast_scale)
+        if fast_level:
+            flags["fast_math_level"] = fast_level
 
-        student = (
+        student = student_cache.get(sid) or (
             db.query(Student)
             .filter(Student.tenant_id == tenant_id,
                     Student.district_student_id == sid)
@@ -115,9 +150,10 @@ async def import_roster(
         if student:
             student.first_name, student.last_name = fn, ln
             student.grade_level = grade
-            if flags:
-                student.flags = flags
-            students_upd += 1
+            # merge flags across the student's multiple course rows
+            student.flags = {**(student.flags or {}), **flags}
+            if sid not in student_cache:
+                students_upd += 1
         else:
             student = Student(
                 tenant_id=tenant_id, school_id=school_id,
@@ -126,6 +162,7 @@ async def import_roster(
             db.add(student)
             db.flush()
             students_new += 1
+        student_cache[sid] = student
 
         # Teacher (optional) -> upsert a User(role=teacher).
         temail = get(row, "teacher_email").lower()
@@ -152,8 +189,10 @@ async def import_roster(
 
         # Class + enrollment (only if we have a teacher).
         if teacher:
-            subject = (get(row, "subject") or "HOMEROOM").upper()
-            cname = get(row, "class_name") or f"Grade {grade} {subject.title()}"
+            course = get(row, "course")
+            subject = _subject_from_course(
+                course, (get(row, "subject") or "HOMEROOM").upper())
+            cname = course or get(row, "class_name") or f"Grade {grade} {subject.title()}"
             ckey = (teacher.id, cname, subject, grade)
             cls = class_cache.get(ckey)
             if not cls:

@@ -125,18 +125,135 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
     }
 
     if settings.ai_provider == "anthropic" and settings.ai_api_key:
-        lessons = _llm_lessons(topic, standards)
-        if lessons is not None:
+        lessons, err = _llm_lessons(topic, standards)
+        if lessons:
             base.update({"generated_by": settings.ai_model, "ai_generated": True,
-                         "lessons": lessons,
+                         "ai_status": "ok", "lessons": lessons,
                          "note": "AI-generated draft — review with your team before teaching."})
             return base
+        ai_status = f"AI unavailable — showing template. Reason: {err}"
+    elif settings.ai_provider != "anthropic":
+        ai_status = "AI not enabled (set AI_PROVIDER=anthropic and AI_API_KEY)."
+    else:
+        ai_status = "AI key missing (set AI_API_KEY)."
 
     # Template fallback: grounded skeleton from the pacing lesson outline.
     base.update({"generated_by": "template", "ai_generated": False,
+                 "ai_status": ai_status,
                  "lessons": _template_lessons(topic, std_by_code),
                  "note": "Structured draft — add instructional detail with your team."})
     return base
+
+
+def ask_assistant(message: str, history: list[dict], context: dict) -> dict:
+    """The in-system Expert AI Coach. Grounded in the school's aggregate data;
+    helps manage teachers/students/standards/pacing and drafts communications.
+    Student data is aggregate-only (compliance, docs/00)."""
+    system = (
+        "You are the Avocado AI Coach — an expert instructional coach, data "
+        "analyst, and assistant for a K-3 elementary school (Miami-Dade / Florida "
+        "B.E.S.T.). You help the coach and school leaders manage teachers, "
+        "students, standards, pacing, collaborative planning, differentiated "
+        "instruction, and progress toward the school grade. You can draft emails "
+        "and messages to teachers when asked. Be concise, practical, and "
+        "action-oriented. Ground answers in the SCHOOL CONTEXT provided. Never "
+        "fabricate individual student data or scores; speak about students in "
+        "aggregate. When drafting a teacher email, return a clear subject line "
+        "and body the coach can review and send.\n\n"
+        f"SCHOOL CONTEXT (live aggregates):\n{_context_text(context)}"
+    )
+    if settings.ai_provider == "anthropic" and settings.ai_api_key:
+        reply, err = _llm_chat(system, history, message)
+        if reply:
+            return {"reply": reply, "ai_generated": True}
+        return {"reply": _assistant_fallback(context, err), "ai_generated": False}
+    return {"reply": _assistant_fallback(context, None), "ai_generated": False}
+
+
+def _context_text(ctx: dict) -> str:
+    lines = [
+        f"School: {ctx.get('school','')}",
+        f"Students: {ctx.get('students',0)} | Teachers: {ctx.get('teachers',0)} "
+        f"| Classes: {ctx.get('classes',0)}",
+        f"Students by grade: {ctx.get('by_grade', {})}",
+    ]
+    if ctx.get("fast_levels"):
+        lines.append(f"FAST Math achievement-level counts: {ctx['fast_levels']}")
+    if ctx.get("teachers_sample"):
+        lines.append(f"Teachers (sample): {', '.join(ctx['teachers_sample'])}")
+    if ctx.get("pacing_topics"):
+        lines.append("Pacing topics: " + "; ".join(ctx["pacing_topics"]))
+    if ctx.get("standards_count"):
+        lines.append(f"Standards loaded: {ctx['standards_count']}")
+    return "\n".join(lines)
+
+
+def _assistant_fallback(ctx: dict, err: str | None) -> str:
+    note = f" (AI unavailable: {err})" if err else ""
+    return (
+        "I'm the Avocado AI Coach, but live AI responses aren't enabled right "
+        f"now{note}. Here's what I can see in your school: "
+        f"{ctx.get('students',0)} students, {ctx.get('teachers',0)} teachers, "
+        f"{ctx.get('classes',0)} classes across grades "
+        f"{', '.join(ctx.get('by_grade', {}).keys()) or 'none loaded'}. "
+        "Once the AI key is active I can analyze this, plan with you, and draft "
+        "teacher communications."
+    )
+
+
+def _llm_chat(system: str, history: list[dict], message: str):
+    try:
+        import anthropic
+    except ImportError:
+        return None, "anthropic SDK not installed"
+    try:
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        msgs = []
+        for h in (history or [])[-10:]:
+            role = "assistant" if h.get("role") == "assistant" else "user"
+            msgs.append({"role": role, "content": str(h.get("content", ""))[:4000]})
+        msgs.append({"role": "user", "content": message[:4000]})
+        resp = client.messages.create(
+            model=settings.ai_model, max_tokens=1500, system=system, messages=msgs,
+        )
+        text = "".join(b.text for b in resp.content if b.type == "text")
+        return text.strip(), None
+    except Exception as e:
+        return None, f"{type(e).__name__}: {str(e)[:200]}"
+
+
+def ai_diagnostics() -> dict:
+    """Report AI configuration and attempt a minimal live call for diagnosis."""
+    out = {
+        "provider": settings.ai_provider,
+        "model": settings.ai_model,
+        "key_present": bool(settings.ai_api_key),
+        "sdk_installed": False,
+        "test_call": "not_attempted",
+    }
+    try:
+        import anthropic
+        out["sdk_installed"] = True
+        out["sdk_version"] = getattr(anthropic, "__version__", "?")
+    except ImportError:
+        out["test_call"] = "anthropic SDK not installed"
+        return out
+    if settings.ai_provider != "anthropic" or not settings.ai_api_key:
+        out["test_call"] = "skipped (provider/key not configured)"
+        return out
+    try:
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        msg = client.messages.create(
+            model=settings.ai_model, max_tokens=16,
+            messages=[{"role": "user", "content": "Reply with the word OK."}],
+        )
+        text = "".join(b.text for b in msg.content if b.type == "text")
+        out["test_call"] = "ok"
+        out["reply"] = text.strip()[:40]
+    except Exception as e:
+        out["test_call"] = "error"
+        out["error"] = f"{type(e).__name__}: {str(e)[:300]}"
+    return out
 
 
 def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
@@ -158,13 +275,13 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
     return out
 
 
-def _llm_lessons(topic: dict, standards: list[dict]) -> list[dict] | None:
+def _llm_lessons(topic: dict, standards: list[dict]):
     """Ask the LLM for the per-lesson breakdown as strict JSON, grounded in the
-    benchmarks. Returns None on any failure (caller falls back to template)."""
+    benchmarks. Returns (lessons | None, error_reason | None)."""
     try:
         import anthropic
     except ImportError:
-        return None
+        return None, "anthropic SDK not installed"
     try:
         import json as _json
         client = anthropic.Anthropic(api_key=settings.ai_api_key)
@@ -226,10 +343,10 @@ def _llm_lessons(topic: dict, standards: list[dict]) -> list[dict] | None:
             text = text.rsplit("```", 1)[0] if "```" in text else text
         start, end = text.find("["), text.rfind("]")
         if start == -1 or end == -1:
-            return None
-        return _json.loads(text[start:end + 1])
-    except Exception:
-        return None
+            return None, "model did not return JSON array"
+        return _json.loads(text[start:end + 1]), None
+    except Exception as e:
+        return None, f"{type(e).__name__}: {str(e)[:200]}"
 
 
 def generate_plc_agenda(topic: dict, standards: list[dict]) -> dict:

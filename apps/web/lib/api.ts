@@ -62,6 +62,13 @@ export const api = {
   schoolSummary: () => req("/admin/school/summary"),
   importRoster: (form: FormData) =>
     req("/admin/roster/import", { method: "POST", body: form }),
+  aiCheck: () => req("/coach/ai-check"),
+  assistant: (message: string, history: any[]) =>
+    req("/coach/assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, history }),
+    }),
 };
 
 // Download the planning guide as a Word document (blob, not JSON).

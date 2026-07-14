@@ -100,15 +100,23 @@ export default function CoachPage() {
             {me.name} · <span className="capitalize">{me.role.replace("_", " ")}</span>
           </span>
         </div>
-        <button
-          onClick={() => {
-            clearToken();
-            router.push("/");
-          }}
-          className="text-sm text-gray-500 hover:text-gray-800"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          <a
+            href="/assistant"
+            className="text-sm font-semibold text-avocado-dark hover:underline"
+          >
+            🤖 AI Coach
+          </a>
+          <button
+            onClick={() => {
+              clearToken();
+              router.push("/");
+            }}
+            className="text-sm text-gray-500 hover:text-gray-800"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       <div className="max-w-6xl mx-auto p-6">
@@ -308,12 +316,17 @@ function GuideView({ guide }: any) {
           ⬇ Download Word (.docx)
         </button>
       </div>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-500 mb-1">
         {guide.ai_generated
           ? `AI-generated draft (${guide.generated_by})`
           : "Structured template draft"}{" "}
         — review with your team before teaching.
       </p>
+      {!guide.ai_generated && guide.ai_status && (
+        <p className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded px-2 py-1 mb-3">
+          ⚠ {guide.ai_status}
+        </p>
+      )}
 
       {/* Topic-level clarifications & misconceptions */}
       {guide.benchmark_clarifications?.length > 0 && (

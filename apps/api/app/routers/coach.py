@@ -2,11 +2,27 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
-from app.ai import generate_planning_guide, generate_plc_agenda
+from pydantic import BaseModel
+
+from app.ai import (
+    ai_diagnostics,
+    ask_assistant,
+    generate_planning_guide,
+    generate_plc_agenda,
+)
 from app.export_docx import guide_to_docx
 from app.db.session import get_db
 from app.deps import audit, get_current_user
-from app.models import PacingTopic, PlcAgenda, User
+from app.models import (
+    ClassRoom,
+    District,
+    PacingTopic,
+    PlcAgenda,
+    School,
+    Standard,
+    Student,
+    User,
+)
 from app.routers.pacing import _resolve_standards
 
 router = APIRouter(prefix="/coach", tags=["coach"])
@@ -115,6 +131,59 @@ def generate_guide(
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=record.id, purpose="collaborative_planning")
     return {"topic": t.name, "guide": guide}
+
+
+@router.get("/ai-check")
+def ai_check(user: User = Depends(_require_coach)):
+    """Diagnose the AI configuration (used to troubleshoot guide generation)."""
+    return ai_diagnostics()
+
+
+class AssistantIn(BaseModel):
+    message: str
+    history: list[dict] = []
+
+
+def _school_context(db: Session, tenant_id: str) -> dict:
+    school = db.query(School).filter(School.tenant_id == tenant_id).first()
+    students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    by_grade: dict[str, int] = {}
+    fast_levels: dict[str, int] = {}
+    for s in students:
+        by_grade[s.grade_level] = by_grade.get(s.grade_level, 0) + 1
+        lvl = (s.flags or {}).get("fast_math_level")
+        if lvl:
+            fast_levels[str(lvl)] = fast_levels.get(str(lvl), 0) + 1
+    teachers = (db.query(User)
+                .filter(User.tenant_id == tenant_id, User.role == "teacher").all())
+    topics = db.query(PacingTopic).filter(
+        PacingTopic.tenant_id == tenant_id).all()
+    return {
+        "school": school.name if school else "",
+        "students": len(students),
+        "teachers": len(teachers),
+        "classes": db.query(ClassRoom).filter(
+            ClassRoom.tenant_id == tenant_id).count(),
+        "by_grade": dict(sorted(by_grade.items())),
+        "fast_levels": dict(sorted(fast_levels.items())),
+        "teachers_sample": [t.name for t in teachers[:15]],
+        "pacing_topics": [f"G{t.grade_level} {t.topic_code} {t.name}" for t in topics],
+        "standards_count": db.query(Standard).count(),
+    }
+
+
+@router.post("/assistant")
+def assistant(
+    body: AssistantIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The in-system Expert AI Coach — grounded in live school aggregates."""
+    ctx = _school_context(db, user.tenant_id)
+    result = ask_assistant(body.message, body.history, ctx)
+    audit(db, actor=user, action="chat", entity_type="ai_assistant",
+          purpose="coach_assistant")
+    return result
 
 
 @router.post("/guide/export/docx")
