@@ -2,6 +2,7 @@
 teacher and student performance toward the school goal."""
 import csv
 import io
+import re
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -59,6 +60,18 @@ COURSE_SUBJECT = [
     ("writing", "ELA"), ("ela", "ELA"), ("science", "SCIENCE"),
     ("social", "SOCIAL_STUDIES"), ("homeroom", "HOMEROOM"),
 ]
+
+
+def _teacher_from_section(section: str) -> str:
+    """Derive a teacher name from a sheet/section label.
+    'K01 - Mathis' -> 'Mathis'; 'T11 VPK - Guerrero' -> 'Guerrero';
+    'Porco  St. Aubin' -> 'Porco St. Aubin' (tracker sheets are teacher names)."""
+    s = (section or "").strip()
+    if not s:
+        return ""
+    if " - " in s:
+        s = s.split(" - ", 1)[1]
+    return re.sub(r"\s+", " ", s).strip()
 
 
 def _subject_from_course(course: str, fallback: str) -> str:
@@ -275,6 +288,7 @@ async def import_excel(
         m["student"]["flags"] = {**m["student"].get("flags", {}),
                                  **rec["student"].get("flags", {})}
         m["assessments"].extend(rec["assessments"])
+        m.setdefault("sections", set()).add(rec.get("section", ""))
 
     # Preload existing students + their assessments for the touched ids.
     ids = list(merged.keys())
@@ -287,6 +301,8 @@ async def import_excel(
     students_new = students_upd = asmt_new = asmt_upd = 0
     by_grade: dict[str, int] = {}
     by_type: dict[str, int] = {}
+    teacher_cache: dict[str, User] = {}
+    class_cache: dict[str, ClassRoom] = {}
 
     for sid, m in merged.items():
         sd = m["student"]
@@ -310,6 +326,43 @@ async def import_excel(
             existing_students[sid] = stu
             students_new += 1
         by_grade[stu.grade_level] = by_grade.get(stu.grade_level, 0) + 1
+
+        # Link the student to their teacher's class (from the sheet name), so
+        # per-teacher reports work. e.g. "301 - Porco" -> teacher Porco.
+        for section in m.get("sections", set()):
+            tname = _teacher_from_section(section)
+            if not tname:
+                continue
+            teacher = teacher_cache.get(tname.lower())
+            if not teacher:
+                temail = tname.lower().replace(" ", ".") + "@avocado.edu"
+                teacher = db.query(User).filter(User.email == temail).first()
+                if not teacher:
+                    teacher = User(
+                        tenant_id=tenant_id, school_id=school_id, name=tname,
+                        email=temail, password_hash=hash_password("demo1234"),
+                        role="teacher", scope={})
+                    db.add(teacher)
+                    db.flush()
+                teacher_cache[tname.lower()] = teacher
+            cname = section or f"Grade {stu.grade_level} - {tname}"
+            cls = class_cache.get(cname)
+            if not cls:
+                cls = db.query(ClassRoom).filter(
+                    ClassRoom.tenant_id == tenant_id,
+                    ClassRoom.name == cname).first()
+                if not cls:
+                    cls = ClassRoom(
+                        tenant_id=tenant_id, school_id=school_id,
+                        teacher_id=teacher.id, name=cname, subject="HOMEROOM",
+                        grade_level=stu.grade_level)
+                    db.add(cls)
+                    db.flush()
+                class_cache[cname] = cls
+            if not db.query(Enrollment).filter(
+                    Enrollment.class_id == cls.id,
+                    Enrollment.student_id == stu.id).first():
+                db.add(Enrollment(class_id=cls.id, student_id=stu.id))
 
         # Existing assessments for this student, keyed for idempotent upsert.
         prior = {

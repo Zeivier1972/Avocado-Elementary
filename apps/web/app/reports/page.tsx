@@ -16,6 +16,27 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState("PM1");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [mode, setMode] = useState<"grade" | "teacher">("grade");
+  const [teacherList, setTeacherList] = useState<any[]>([]);
+  const [teacherRep, setTeacherRep] = useState<any>(null);
+
+  async function loadTeachers() {
+    try {
+      const r = await api.teachers();
+      setTeacherList(r.teachers || []);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function openTeacher(id: string) {
+    setTeacherRep(null);
+    try {
+      setTeacherRep(await api.teacherReport(id));
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function load(g: string, p = period) {
     setReport(null);
@@ -125,7 +146,44 @@ export default function ReportsPage() {
           {msg && <div className="w-full text-xs text-gray-600">{msg}</div>}
         </div>
 
+        {/* View mode toggle */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setMode("grade")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
+              mode === "grade"
+                ? "bg-avocado-dark text-white border-avocado-dark"
+                : "bg-white text-gray-600 border-gray-200"
+            }`}
+          >
+            By Grade
+          </button>
+          <button
+            onClick={() => {
+              setMode("teacher");
+              if (teacherList.length === 0) loadTeachers();
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
+              mode === "teacher"
+                ? "bg-avocado-dark text-white border-avocado-dark"
+                : "bg-white text-gray-600 border-gray-200"
+            }`}
+          >
+            By Teacher
+          </button>
+        </div>
+
+        {mode === "teacher" && (
+          <TeacherView
+            teachers={teacherList}
+            report={teacherRep}
+            onOpen={openTeacher}
+          />
+        )}
+
         {/* Grade tabs */}
+        {mode === "grade" && (
+        <>
         <div className="flex gap-2 mb-4">
           {GRADES.map((g) => (
             <button
@@ -267,8 +325,157 @@ export default function ReportsPage() {
             </Card>
           </div>
         )}
+        </>
+        )}
       </div>
     </main>
+  );
+}
+
+function TeacherView({
+  teachers,
+  report,
+  onOpen,
+}: {
+  teachers: any[];
+  report: any;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <Card title="Teachers">
+        {teachers.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            No teachers linked yet. Upload the Class Lists (or student roster CSV)
+            to establish teacher rosters.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                  <th className="py-1">Teacher</th>
+                  <th className="py-1">Grade</th>
+                  <th className="py-1">Students</th>
+                  <th className="py-1">FAST Math % L3+</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {teachers.map((t) => (
+                  <tr key={t.teacher_id} className="border-b border-gray-50">
+                    <td className="py-1 font-medium">{t.name}</td>
+                    <td className="py-1 text-gray-500">
+                      {t.grades.filter(Boolean).join(", ")}
+                    </td>
+                    <td className="py-1">{t.students}</td>
+                    <td className="py-1">
+                      {t.pct_level_3_plus != null ? (
+                        <span
+                          className={
+                            t.pct_level_3_plus >= 50
+                              ? "text-green-600 font-semibold"
+                              : "text-red-600 font-semibold"
+                          }
+                        >
+                          {t.pct_level_3_plus}%
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-1 text-right">
+                      <button
+                        onClick={() => onOpen(t.teacher_id)}
+                        className="text-avocado-dark font-semibold hover:underline"
+                      >
+                        View roster →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {report && (
+        <Card
+          title={`${report.teacher} — ${report.students} students · ${report.pct_level_3_plus}% Level 3+`}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                  <th className="py-1">Student</th>
+                  <th className="py-1 text-center">PM1</th>
+                  <th className="py-1 text-center">PM2</th>
+                  <th className="py-1 text-center">PM3</th>
+                  <th className="py-1 text-center">AP1</th>
+                  <th className="py-1 text-center">AP2</th>
+                  <th className="py-1 text-center">Topic Avg</th>
+                  <th className="py-1 text-center">On Track</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.roster.map((r: any) => (
+                  <tr key={r.student_id} className="border-b border-gray-50">
+                    <td className="py-1">
+                      {r.name}
+                      {r.flags?.ell && (
+                        <span className="ml-1 text-[10px] text-blue-500">ELL</span>
+                      )}
+                      {r.flags?.ese && (
+                        <span className="ml-1 text-[10px] text-purple-500">ESE</span>
+                      )}
+                    </td>
+                    <Lvl v={r.fast_pm1} />
+                    <Lvl v={r.fast_pm2} />
+                    <Lvl v={r.fast_pm3} />
+                    <td className="py-1 text-center text-gray-600">
+                      {r.iready_ap1 ?? "—"}
+                    </td>
+                    <td className="py-1 text-center text-gray-600">
+                      {r.iready_ap2 ?? "—"}
+                    </td>
+                    <td className="py-1 text-center">
+                      {r.topic_avg != null ? `${r.topic_avg}%` : "—"}
+                    </td>
+                    <td className="py-1 text-center">
+                      {r.on_track ? "✅" : "🔴"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function Lvl({ v }: { v: any }) {
+  const isLevel = typeof v === "number" && v >= 1 && v <= 5;
+  return (
+    <td className="py-1 text-center">
+      {v == null ? (
+        <span className="text-gray-300">—</span>
+      ) : (
+        <span
+          className={
+            isLevel
+              ? v >= 3
+                ? "text-green-600 font-semibold"
+                : "text-red-600 font-semibold"
+              : "text-gray-600"
+          }
+        >
+          {v}
+        </span>
+      )}
+    </td>
   );
 }
 

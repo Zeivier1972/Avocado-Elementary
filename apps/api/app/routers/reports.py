@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.deps import get_current_user
 from app.models import (
+    ClassRoom,
+    Enrollment,
     Standard,
     Student,
     StudentAssessment,
@@ -103,6 +105,113 @@ def overview(
             "fast_ela": _fast_summary(gr, "ELA"),
         }
     return {"by_grade": result}
+
+
+def _students_for_teacher(db, tenant_id, teacher_id):
+    class_ids = [c.id for c in db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == tenant_id,
+        ClassRoom.teacher_id == teacher_id).all()]
+    if not class_ids:
+        return []
+    sids = {r[0] for r in db.query(Enrollment.student_id).filter(
+        Enrollment.class_id.in_(class_ids)).all()}
+    return db.query(Student).filter(Student.id.in_(sids)).all() if sids else []
+
+
+@router.get("/teachers")
+def teachers(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """List teachers with their student counts and FAST Math proficiency."""
+    tlist = db.query(User).filter(
+        User.tenant_id == user.tenant_id, User.role == "teacher").all()
+    # latest FAST Math level per student
+    latest = {}
+    for a in db.query(StudentAssessment).filter(
+            StudentAssessment.tenant_id == user.tenant_id,
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == "MATH").all():
+        if a.level is None or not (1 <= a.level <= 5):
+            continue
+        order = FAST_PERIODS.index(a.period) if a.period in FAST_PERIODS else -1
+        cur = latest.get(a.student_id)
+        if cur is None or order > cur[0]:
+            latest[a.student_id] = (order, int(a.level), a.period)
+    out = []
+    for t in tlist:
+        students = _students_for_teacher(db, user.tenant_id, t.id)
+        if not students:
+            continue
+        grades = sorted({s.grade_level for s in students})
+        levels = [latest[s.id][1] for s in students if s.id in latest]
+        period = next((latest[s.id][2] for s in students if s.id in latest), None)
+        out.append({
+            "teacher_id": t.id, "name": t.name, "grades": grades,
+            "students": len(students),
+            "fast_math_period": period,
+            "pct_level_3_plus": round(100 * sum(1 for x in levels if x >= 3) / len(levels))
+                                if levels else None,
+        })
+    out.sort(key=lambda x: (x["grades"], x["name"]))
+    return {"teachers": out}
+
+
+@router.get("/teacher/{teacher_id}")
+def teacher_report(
+    teacher_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Per-teacher roster with each student's FAST PM1/2/3, iReady AP1/2, and
+    Topic average — mirrors the district tracker sheet."""
+    teacher = db.get(User, teacher_id)
+    students = _students_for_teacher(db, user.tenant_id, teacher_id)
+    sids = {s.id for s in students}
+    rows_a = [a for a in db.query(StudentAssessment).filter(
+        StudentAssessment.tenant_id == user.tenant_id).all()
+        if a.student_id in sids]
+
+    data = defaultdict(lambda: {"fast": {}, "iready": {}, "topics": []})
+    for a in rows_a:
+        d = data[a.student_id]
+        if a.source == "FAST" and a.subject == "MATH" and a.level is not None:
+            d["fast"][a.period] = int(a.level) if 1 <= a.level <= 5 else a.level
+        elif a.source == "IREADY" and a.subject == "MATH" and a.level is not None:
+            d["iready"][a.period] = int(a.level)
+        elif a.source == "TOPIC" and a.percent is not None:
+            d["topics"].append(a.percent)
+
+    roster = []
+    for s in students:
+        d = data.get(s.id, {"fast": {}, "iready": {}, "topics": []})
+        topic_avg = (round(100 * sum(d["topics"]) / len(d["topics"]))
+                     if d["topics"] else None)
+        latest_lvl = None
+        for p in reversed(FAST_PERIODS):
+            v = d["fast"].get(p)
+            if isinstance(v, int) and 1 <= v <= 5:
+                latest_lvl = v
+                break
+        roster.append({
+            "student_id": s.id, "name": f"{s.first_name.title()} {s.last_name.title()}",
+            "grade": s.grade_level, "flags": s.flags or {},
+            "fast_pm1": d["fast"].get("PM1"), "fast_pm2": d["fast"].get("PM2"),
+            "fast_pm3": d["fast"].get("PM3"),
+            "iready_ap1": d["iready"].get("AP1"), "iready_ap2": d["iready"].get("AP2"),
+            "topic_avg": topic_avg,
+            "on_track": latest_lvl is not None and latest_lvl >= 3,
+        })
+    roster.sort(key=lambda r: r["name"])
+    lvls = [r for r in roster if isinstance(r["fast_pm3"] or r["fast_pm2"]
+            or r["fast_pm1"], int)]
+    prof = sum(1 for r in roster if r["on_track"])
+    return {
+        "teacher": teacher.name if teacher else "",
+        "students": len(roster),
+        "pct_level_3_plus": round(100 * prof / len(roster)) if roster else 0,
+        "roster": roster,
+    }
 
 
 @router.get("/fast/{grade}")
