@@ -128,16 +128,16 @@ export default function ReportsPage() {
               Import assessment data
             </div>
             <div className="text-xs text-gray-500">
-              Upload the Class Lists first (sets grades), then the Math Topic
-              Tracker. FAST PM1/2/3, iReady AP1/2, and Topic assessments load
-              automatically.
+              Class Lists &amp; Topic Tracker (.xlsx), FAST item export (.xls),
+              and i-Ready Diagnostic (.csv) all load automatically — FAST PM1/2/3,
+              iReady AP1/2/3, and Topic assessments.
             </div>
           </div>
           <label className="inline-block bg-gray-800 hover:bg-black text-white text-sm font-semibold rounded-lg px-3 py-2 cursor-pointer">
-            {busy ? "Importing…" : "Upload Excel (.xlsx) ⬆"}
+            {busy ? "Importing…" : "Upload data file ⬆"}
             <input
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               onChange={onImport}
               className="hidden"
               disabled={busy}

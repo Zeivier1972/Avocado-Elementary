@@ -13,6 +13,7 @@ from app.deps import audit, get_current_user
 from app.fast_import import detect as detect_fast
 from app.fast_import import parse_fast_export
 from app.import_excel import parse_workbook
+from app.iready_import import detect_iready, parse_iready
 from app.models import (
     ClassRoom,
     District,
@@ -266,6 +267,19 @@ async def import_excel(
     school = db.query(School).filter(School.tenant_id == district.id).first()
     tenant_id, school_id = district.id, school.id
 
+    # CSV files (i-Ready diagnostic export) — not a zip/xlsx.
+    if data[:2] != b"PK":
+        import csv as _csv
+        import io as _io
+        text = data.decode("utf-8-sig", errors="replace")
+        headers = next(_csv.reader(_io.StringIO(text)), [])
+        if detect_iready(headers):
+            return _import_iready(db, data, tenant_id, school_id, user)
+        raise HTTPException(
+            400,
+            "This CSV isn't an i-Ready diagnostic export. For the school "
+            "population roster, use the roster upload on the Coach page.")
+
     # FLDOE FAST item-level export gets its own richer path (benchmark results).
     if detect_fast(data):
         return _import_fast_export(db, data, tenant_id, school_id, user)
@@ -481,6 +495,62 @@ def _import_fast_export(db, data, tenant_id, school_id, user):
         "format": "FAST item export", "subject": subject, "period": period,
         "students": len(parsed["students"]), "students_created": students_new,
         "benchmark_results_created": items_new,
+    }
+
+
+def _import_iready(db, data, tenant_id, school_id, user):
+    """Store native i-Ready Diagnostic results: overall scale + grouping level +
+    placement/percentile, per subject and window (AP1/2/3)."""
+    parsed = parse_iready(data)
+    subject, period = parsed["subject"], parsed["period"]
+    ids = [s["district_student_id"] for s in parsed["students"]]
+    existing = {
+        s.district_student_id: s
+        for s in db.query(Student).filter(
+            Student.tenant_id == tenant_id,
+            Student.district_student_id.in_(ids)).all()
+    }
+    students_new = asmt = 0
+    for sd in parsed["students"]:
+        sid = sd["district_student_id"]
+        stu = existing.get(sid)
+        if not stu:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id, district_student_id=sid,
+                first_name=sd["first_name"], last_name=sd["last_name"],
+                grade_level=sd["grade"], flags=sd["flags"])
+            db.add(stu)
+            db.flush()
+            existing[sid] = stu
+            students_new += 1
+        else:
+            if sd.get("grade"):
+                stu.grade_level = sd["grade"]
+            stu.flags = {**(stu.flags or {}), **sd["flags"]}
+
+        rec = (db.query(StudentAssessment).filter(
+            StudentAssessment.student_id == stu.id,
+            StudentAssessment.source == "IREADY",
+            StudentAssessment.subject == subject,
+            StudentAssessment.period == period).first())
+        if not rec:
+            rec = StudentAssessment(
+                tenant_id=tenant_id, student_id=stu.id, source="IREADY",
+                subject=subject, period=period)
+            db.add(rec)
+        rec.scale_score = sd["scale_score"]
+        rec.level = sd["grouping"]
+        pct = f" | pct {int(sd['percentile'])}" if sd.get("percentile") else ""
+        rec.label = (sd.get("placement", "") + pct)[:255]
+        asmt += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="iready_diagnostic",
+          purpose="assessment_import")
+    return {
+        "format": "i-Ready Diagnostic", "subject": subject, "period": period,
+        "students": len(parsed["students"]), "students_created": students_new,
+        "assessments_upserted": asmt,
     }
 
 
