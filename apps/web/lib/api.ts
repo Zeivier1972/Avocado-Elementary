@@ -70,6 +70,7 @@ export const api = {
     req(`/reports/fast/${grade}?subject=${subject}&period=${period}`),
   teachers: () => req("/reports/teachers"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
+  resetRoster: () => req("/admin/roster/reset", { method: "POST" }),
   aiCheck: () => req("/coach/ai-check"),
   assistant: (message: string, history: any[]) =>
     req("/coach/assistant", {

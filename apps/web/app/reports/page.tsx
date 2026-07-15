@@ -137,12 +137,40 @@ export default function ReportsPage() {
             {busy ? "Importing…" : "Upload Excel (.xlsx) ⬆"}
             <input
               type="file"
-              accept=".xlsx"
+              accept=".xlsx,.xls"
               onChange={onImport}
               className="hidden"
               disabled={busy}
             />
           </label>
+          <button
+            onClick={async () => {
+              if (
+                !confirm(
+                  "Clear ALL imported students, teachers, classes, and assessment data so you can re-import a clean roster? (Standards, pacing, and logins are kept.)"
+                )
+              )
+                return;
+              setBusy(true);
+              setMsg("");
+              try {
+                const r = await api.resetRoster();
+                setMsg(
+                  `Cleared: ${r.deleted.students} students, ${r.deleted.teachers} teachers, ${r.deleted.assessments} assessments.`
+                );
+                setTeacherList([]);
+                setTeacherRep(null);
+                await load(grade);
+              } catch (err) {
+                setMsg("Reset failed: " + (err as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="text-xs text-red-500 hover:text-red-700 underline"
+          >
+            Reset roster data
+          </button>
           {msg && <div className="w-full text-xs text-gray-600">{msg}</div>}
         </div>
 

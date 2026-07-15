@@ -329,7 +329,12 @@ async def import_excel(
 
         # Link the student to their teacher's class (from the sheet name), so
         # per-teacher reports work. e.g. "301 - Porco" -> teacher Porco.
+        # Only Class List sheets ("<class code> - <Teacher>") define the class,
+        # so we keep ONE teacher per class. Other sheets (e.g. the Topic Tracker,
+        # whose combined names mean co-taught classes) only add assessment data.
         for section in m.get("sections", set()):
+            if " - " not in section:
+                continue
             tname = _teacher_from_section(section)
             if not tname:
                 continue
@@ -477,6 +482,40 @@ def _import_fast_export(db, data, tenant_id, school_id, user):
         "students": len(parsed["students"]), "students_created": students_new,
         "benchmark_results_created": items_new,
     }
+
+
+@router.post("/roster/reset")
+def reset_roster(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Clear all imported students, teachers, classes, and assessment data so a
+    fresh, clean roster can be re-imported. Keeps staff/coach accounts,
+    standards, and pacing."""
+    district = db.query(District).first()
+    tid = district.id
+    counts = {}
+    counts["benchmark_results"] = db.query(StudentBenchmarkResult).filter(
+        StudentBenchmarkResult.tenant_id == tid).delete()
+    counts["assessments"] = db.query(StudentAssessment).filter(
+        StudentAssessment.tenant_id == tid).delete()
+    class_ids = [c.id for c in db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == tid).all()]
+    if class_ids:
+        counts["enrollments"] = db.query(Enrollment).filter(
+            Enrollment.class_id.in_(class_ids)).delete(synchronize_session=False)
+    counts["classes"] = db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == tid).delete()
+    counts["students"] = db.query(Student).filter(
+        Student.tenant_id == tid).delete()
+    _keep = ["teacher@avocado.edu", "principal@avocado.edu", "coach@avocado.edu"]
+    counts["teachers"] = db.query(User).filter(
+        User.tenant_id == tid, User.role == "teacher",
+        User.email.notin_(_keep)).delete(synchronize_session=False)
+    db.commit()
+    audit(db, actor=user, action="reset", entity_type="roster",
+          purpose="roster_reset")
+    return {"reset": True, "deleted": counts}
 
 
 @router.get("/school/summary")
