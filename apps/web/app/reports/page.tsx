@@ -102,6 +102,9 @@ export default function ReportsPage() {
           <span className="text-sm text-gray-600">Data &amp; Reports</span>
         </div>
         <div className="flex items-center gap-4">
+          <a href="/goal" className="text-sm font-semibold text-avocado-dark hover:underline">
+            🎯 School Goal
+          </a>
           <a href="/coach" className="text-sm text-avocado-dark hover:underline">
             Planning
           </a>

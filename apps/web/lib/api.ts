@@ -65,6 +65,7 @@ export const api = {
   importExcel: (form: FormData) =>
     req("/admin/import/excel", { method: "POST", body: form }),
   reportsOverview: () => req("/reports/overview"),
+  schoolGoal: () => req("/reports/school-goal"),
   gradeReport: (grade: string) => req(`/reports/grade/${grade}`),
   fastAnalysis: (grade: string, subject: string, period: string) =>
     req(`/reports/fast/${grade}?subject=${subject}&period=${period}`),

@@ -82,6 +82,81 @@ def _topic_order(period):
     return int(m.group()) if m else 99
 
 
+def _pct_l3_by_period(rows, source, subject, periods):
+    """% Level 3+ by period for (source, subject) over a list of assessments."""
+    by = defaultdict(lambda: [0, 0])
+    for a in rows:
+        if a.source != source or a.subject != subject or a.level is None:
+            continue
+        if source == "FAST" and not (1 <= a.level <= 5):
+            continue
+        by[a.period][1] += 1
+        if a.level >= 3:
+            by[a.period][0] += 1
+    return {p: {"pct": round(100 * by[p][0] / by[p][1]), "n": by[p][1]}
+            for p in periods if by[p][1]}
+
+
+def _latest_level(rows, source, subject, periods):
+    """Latest available level per student for (source, subject)."""
+    best = {}
+    for a in rows:
+        if a.source != source or a.subject != subject or a.level is None:
+            continue
+        order = periods.index(a.period) if a.period in periods else -1
+        cur = best.get(a.student_id)
+        if cur is None or order > cur[0]:
+            best[a.student_id] = (order, a.level)
+    return {sid: lv for sid, (_, lv) in best.items()}
+
+
+@router.get("/school-goal")
+def school_goal(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """School-wide progress toward the goal: Level 3+ in BOTH FAST Math and
+    i-Ready Math, by grade and school-wide, across PM1->PM3 and AP1->AP3."""
+    students = db.query(Student).filter(Student.tenant_id == user.tenant_id).all()
+    grade_of = {s.id: s.grade_level for s in students}
+    all_rows = db.query(StudentAssessment).filter(
+        StudentAssessment.tenant_id == user.tenant_id).all()
+    rows_by_grade = defaultdict(list)
+    for a in all_rows:
+        rows_by_grade[grade_of.get(a.student_id, "")].append(a)
+
+    grades = ["K", "1", "2", "3"]
+
+    def grade_block(rows, sids):
+        fast_math = _pct_l3_by_period(rows, "FAST", "MATH", FAST_PERIODS)
+        fast_ela = _pct_l3_by_period(rows, "FAST", "ELA", FAST_PERIODS)
+        iready_math = _pct_l3_by_period(rows, "IREADY", "MATH", IREADY_PERIODS)
+        fm_latest = _latest_level(rows, "FAST", "MATH", FAST_PERIODS)
+        im_latest = _latest_level(rows, "IREADY", "MATH", IREADY_PERIODS)
+        both = sum(1 for sid in sids
+                   if (fm_latest.get(sid) or 0) >= 3 and (im_latest.get(sid) or 0) >= 3)
+        return {
+            "students": len(sids),
+            "fast_math": fast_math, "fast_ela": fast_ela,
+            "iready_math": iready_math,
+            "goal_both_pct": round(100 * both / len(sids)) if sids else 0,
+            "goal_both_n": both,
+        }
+
+    by_grade = {}
+    for g in grades:
+        sids = {s.id for s in students if s.grade_level == g}
+        if not sids:
+            continue
+        by_grade[g] = grade_block(rows_by_grade.get(g, []), sids)
+
+    tested_sids = {s.id for s in students if s.grade_level in grades}
+    school = grade_block(
+        [a for a in all_rows if grade_of.get(a.student_id) in grades], tested_sids)
+    return {"school": school, "by_grade": by_grade,
+            "goal": "Level 3+ in BOTH FAST Math and i-Ready Math"}
+
+
 @router.get("/overview")
 def overview(
     db: Session = Depends(get_db),
