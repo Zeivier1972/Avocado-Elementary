@@ -607,6 +607,126 @@
   "strategies": "The purpose of this benchmark is to extend the exploration of addition and subtraction of two \nwhole numbers work from grade 1 to include a number set through 1,000. \n\u2022 Instruction includes the use of two- or three-digit numbers to add and subtract. \n\u2022 Instruction includes the use of the commutative property of addition. \n\u2022 It is not the expectation for students to use a standard algorithm. Instruction focuses on \nstrategies supported by manipulatives, number lines, base ten blocks, place value and \ndrawings. \n\u2022 Instruction includes helping students understand that when adding it is sometimes \nnecessary to combine ones or tens and compose a new ten or new hundred. \n\u2022 Instruction includes hel"
  },
  {
+  "code": "MA.3.AR.1.1",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Apply the distributive property to multiply a one-digit number and two-digit number. Apply properties of multiplication to find a product of one-digit whole numbers.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.AR.1.2",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Solve one- and two-step real-world problems involving any of four operations with whole numbers.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.AR.2.1",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Restate a division problem as a missing factor problem using the relationship between multiplication and division.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.AR.2.2",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine and explain whether an equation involving multiplication or division is true or false.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.AR.2.3",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine the unknown whole number in a multiplication or division equation, relating three whole numbers, with the unknown in any position.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.AR.3.1",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine and explain whether a whole number from 1 to 1,000 is even or odd.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.AR.3.2",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Determine whether a whole number from 1 to 144 is a multiple of a given one-digit number.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.AR.3.3",
+  "grade": "3",
+  "strand": "AR",
+  "subject": "MATH",
+  "description": "Identify, create and extend numerical patterns.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.DP.1.1",
+  "grade": "3",
+  "strand": "DP",
+  "subject": "MATH",
+  "description": "Collect and represent numerical and categorical data with whole-number values using tables, scaled pictographs, scaled bar graphs or line plots. Use appropriate titles, labels and units.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.DP.1.2",
+  "grade": "3",
+  "strand": "DP",
+  "subject": "MATH",
+  "description": "Interpret data with whole-number values represented with tables, scaled pictographs, circle graphs, scaled bar graphs or line plots by determining the mode, median, mean or range.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
   "code": "MA.3.FR.1.1",
   "grade": "3",
   "strand": "FR",
@@ -655,6 +775,162 @@
   "strategies": ""
  },
  {
+  "code": "MA.3.FR.2.1",
+  "grade": "3",
+  "strand": "FR",
+  "subject": "MATH",
+  "description": "Plot, order and compare fractional numbers with the same numerator or the same denominator.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.FR.2.2",
+  "grade": "3",
+  "strand": "FR",
+  "subject": "MATH",
+  "description": "Identify equivalent fractions and explain why they are equivalent.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.GR.1.1",
+  "grade": "3",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Describe and draw points, lines, line segments, rays, intersecting lines, perpendicular lines and parallel lines. Identify these in two-dimensional figures.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.GR.1.2",
+  "grade": "3",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Identify and draw quadrilaterals based on their defining attributes. Quadrilaterals include parallelograms, rhombi, rectangles, squares and trapezoids.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.GR.1.3",
+  "grade": "3",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Draw line(s) of symmetry in a two-dimensional figure and identify line-symmetric two-dimensional figures.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.GR.2.1",
+  "grade": "3",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Explore area as an attribute of a two-dimensional figure by covering the figure with unit squares without gaps or overlaps. Find areas of rectangles by counting unit squares.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.GR.2.2",
+  "grade": "3",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Find the area of a rectangle with whole-number side lengths using a visual model and a multiplication formula.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.GR.2.3",
+  "grade": "3",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Solve mathematical and real-world problems involving the perimeter and area of rectangles with whole-number side lengths using a visual model and a formula.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.GR.2.4",
+  "grade": "3",
+  "strand": "GR",
+  "subject": "MATH",
+  "description": "Solve mathematical and real-world problems involving the perimeter and area of composite figures composed of non-overlapping rectangles with whole-number side lengths.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.M.1.1",
+  "grade": "3",
+  "strand": "M",
+  "subject": "MATH",
+  "description": "Select and use appropriate tools to measure the length of an object, the volume of liquid within a beaker and temperature.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.M.1.2",
+  "grade": "3",
+  "strand": "M",
+  "subject": "MATH",
+  "description": "Solve real-world problems involving any of the four operations with whole-number lengths, masses, weights, temperatures or liquid volumes.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.M.2.1",
+  "grade": "3",
+  "strand": "M",
+  "subject": "MATH",
+  "description": "Using analog and digital clocks, tell and write time to the nearest minute using a.m. and p.m. appropriately.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.M.2.2",
+  "grade": "3",
+  "strand": "M",
+  "subject": "MATH",
+  "description": "Solve one- and two-step real-world problems involving elapsed time.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
   "code": "MA.3.NSO.1.1",
   "description": "Read and write numbers from 0 to 10,000 using standard form, expanded form and word form.",
   "clarifications": [
@@ -676,7 +952,7 @@
  },
  {
   "code": "MA.3.NSO.1.2",
-  "description": "Compare and order whole numbers up to 10,000 using place value and the symbols >, < and =.",
+  "description": "Compose and decompose four-digit numbers in multiple ways using thousands, hundreds, tens and ones. Demonstrate each composition or decomposition using objects, drawings and expressions or equations.",
   "clarifications": [
    "Comparisons must be based on place value, not memorized. Compare from the highest place value first (e.g., 7,214 > 6,998 because 7 thousands > 6 thousands)."
   ],
@@ -691,6 +967,18 @@
   "next": [
    "MA.4.NSO.1.1"
   ],
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.NSO.1.3",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Plot, order and compare whole numbers up to 10,000.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
   "strategies": ""
  },
  {
@@ -710,6 +998,54 @@
   "next": [
    "MA.4.NSO.1.1"
   ],
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.NSO.2.1",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Add and subtract multi-digit whole numbers including using a standard algorithm with procedural fluency.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.NSO.2.2",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Explore multiplication of two whole numbers with products from 0 to 144, and related division facts.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.NSO.2.3",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Multiply a one-digit whole number by a multiple of 10, up to 90, or a multiple of 100, up to 900, with procedural reliability.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
+  "strategies": ""
+ },
+ {
+  "code": "MA.3.NSO.2.4",
+  "grade": "3",
+  "strand": "NSO",
+  "subject": "MATH",
+  "description": "Multiply two whole numbers, each from 0 to 12, and divide using related facts, with procedural reliability.",
+  "clarifications": [],
+  "prerequisites": [],
+  "next": [],
+  "misconceptions": "",
   "strategies": ""
  },
  {
