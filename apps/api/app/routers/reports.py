@@ -1,5 +1,6 @@
 """Grade-level performance analytics — the goal-tracking reports built from
 imported FAST / iReady / Topic assessment data."""
+import re
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends
@@ -157,14 +158,42 @@ def teachers(
     return {"teachers": out}
 
 
+def _l25_ids(db, tenant_id, grade):
+    """Lowest-25% student ids in a grade, by latest FAST Math scale (fallback
+    level). Computed automatically instead of relying on a manual flag column."""
+    students = db.query(Student).filter(
+        Student.tenant_id == tenant_id, Student.grade_level == grade).all()
+    sids = {s.id for s in students}
+    best = {}
+    for a in db.query(StudentAssessment).filter(
+            StudentAssessment.tenant_id == tenant_id,
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == "MATH").all():
+        if a.student_id not in sids:
+            continue
+        order = FAST_PERIODS.index(a.period) if a.period in FAST_PERIODS else -1
+        metric = a.scale_score if a.scale_score is not None else (
+            a.level if a.level and 1 <= a.level <= 5 else None)
+        if metric is None:
+            continue
+        cur = best.get(a.student_id)
+        if cur is None or order > cur[0]:
+            best[a.student_id] = (order, metric)
+    ranked = sorted(best.items(), key=lambda kv: kv[1][1])
+    cutoff = max(1, round(len(ranked) * 0.25))
+    return {sid for sid, _ in ranked[:cutoff]}
+
+
 @router.get("/teacher/{teacher_id}")
 def teacher_report(
     teacher_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Per-teacher roster with each student's FAST PM1/2/3, iReady AP1/2, and
-    Topic average — mirrors the district tracker sheet."""
+    """Combined master tracker for a teacher's roster — unions everything from
+    the Class Lists and the Topic Tracker: demographics, FAST ELA + Math
+    (PM1/2/3), iReady ELA + Math (AP1/2), every Topic assessment, topic average,
+    plus computed on-track (Level 3+) and lowest-25% flags."""
     teacher = db.get(User, teacher_id)
     students = _students_for_teacher(db, user.tenant_id, teacher_id)
     sids = {s.id for s in students}
@@ -172,44 +201,64 @@ def teacher_report(
         StudentAssessment.tenant_id == user.tenant_id).all()
         if a.student_id in sids]
 
-    data = defaultdict(lambda: {"fast": {}, "iready": {}, "topics": []})
+    def blank():
+        return {"fast_ela": {}, "fast_math": {}, "iready_ela": {},
+                "iready_math": {}, "topics": {}}
+    data = defaultdict(blank)
+    topic_periods = set()
     for a in rows_a:
         d = data[a.student_id]
-        if a.source == "FAST" and a.subject == "MATH" and a.level is not None:
-            d["fast"][a.period] = int(a.level) if 1 <= a.level <= 5 else a.level
+        lvl = int(a.level) if (a.level is not None and 1 <= a.level <= 5) else a.level
+        if a.source == "FAST" and a.subject == "ELA" and lvl is not None:
+            d["fast_ela"][a.period] = lvl
+        elif a.source == "FAST" and a.subject == "MATH" and lvl is not None:
+            d["fast_math"][a.period] = lvl
+        elif a.source == "IREADY" and a.subject == "ELA" and a.level is not None:
+            d["iready_ela"][a.period] = int(a.level)
         elif a.source == "IREADY" and a.subject == "MATH" and a.level is not None:
-            d["iready"][a.period] = int(a.level)
+            d["iready_math"][a.period] = int(a.level)
         elif a.source == "TOPIC" and a.percent is not None:
-            d["topics"].append(a.percent)
+            d["topics"][a.period] = round(100 * a.percent)
+            topic_periods.add(a.period)
+
+    def tp_order(p):
+        m = re.search(r"\d+", p)
+        return int(m.group()) if m else 99
+    topic_cols = sorted(topic_periods, key=tp_order)
+
+    grades = {s.grade_level for s in students}
+    l25 = set()
+    for g in grades:
+        l25 |= _l25_ids(db, user.tenant_id, g)
 
     roster = []
     for s in students:
-        d = data.get(s.id, {"fast": {}, "iready": {}, "topics": []})
-        topic_avg = (round(100 * sum(d["topics"]) / len(d["topics"]))
-                     if d["topics"] else None)
-        latest_lvl = None
+        d = data.get(s.id, blank())
+        tvals = list(d["topics"].values())
+        topic_avg = round(sum(tvals) / len(tvals)) if tvals else None
+        latest = None
         for p in reversed(FAST_PERIODS):
-            v = d["fast"].get(p)
+            v = d["fast_math"].get(p)
             if isinstance(v, int) and 1 <= v <= 5:
-                latest_lvl = v
+                latest = v
                 break
         roster.append({
             "student_id": s.id, "name": f"{s.first_name.title()} {s.last_name.title()}",
-            "grade": s.grade_level, "flags": s.flags or {},
-            "fast_pm1": d["fast"].get("PM1"), "fast_pm2": d["fast"].get("PM2"),
-            "fast_pm3": d["fast"].get("PM3"),
-            "iready_ap1": d["iready"].get("AP1"), "iready_ap2": d["iready"].get("AP2"),
-            "topic_avg": topic_avg,
-            "on_track": latest_lvl is not None and latest_lvl >= 3,
+            "grade": s.grade_level,
+            "ell": (s.flags or {}).get("ell"), "ese": bool((s.flags or {}).get("ese")),
+            "fast_ela": d["fast_ela"], "fast_math": d["fast_math"],
+            "iready_ela": d["iready_ela"], "iready_math": d["iready_math"],
+            "topics": d["topics"], "topic_avg": topic_avg,
+            "on_track": latest is not None and latest >= 3,
+            "l25": s.id in l25,
         })
     roster.sort(key=lambda r: r["name"])
-    lvls = [r for r in roster if isinstance(r["fast_pm3"] or r["fast_pm2"]
-            or r["fast_pm1"], int)]
     prof = sum(1 for r in roster if r["on_track"])
     return {
         "teacher": teacher.name if teacher else "",
         "students": len(roster),
         "pct_level_3_plus": round(100 * prof / len(roster)) if roster else 0,
+        "topic_columns": topic_cols,
         "roster": roster,
     }
 

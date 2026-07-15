@@ -432,46 +432,61 @@ function TeacherView({
         <Card
           title={`${report.teacher} — ${report.students} students · ${report.pct_level_3_plus}% Level 3+`}
         >
+          <p className="text-xs text-gray-400 mb-2">
+            Combined tracker — FAST ELA &amp; Math, iReady ELA &amp; Math, and all
+            Topic assessments. Green = Level 3+; lowest 25% flagged.
+          </p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="text-xs whitespace-nowrap">
               <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
-                  <th className="py-1">Student</th>
-                  <th className="py-1 text-center">PM1</th>
-                  <th className="py-1 text-center">PM2</th>
-                  <th className="py-1 text-center">PM3</th>
-                  <th className="py-1 text-center">AP1</th>
-                  <th className="py-1 text-center">AP2</th>
-                  <th className="py-1 text-center">Topic Avg</th>
-                  <th className="py-1 text-center">On Track</th>
+                <tr className="text-gray-500 border-b border-gray-200">
+                  <th className="py-1 px-2 text-left sticky left-0 bg-white">Student</th>
+                  <th className="px-1 text-center border-l" colSpan={3}>FAST ELA</th>
+                  <th className="px-1 text-center border-l" colSpan={3}>FAST Math</th>
+                  <th className="px-1 text-center border-l" colSpan={2}>iReady ELA</th>
+                  <th className="px-1 text-center border-l" colSpan={2}>iReady Math</th>
+                  {report.topic_columns.length > 0 && (
+                    <th className="px-1 text-center border-l" colSpan={report.topic_columns.length}>
+                      Topic Assessments
+                    </th>
+                  )}
+                  <th className="px-1 text-center border-l">Avg</th>
+                  <th className="px-1 text-center border-l">Flags</th>
+                </tr>
+                <tr className="text-[10px] text-gray-400 border-b border-gray-100">
+                  <th className="sticky left-0 bg-white"></th>
+                  <th className="px-1 border-l">PM1</th><th className="px-1">PM2</th><th className="px-1">PM3</th>
+                  <th className="px-1 border-l">PM1</th><th className="px-1">PM2</th><th className="px-1">PM3</th>
+                  <th className="px-1 border-l">AP1</th><th className="px-1">AP2</th>
+                  <th className="px-1 border-l">AP1</th><th className="px-1">AP2</th>
+                  {report.topic_columns.map((t: string) => (
+                    <th key={t} className="px-1 border-l">{t.replace("TP", "")}</th>
+                  ))}
+                  <th className="px-1 border-l"></th>
+                  <th className="px-1 border-l"></th>
                 </tr>
               </thead>
               <tbody>
                 {report.roster.map((r: any) => (
                   <tr key={r.student_id} className="border-b border-gray-50">
-                    <td className="py-1">
+                    <td className="py-1 px-2 text-left sticky left-0 bg-white">
                       {r.name}
-                      {r.flags?.ell && (
-                        <span className="ml-1 text-[10px] text-blue-500">ELL</span>
-                      )}
-                      {r.flags?.ese && (
-                        <span className="ml-1 text-[10px] text-purple-500">ESE</span>
-                      )}
+                      {r.ell && <span className="ml-1 text-[9px] text-blue-500">ELL{r.ell}</span>}
+                      {r.ese && <span className="ml-1 text-[9px] text-purple-500">ESE</span>}
                     </td>
-                    <Lvl v={r.fast_pm1} />
-                    <Lvl v={r.fast_pm2} />
-                    <Lvl v={r.fast_pm3} />
-                    <td className="py-1 text-center text-gray-600">
-                      {r.iready_ap1 ?? "—"}
-                    </td>
-                    <td className="py-1 text-center text-gray-600">
-                      {r.iready_ap2 ?? "—"}
-                    </td>
-                    <td className="py-1 text-center">
+                    <Lvl v={r.fast_ela?.PM1} bl /><Lvl v={r.fast_ela?.PM2} /><Lvl v={r.fast_ela?.PM3} />
+                    <Lvl v={r.fast_math?.PM1} bl /><Lvl v={r.fast_math?.PM2} /><Lvl v={r.fast_math?.PM3} />
+                    <Ir v={r.iready_ela?.AP1} bl /><Ir v={r.iready_ela?.AP2} />
+                    <Ir v={r.iready_math?.AP1} bl /><Ir v={r.iready_math?.AP2} />
+                    {report.topic_columns.map((t: string) => (
+                      <Pct key={t} v={r.topics?.[t]} bl />
+                    ))}
+                    <td className="px-1 text-center font-semibold border-l">
                       {r.topic_avg != null ? `${r.topic_avg}%` : "—"}
                     </td>
-                    <td className="py-1 text-center">
+                    <td className="px-1 text-center border-l">
                       {r.on_track ? "✅" : "🔴"}
+                      {r.l25 && <span className="ml-0.5 text-[9px] text-orange-600">L25</span>}
                     </td>
                   </tr>
                 ))}
@@ -484,12 +499,12 @@ function TeacherView({
   );
 }
 
-function Lvl({ v }: { v: any }) {
+function Lvl({ v, bl }: { v: any; bl?: boolean }) {
   const isLevel = typeof v === "number" && v >= 1 && v <= 5;
   return (
-    <td className="py-1 text-center">
+    <td className={`px-1 text-center ${bl ? "border-l" : ""}`}>
       {v == null ? (
-        <span className="text-gray-300">—</span>
+        <span className="text-gray-300">·</span>
       ) : (
         <span
           className={
@@ -498,6 +513,33 @@ function Lvl({ v }: { v: any }) {
                 ? "text-green-600 font-semibold"
                 : "text-red-600 font-semibold"
               : "text-gray-600"
+          }
+        >
+          {v}
+        </span>
+      )}
+    </td>
+  );
+}
+
+// iReady placement level (1 = on/above grade, 2-3 = below); no proficiency color.
+function Ir({ v, bl }: { v: any; bl?: boolean }) {
+  return (
+    <td className={`px-1 text-center text-gray-600 ${bl ? "border-l" : ""}`}>
+      {v == null ? <span className="text-gray-300">·</span> : v}
+    </td>
+  );
+}
+
+function Pct({ v, bl }: { v: any; bl?: boolean }) {
+  return (
+    <td className={`px-1 text-center ${bl ? "border-l" : ""}`}>
+      {v == null ? (
+        <span className="text-gray-300">·</span>
+      ) : (
+        <span
+          className={
+            v >= 70 ? "text-green-600" : v >= 60 ? "text-yellow-600" : "text-red-600"
           }
         >
           {v}
