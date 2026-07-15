@@ -289,9 +289,9 @@ export default function ReportsPage() {
                         </div>
                         <div
                           className={`text-lg font-bold ${
-                            v.avg_pct >= 70
+                            v.avg_pct >= 69
                               ? "text-green-600"
-                              : v.avg_pct >= 60
+                              : v.avg_pct >= 50
                               ? "text-yellow-600"
                               : "text-red-600"
                           }`}
@@ -539,7 +539,7 @@ function Pct({ v, bl }: { v: any; bl?: boolean }) {
       ) : (
         <span
           className={
-            v >= 70 ? "text-green-600" : v >= 60 ? "text-yellow-600" : "text-red-600"
+            v >= 69 ? "text-green-600" : v >= 50 ? "text-yellow-600" : "text-red-600"
           }
         >
           {v}
@@ -555,6 +555,22 @@ function FastAnalysis({ fast }: { fast: any }) {
   const maxD = Math.max(1, ...Object.values(dist).map((n: any) => n));
   return (
     <div className="space-y-4">
+      {/* Goal banner: Level 3+ in BOTH FAST and i-Ready */}
+      <div className="bg-avocado-dark text-white rounded-2xl p-5 grid grid-cols-3 gap-4 text-center">
+        <div>
+          <div className="text-xs opacity-80">FAST Math Level 3+</div>
+          <div className="text-3xl font-bold">{o.pct_level_3_plus}%</div>
+        </div>
+        <div>
+          <div className="text-xs opacity-80">i-Ready Math Level 3+</div>
+          <div className="text-3xl font-bold">{o.pct_iready_level_3_plus}%</div>
+        </div>
+        <div className="border-l border-white/20">
+          <div className="text-xs opacity-80">🎯 GOAL: Level 3+ in BOTH</div>
+          <div className="text-3xl font-bold">{o.pct_goal_both}%</div>
+        </div>
+      </div>
+
       {/* Overall */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid md:grid-cols-4 gap-4">
         <div>
@@ -640,6 +656,40 @@ function FastAnalysis({ fast }: { fast: any }) {
           </div>
         </Card>
       </div>
+
+      {/* Standards by achievement level — path to the next level */}
+      {fast.by_level && Object.keys(fast.by_level).length > 0 && (
+        <Card title="Path to Level 3+ — Standards to master by achievement level">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.entries(fast.by_level).map(([lv, info]: any) => (
+              <div key={lv} className="border border-gray-100 rounded-lg p-3">
+                <div className="font-semibold text-sm text-gray-800">
+                  Level {lv}{" "}
+                  <span className="text-xs text-gray-400">
+                    ({info.n_students} students)
+                  </span>
+                </div>
+                {info.next_level && (
+                  <div className="text-xs text-avocado-dark mb-1">
+                    To reach Level {info.next_level}, focus on:
+                  </div>
+                )}
+                <ul className="space-y-1">
+                  {info.focus_to_advance.slice(0, 5).map((b: any) => (
+                    <li key={b.benchmark} className="text-xs">
+                      <span className="font-medium">{b.benchmark}</span>
+                      <span className="text-red-600"> {b.pct}%</span>
+                      {b.description && (
+                        <span className="text-gray-500"> — {b.description}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Target students */}
       <div className="grid md:grid-cols-2 gap-4">

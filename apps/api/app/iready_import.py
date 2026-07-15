@@ -21,6 +21,22 @@ def _num(v):
         return None
 
 
+def placement_level(placement: str):
+    """Map i-Ready relative placement to the district's 1/2/3 level, where the
+    goal (Level 3+) = on grade level or above. i-Ready 'Grouping' is an
+    instructional group number, NOT proficiency, so we use placement."""
+    p = _s(placement).lower()
+    if not p:
+        return None
+    if "above" in p or "on grade" in p:      # early/mid on grade, or above
+        return 3
+    if "1 grade level below" in p:
+        return 2
+    if "below" in p:                          # 2+ grade levels below
+        return 1
+    return None
+
+
 def detect_iready(headers) -> bool:
     joined = ",".join(_s(h).lower() for h in headers)
     return "overall scale score" in joined and "overall placement" in joined
@@ -88,6 +104,7 @@ def parse_iready(data: bytes) -> dict:
             "scale_score": _num(row.get("Overall Scale Score")),
             "grouping": grouping, "percentile": percentile,
             "placement": placement,
+            "level": placement_level(placement),  # 3 = on grade+ (goal)
             "teacher": _s(row.get("Class Teacher(s)")),
             "domains": domain_scores,
         })

@@ -353,6 +353,47 @@ def fast_analysis(
         key=lambda x: -(x["scale_score"] or 0))
     lowest = [p for p in per_student if p["level"] == 1][:15]
 
+    # Standards BY ACHIEVEMENT LEVEL: for students at each level, which
+    # benchmarks they were tested on most, and which they're weakest on (the
+    # standards to master to advance to the next level).
+    level_bench = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
+    for r in items:
+        lv = level_of.get(r.student_id)
+        if lv is None or not (1 <= lv <= 5):
+            continue
+        lb = level_bench[int(lv)][r.benchmark_code]
+        lb[0] += r.points_earned
+        lb[1] += r.points_possible
+    by_level = {}
+    for lv, benches in sorted(level_bench.items()):
+        rows_b = [{"benchmark": k, "pct": round(100 * e / p), "tested": int(p),
+                   "description": std_desc.get(k, "")}
+                  for k, (e, p) in benches.items() if p]
+        n = sum(1 for s, l in level_of.items() if l == lv and s in sids)
+        by_level[str(lv)] = {
+            "n_students": n,
+            "next_level": lv + 1 if lv < 5 else None,
+            "mostly_tested": sorted(rows_b, key=lambda x: -x["tested"])[:8],
+            "focus_to_advance": sorted(rows_b, key=lambda x: x["pct"])[:8],
+        }
+
+    # Combined goal: Level 3+ in BOTH FAST and i-Ready (Math).
+    iready_level = {}
+    for a in db.query(StudentAssessment).filter(
+            StudentAssessment.tenant_id == user.tenant_id,
+            StudentAssessment.source == "IREADY",
+            StudentAssessment.subject == subject).all():
+        if a.student_id not in sids or a.level is None:
+            continue
+        order = IREADY_PERIODS.index(a.period) if a.period in IREADY_PERIODS else -1
+        cur = iready_level.get(a.student_id)
+        if cur is None or order > cur[0]:
+            iready_level[a.student_id] = (order, a.level)
+    both = sum(1 for sid in sids
+               if (level_of.get(sid) or 0) >= 3
+               and (iready_level.get(sid, (0, 0))[1] or 0) >= 3)
+    iready_prof = sum(1 for sid in sids if (iready_level.get(sid, (0, 0))[1] or 0) >= 3)
+
     return {
         "grade": grade, "subject": subject, "period": period, "has_data": True,
         "overall": {
@@ -361,13 +402,16 @@ def fast_analysis(
             "overall_pct_correct": round(100 * tot_e / tot_p, 1),
             "level_distribution": dist,
             "pct_level_3_plus": round(100 * l3 / len(levels)) if levels else 0,
+            "pct_iready_level_3_plus": round(100 * iready_prof / len(sids)) if sids else 0,
+            "pct_goal_both": round(100 * both / len(sids)) if sids else 0,
             "avg_scale_score": round(sum(a.scale_score for a in summ
                                      if a.scale_score) / max(1, len(summ))),
-            "goal": "All students Level 3+ by PM3",
+            "goal": "Level 3+ in BOTH FAST and i-Ready",
         },
         "by_domain": by_domain,
         "by_benchmark": by_benchmark,
         "focus_standards": by_benchmark[:8],
+        "by_level": by_level,
         "per_student": per_student,
         "target_students": {
             "bubble_level2": bubble[:15],

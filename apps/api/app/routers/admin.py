@@ -539,7 +539,7 @@ def _import_iready(db, data, tenant_id, school_id, user):
                 subject=subject, period=period)
             db.add(rec)
         rec.scale_score = sd["scale_score"]
-        rec.level = sd["grouping"]
+        rec.level = sd["level"]  # 1/2/3 from placement (3 = on grade+, the goal)
         pct = f" | pct {int(sd['percentile'])}" if sd.get("percentile") else ""
         rec.label = (sd.get("placement", "") + pct)[:255]
         asmt += 1
