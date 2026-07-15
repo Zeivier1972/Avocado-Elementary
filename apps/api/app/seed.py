@@ -51,19 +51,26 @@ def _load_math_standards(db, existing_codes):
     rows = json.loads(path.read_text())
     n = 0
     for r in rows:
+        details = {
+            "clarifications": r.get("clarifications", []),
+            "prerequisites": r.get("prerequisites", []),
+            "next": r.get("next", []),
+            "misconceptions": r.get("misconceptions", ""),
+            "strategies": r.get("strategies", ""),
+            "strand": r.get("strand", ""),
+        }
         if r["code"] in existing_codes:
+            # Update in place so newly-loaded B1G-M detail (clarifications,
+            # misconceptions, strategies) reaches already-seeded databases.
+            std = db.query(Standard).filter(Standard.code == r["code"]).first()
+            if std:
+                std.description = r["description"]
+                std.details = details
             continue
         db.add(Standard(
             subject="MATH", grade_level=r["grade"], code=r["code"],
             description=r["description"], mastery_threshold=0.7,
-            details={
-                "clarifications": r.get("clarifications", []),
-                "prerequisites": r.get("prerequisites", []),
-                "next": r.get("next", []),
-                "misconceptions": r.get("misconceptions", ""),
-                "strategies": r.get("strategies", ""),
-                "strand": r.get("strand", ""),
-            },
+            details=details,
         ))
         existing_codes.add(r["code"])
         n += 1

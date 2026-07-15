@@ -612,11 +612,19 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Apply the distributive property to multiply a one-digit number and two-digit number. Apply properties of multiplication to find a product of one-digit whole numbers.",
-  "clarifications": [],
+  "clarifications": [
+   "Within this benchmark, the expectation is to apply the associative and commutative\nproperties of multiplication, the distributive property and name the properties. Refer to K-12 Glossary\n(Appendix C).",
+   "Within the benchmark, the expectation is to utilize parentheses.",
+   "Multiplication for products of three or more numbers is limited to factors within 12.\nRefer to Properties of Operations, Equality and Inequality (Appendix D)."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.NSO.1.2",
+   "MA.4.NSO.2.2",
+   "MA.4.NSO.2.3"
+  ],
+  "misconceptions": "\uf0b7\nStudents can be confused about how to write expressions using the distributive property.\nOne common mistake that students make is writing an expression 4 \u00d7 72 as (4 \u00d7\n70) \u00d7 (4 \u00d7 2) instead of (4 \u00d7 70) + (4 \u00d7 2). Instruction should show concrete\nmodels (e.g., base ten drawings) along with equations so students can understand the\nrelationship between multiplication and addition while applying the property and writing\nexpressions.",
+  "strategies": "The purpose of this benchmark is for students to apply what they have learned about\nmultiplication of one-digit numbers and multiples of ten to then multiply a one-digit number and\na two-digit number (MA.3.NSO.2.3).\n\uf0b7\nStudents are introduced to the distributive property of multiplication over addition as a\nstrategy for using products that they know in order to solve products that they do not\nknow. For example, if students are asked to find the product of 6 \ud465 9, they might\ndecompose 6 into 4 and 2 and then multiply 4 \ud465 9 and 2 \ud465 9 to arrive at 36 + 18, which\nequals 54. Because of the distributive property, students use parentheses to show how to\ndecompose two-digit numbers by the value of its tens and ones, and then multiply the\none-digit number by both the values of the two-digit number\u2019s "
  },
  {
   "code": "MA.3.AR.1.2",
@@ -624,11 +632,17 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Solve one- and two-step real-world problems involving any of four operations with whole numbers.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes understanding the context of the problem, as well as the quantities\nwithin the problem.",
+   "Multiplication is limited to factors within 12 and related division facts. Refer to\nSituations Involving Operations with Numbers (Appendix A)."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.1.1",
+   "MA.4.AR.1.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents may have difficulty creating effective models (e.g., drawings, equations) that\nwill help them solve real-world problems. To assist students, provide opportunities for\nthem to estimate solutions and try different models before solving. Beginning instruction\nby showing problems without their quantities is a strategy for helping students determine\nwhat steps and operations will be used to solve.\n\uf0b7\nStudents may also have difficulty identifying when real-world problems require two steps\nto solve and will complete only one of the steps. Focusing on comprehension of real-\nworld problems helps students determine what step(s) are required to solve.",
+  "strategies": "The purpose of this benchmark is for students to apply all four operations to solve one- and two-\nstep real-world problems. This benchmark continues the work done in grade 2 solving real-world\nproblems using addition and subtraction (MA.2.AR.1.1).\n\uf0b7\nInstruction should facilitate students\u2019 understanding of contexts and quantities within\nword problems.\n\uf0b7\nThe emphasis on teaching problem-solving strategies should focus on the comprehension\nof problem contexts and what quantities represent in them. Examples of questions that\nhelp students comprehend word problems are:\no What is happening in the real-world problem?\no What do you need to find out?\no What do the quantities represent in the problem?\no What will the solution represent in the problem? (MTR.1.1, MTR.4.1, MTR.6.1)\nTeachers should mode"
  },
  {
   "code": "MA.3.AR.2.1",
@@ -636,11 +650,17 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Restate a division problem as a missing factor problem using the relationship between multiplication and division.",
-  "clarifications": [],
+  "clarifications": [
+   "Multiplication is limited to factors within 12 and related division facts.",
+   "Within this benchmark, the symbolic representation of the missing factor uses any\nsymbol or a letter."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.1.AR.2.1",
+   "MA.2.AR.2.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents may have difficulty understanding that the quotient of a division equation will\nbecome a factor in a multiplication equation. Allowing students to use an array model\nand/or reinforcing fact families may help to clarify the relationship.",
+  "strategies": "The purpose of this benchmark is to build students\u2019 fluency with division facts by relating them\nto known multiplication facts. Division is often more challenging for students than\nmultiplication, so relating division to multiplication helps to determine quotients. Students\nlearned a similar strategy when relating subtraction to addition in Grade 1 (MA.1.AR.2.1).\n\uf0b7\nInstruction should have students build and use fact families to relate division and\nmultiplication equations. It is important for students to understand that multiplication and\ndivision are inverse operations. During instruction, students should have practice with\nsolving and explaining division problems that can also be represented as an unknown\nfactor in multiplication problems (MTR.3.1, MTR.5.1).\n\uf0b7\nTo help students understand"
  },
  {
   "code": "MA.3.AR.2.2",
@@ -648,11 +668,18 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Determine and explain whether an equation involving multiplication or division is true or false.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction extends the understanding of the meaning of the equal sign to multiplication\nand division.",
+   "Problem types are limited to an equation with three or four terms. The product or quotient\ncan be on either side of the equal sign.",
+   "Multiplication is limited to factors within 12 and related division facts."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.2.1",
+   "MA.4.AR.2.1"
+  ],
+  "misconceptions": "\uf0b7\nBy Grade 3, students may grow to expect equation solutions to be represented as the\nexpressions on the right side of the equal sign. When having students evaluate true or\nfalse equations with only three terms (e.g., 18 = 3 \u00d7 6), teachers should give examples\nshowing products and quotients on the left side.\n6",
+  "strategies": "The purpose of this benchmark is to extend the understanding of the meaning of the equal sign in\nmultiplication and division situations. In Grades 1 and 2, students determined and explained\nwhen addition and subtraction equations were true or false (MA.1.AR.2.2, MA.2.AR.2.1).\n\uf0b7\nInstruction should emphasize that the equal sign can be read as \u201cthe same as\u201d to show the\nbalance of two multiplication and/or division expressions. When those expressions are\nevaluated as the same product or quotient, the equation is balanced, or true. If those\nexpressions evaluate differently, then the equation is not balanced, or false (MTR.2.1,\nMTR.5.1).\n\uf0b7\nWhen students explain whether an equation is true or false, they should justify by\nexplaining the equivalence of its expressions. (Note: The expectation of th"
  },
  {
   "code": "MA.3.AR.2.3",
@@ -660,11 +687,18 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Determine the unknown whole number in a multiplication or division equation, relating three whole numbers, with the unknown in any position.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction extends the development of algebraic thinking skills where the symbolic\nrepresentation of the unknown uses any symbol or a letter.",
+   "Problems include the unknown on either side of the equal sign.",
+   "Multiplication is limited to factors within 12 and related division facts. Refer to\nSituations Involving Operations with Numbers (Appendix A)."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.2.2",
+   "MA.4.AR.2.2"
+  ],
+  "misconceptions": "\uf0b7\nBy Grade 3, many students expect the solutions of equations to be an expression on the\nright side of the equal sign. When students determine unknown values in multiplication\nor division equations, give examples with the product or quotient on the left side.\n6",
+  "strategies": "The purpose of this benchmark is for students to find an unknown value represented by a symbol\nor letter in a multiplication or division equation, continuing the work from Grade 2, where\nstudents found unknown values in addition and subtraction equations.\n\uf0b7\nInstruction that emphasizes the relationship between related facts in a fact family helps\nstudents use known values to solve for unknown values. For example, a fact family could\nbe used to help students determine the unknown value in the equation 72 \u00f7 ? = 9\n(MTR.5.1).\n7\n2 \u00f7 ? = 9\n2 \u00f7 9 =?\n7\n9\n\u00d7 ? = 72\n?\n\u00d7 9 = 72\nStudents can use any of these related facts to determine that the unknown value is 8.\nTeachers should encourage students to use such equations to justify their solutions\n(MTR.6.1).\n\uf0b7\n\uf0b7\nIn the primary grades, students used fact f"
  },
  {
   "code": "MA.3.AR.3.1",
@@ -672,11 +706,16 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Determine and explain whether a whole number from 1 to 1,000 is even or odd.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes determining and explaining using place value and recognizing\npatterns."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.3.1",
+   "MA.4.AR.3.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents may confuse that in an even number, the ones digit indicates whether it is a\nmultiple of 2. For example, students may look at the number 883 is even because the\ndigit 8 in the hundreds and tens places are even.",
+  "strategies": "The purpose of this benchmark is for students to relate odd and even numbers to factors and\nmultiples. In Grade 2, students learn to represent an even number using two equal groups or two\nequal addends and as odd number as two equal groups or two equal addends with one left over\n(MA.2.AR.3.1). In Grade 3, instruction extends to use patterns to generalize whether any number\nis odd or even (MTR.2.1, MTR.5.1).\n\uf0b7\nInstruction should connect multiples of 2 to the patterns that the ones digit in any even\nnumber is 0, 2, 4, 6, or 8. By teaching this benchmark with MA.3.AR.3.2, students can\nsee that multiples of 2 can form any even number. If a number is not a multiple of 2, then\nthe number is odd (MTR.5.1).\n\uf0b7\nThese beginning understandings about multiples will help students explore factors and\ndiv"
  },
  {
   "code": "MA.3.AR.3.2",
@@ -684,11 +723,17 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Determine whether a whole number from 1 to 144 is a multiple of a given one-digit number.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes determining if a number is a multiple of a given number by using\nmultiplication or division."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.3.2",
+   "MA.4.AR.3.1",
+   "MA.4.NSO.2.1"
+  ],
+  "misconceptions": "\uf0b7\nWhen listing multiples of numbers, students may not list the number itself. It is important\nto emphasize that the smallest multiple is the number itself. Having students write\nmultiples of a number by consecutive factors beginning with one.",
+  "strategies": "The purpose of this benchmark is for students to determine whether a whole number is a multiple\nof a given one-digit number (e.g., Is 45 a multiple of 5?). Understanding of multiples extends\nwhat students learned in Grade 2 about skip-counting (e.g., skip-counting by 2s results in\nmultiples of 2). Building a strong foundational understanding of multiples prepares students for\nrelating multiples and factors to prime and composite numbers in Grade 4 (MA.4.AR.3.1).\n\uf0b7\nUnderstanding of multiples extends from multiplication by expecting students to\nunderstand that the products of the given one-digit number and other factors create\nmultiples of that one-digit number. For example, the products of 5 \ud465 1, 5 \ud465 2, 5 \ud465 3,\u2026 are\nmultiples of 5 (5, 10, 15,\u2026). Understanding of multiples extends from divisi"
  },
  {
   "code": "MA.3.AR.3.3",
@@ -696,11 +741,17 @@
   "strand": "AR",
   "subject": "MATH",
   "description": "Identify, create and extend numerical patterns.",
-  "clarifications": [],
+  "clarifications": [
+   "The expectation is to use ordinal numbers (1st, 2nd, 3rd, \u2026) to describe the position of a\nnumber within a sequence.",
+   "Problem types include patterns involving addition, subtraction, multiplication or division\nof whole numbers."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.4.AR.3.2",
+   "MA.K.NSO.1.3"
+  ],
+  "misconceptions": "\uf0b7\nStudents can confuse a term\u2019s number and its value in the sequence. For example, in the\npattern 6, 12, 18,\u2026, students can struggle to understand that even though 12 is the 2nd\nterm, 6 is being added to it to find the value of the 3rd term (18). Encourage students to\nuse precise vocabulary while describing patterns to address this confusion.\n7",
+  "strategies": "The purpose of this benchmark is for students to identify, create and extend numerical patterns\nusing all four operations. Understanding of ordinal numbers from Kindergarten is the foundation\nfor describing the sequence of numbers in a pattern.\n\uf0b7\n\u201cIdentifying\u201d a numerical pattern requires students to determine when a pattern exists in a\nsequence of numbers, and to potentially determine a rule that can be used to find each\nterm in the sequence. For example, students may be asked whether a pattern exists in the\nnumbers 20, 17, 14, 11,... and to discuss possible rules used to determine the next term.\n\u201cCreating\u201d a numerical pattern requires students to write a pattern given a rule and\nstarting value. For example, students may be asked to write the first five terms of a\nsequence that begins wit"
  },
  {
   "code": "MA.3.DP.1.1",
@@ -708,11 +759,18 @@
   "strand": "DP",
   "subject": "MATH",
   "description": "Collect and represent numerical and categorical data with whole-number values using tables, scaled pictographs, scaled bar graphs or line plots. Use appropriate titles, labels and units.",
-  "clarifications": [],
+  "clarifications": [
+   "Within this benchmark, the expectation is to complete a representation or construct a\nrepresentation from a data set.",
+   "Instruction includes the connection between multiplication and the number of data points\nrepresented by a bar in scaled bar graph or a scaled column in a pictograph.",
+   "Data displays are represented both horizontally and vertically."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.DP.1.1",
+   "MA.4.DP.1.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents may confuse which types of data (categorical or numerical) can be displayed\nwith a data representation. In Grades 1 and 2, students graphed frequency of categorical\ndata in pictographs and bar graphs. Representing frequency in numerical data graphed via\nline plots is a new expectation in Grade 3. During instruction, expect students to justify\nthe representations they choose based on the data collected.\n\uf0b7\nStudents tend to count each square as one for intervals on bar graphs that are not single\nunits.\n1",
+  "strategies": "The purpose of this benchmark is for students to represent numerical and categorical data using\ntables, scaled pictographs, scaled bar graphs, or line plots, using appropriate titles, tables, and\nunits. Though there are many skills included in this benchmark, students bring background\nknowledge from Grades 1 and 2 when they collected, categorized and represented data in tables,\npictographs, and bar graphs. In Grade 2, students were expected to represent data with\nappropriate titles, labels and units.\n\uf0b7\nBefore instruction begins, teachers should provide students with opportunities of reading\nand solving problems using scaled graphs before being asked to draw one. These skills\nwill assist students with determining what they already know. This will save instructional\ntime that can be focused "
  },
  {
   "code": "MA.3.DP.1.2",
@@ -720,11 +778,18 @@
   "strand": "DP",
   "subject": "MATH",
   "description": "Interpret data with whole-number values represented with tables, scaled pictographs, circle graphs, scaled bar graphs or line plots by determining the mode, median, mean or range.",
-  "clarifications": [],
+  "clarifications": [
+   "Problems include the use of data in informal comparisons between two data sets in the\nsame units.",
+   "Data displays can be represented both horizontally and vertically.",
+   "Circle graphs are limited to showing the total values in each category."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.DP.1.2",
+   "MA.4.DP.1.3"
+  ],
+  "misconceptions": "\uf0b7\nStudents may confuse the values in scaled pictographs and bar graphs. They should\nalways utilize the given key when determining frequency of each category.\n1",
+  "strategies": "The purpose of this benchmark is for students to interpret data displayed in scaled pictographs,\ncircle graphs, scaled bar graphs and line plots. Like MA.3.DP.1.1, the purpose of this benchmark\nbuilds on data interpretation skills from Grades 1 and 2. In Grade 1, students interpreted data\nrepresented with tally marks and pictographs, and in Grade 2, students also interpreted data\nrepresented in pictographs and bar graphs. Additionally, students solved addition and subtraction\nproblems using the data representations.\n\uf0b7\nIn Grade 3, students will interpret categorical data represented in scaled pictographs and\nbar graphs, whole-number numerical data represented in line plots, and whole-number\ncategory totals in circle graphs (e.g., instead of percentages). To interpret the represented\ndata, t"
  },
  {
   "code": "MA.3.FR.1.1",
@@ -733,14 +798,19 @@
   "subject": "MATH",
   "description": "Represent and interpret unit fractions in the form 1/n as the quantity formed by one part when a whole is partitioned into n equal parts.",
   "clarifications": [
-   "This benchmark emphasizes conceptual understanding through the use of manipulatives or visual models.",
-   "Instruction focuses on representing a unit fraction as part of a whole, part of a set, a point on a number line, a visual model or in fractional notation.",
+   "This benchmark emphasizes conceptual understanding through the use of manipulatives\nor visual models.",
+   "Instruction focuses on representing a unit fraction as part of a whole, part of a set, a point\non a number line, a visual model or in fractional notation.",
    "Denominators are limited to 2, 3, 4, 5, 6, 8, 10 and 12."
   ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.FR.1.1",
+   "MA.2.FR.1.2",
+   "MA.4.FR.2.1",
+   "MA.4.FR.2.2"
+  ],
+  "misconceptions": "\uf0b7\n\uf0b7\n\uf0b7\nStudents can misconceive the difference between the meaning of numerators and\ndenominators in fractions. For this reason, it is important for teachers and students to\nrepresent unit fractions in multiple ways to understand how they relate to a whole.\nRepresentations can be modeled together (e.g., fraction strips side-by-side with number\nlines, or relationship rods side-by-side with number lines) to help build student\nunderstanding.\nStudents can misconceive that the smaller the denominator, the smaller the piece, or the\nlarger the denominator, the larger the piece. This is due to thinking and reasoning where\nstudents worked with whole numbers (the smaller a number, the less it is, or the larger a\nnumber, the more it is). To correct this misconception, have students utilize different\nm",
+  "strategies": "The purpose of this benchmark is for students to understand that unit fractions are the foundation\nfor all fractions. Second, the purpose is for students to understand that fractions are numbers.\nThis benchmark continues instruction of fractions from Grade 2, where students partitioned\ncircles and rectangles into two, three or four equal-sized parts (MA.2.FR.1.1 and MA.2.FR.1.2).\n\uf0b7\nTo activate prior knowledge in Grade 3, instruction should:\no relate how unit fractions build fractions to how whole-number units build whole\nnumbers, and\no show models with non-equal parts as non-examples (MTR.2.1).\nUnit fractions are defined as one part when a whole is partitioned in any number of equal\nparts. It is in this benchmark that students conclude that the greater a unit fraction\u2019s\ndenominator, the gr"
  },
  {
   "code": "MA.3.FR.1.2",
@@ -750,12 +820,17 @@
   "prerequisites": [
    "MA.2.FR.1.1"
   ],
-  "next": [],
-  "misconceptions": "",
-  "strategies": "",
+  "next": [
+   "MA.2.FR.1.1",
+   "MA.2.FR.1.2",
+   "MA.4.FR.2.1",
+   "MA.4.FR.2.2"
+  ],
+  "misconceptions": "\uf0b7\nStudents can misconceive that fractions equal to and greater than 1 can also be\n5\n1\n1\n1\n1\n1\nrepresented as the sum of unit fractions (e.g., = + + + + ). Flexible\n2\n2\n2\n2\n2\n2\nrepresentations of models (e.g., rectangular area models that align with number lines)\nhelp students connect understanding of fractions and how they are decomposed into unit\nfractions.",
+  "strategies": "The purpose of this benchmark is for students to think conceptually about fractions as they plot,\ncompare, order and determine equivalence in Grade 3. It also allows students to develop the\ncounting strategies and additive reasoning required to add and subtract fractions in Grade 4\n(MTR.2.1, MTR.5.1).\n\uf0b7\nDuring instruction, teachers should have students practice representing fractions using\nmanipulatives (e.g., fraction strips, circles, relationship rods), visual area models (e.g.,\npartitioned shapes) and on a number line. Manipulatives, visual models and number lines\nmust extend beyond 1 so that students can represent fractions greater than one (MTR.2.1,\nMTR.5.1).\n\uf0b7\n\uf0b7\nIn instruction of MA.3.FR.1.1, students learn that unit fractions are the foundation for all\nfractions. MA.3.FR.1.2 builds ",
   "description": "Represent and interpret fractions, including fractions greater than one, in the form of m/n as the result of adding the unit fraction 1/n to itself m times.",
   "clarifications": [
-   "Instruction emphasizes conceptual understanding through the use of manipulatives or visual models, including circle graphs, to represent fractions.",
+   "Instruction emphasizes conceptual understanding through the use of manipulatives or\nvisual models, including circle graphs, to represent fractions.",
    "Denominators are limited to 2, 3, 4, 5, 6, 8, 10 and 12."
   ]
  },
@@ -766,13 +841,16 @@
   "subject": "MATH",
   "description": "Read and write fractions, including fractions greater than one, using standard form, numeral-word form and word form.",
   "clarifications": [
-   "Instruction focuses on making connections to reading and writing numbers to develop the understanding that fractions are numbers and to support algebraic thinking in later grades.",
+   "Instruction focuses on making connections to reading and writing numbers to develop the\nunderstanding that fractions are numbers and to support algebraic thinking in later grades.",
    "Denominators are limited to 2, 3, 4, 5, 6, 8, 10 and 12."
   ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.NSO.1.1",
+   "MA.4.FR.1.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents can misinterpret fractions as two numbers that are being compared (e.g., reading\n\u201c1 over 2\u201d instead of one-half). The use of precise vocabulary helps them understand that\na fraction is a representation of one number.\n\uf0b7\nStudents can misinterpret that a fraction always models part of one whole. Exceptions to\nthis misconception are fractions greater than one or fractions representing on number\nlines and in sets of objects.\n4",
+  "strategies": "The purpose of this benchmark is for students to describe fractions in different ways.\n\uf0b7\nThis benchmark builds precise vocabulary for describing fractions. When students\n4\ndescribe as 4 thirds, they build understanding that the fraction represents 4 parts that are\n3\neach one-third in size (MTR.2.1).\n\uf0b7\n\uf0b7\nIt is also the expectation of this benchmark that students represent fractions greater than\none as mixed numbers in word and numeral-word form (MTR.2.1).\nDuring instruction, teachers should model and expect precise vocabulary from students to\ndescribe fractions (MTR.4.1)."
  },
  {
   "code": "MA.3.FR.2.1",
@@ -780,11 +858,19 @@
   "strand": "FR",
   "subject": "MATH",
   "description": "Plot, order and compare fractional numbers with the same numerator or the same denominator.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes making connections between using a ruler and plotting and ordering\nfractions on a number line.",
+   "When comparing fractions, instruction includes an appropriately scaled number line and\nusing reasoning about their size.",
+   "Fractions include fractions greater than one, including mixed numbers, with\ndenominators limited to 2, 3, 4, 5, 6, 8, 10 and 12."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.NSO.1.3",
+   "MA.4.FR.1.3",
+   "MA.4.FR.1.4"
+  ],
+  "misconceptions": "\uf0b7\nStudents can confuse that when numerators are the same in fractions, larger denominators\nrepresent smaller pieces, and smaller denominators represent larger pieces.\nWhen fraction comparisons are made using area models, students may confuse that the\nsize of the whole for each model must be the same size.\n\uf0b7\n4",
+  "strategies": "The purpose of this benchmark is for students to plot and order fractions with the same\n3\n3\n3\n3\n10\n7\nnumerator (e.g., , , ) or fractions with the same denominator (e.g., ,\n, ) to compare them\n4\n2\n8\n5\n5\n5\nby their location on a number line.\n\uf0b7\nDuring instruction, teachers should provide students opportunities to practice using the\nnumber line, which will assist students with understanding the difference in size when\nfractions have the same numerator (the size of the parts) and with comparing fractions\nwith the same denominator (number of parts) (MTR.2.1).\n\uf0b7\n\uf0b7\nThrough making connections to rulers, students see that appropriately scaled number\nlines allow for comparisons of fraction size. Students should also utilize open number\nlines as to practice creating their own appropriately scaled numb"
  },
  {
   "code": "MA.3.FR.2.2",
@@ -792,11 +878,19 @@
   "strand": "FR",
   "subject": "MATH",
   "description": "Identify equivalent fractions and explain why they are equivalent.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes identifying equivalent fractions and explaining why they are\nequivalent using manipulatives, drawings, and number lines.",
+   "Within this benchmark, the expectation is not to generate equivalent fractions.",
+   "Fractions are limited to fractions less than or equal to one with denominators of 2, 3, 4, 5,\n6\n, 8, 10 and 12. Number lines must be given and scaled appropriately."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.NSO.1.2",
+   "MA.4.FR.1.3",
+   "MA.4.FR.1.4"
+  ],
+  "misconceptions": "\uf0b7\nStudents can confuse that when numerators are the same in fractions, larger denominators\nrepresent smaller pieces, and smaller denominators represent larger pieces.\n4",
+  "strategies": "\uf0b7\nThe purpose of this benchmark is for students to identify equivalent fractions both on\nappropriately scaled number lines and on area models, and to justify how they know\n(MTR.2.1, MTR.4.1).\n\uf0b7\nInstruction should prioritize tasks that allow for students to reason why fractions are\nequivalent using the models instead of the algorithm. Students are not expected to\ngenerate equivalent fractions until Grade 4 (MTR.2.1)."
  },
  {
   "code": "MA.3.GR.1.1",
@@ -804,11 +898,17 @@
   "strand": "GR",
   "subject": "MATH",
   "description": "Describe and draw points, lines, line segments, rays, intersecting lines, perpendicular lines and parallel lines. Identify these in two-dimensional figures.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes mathematical and real-world context for identifying points, lines, line\nsegments, rays, intersecting lines, perpendicular lines and parallel lines.",
+   "When working with perpendicular lines, right angles can be called square angles or\nsquare corners."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.GR.1.1",
+   "MA.4.GR.1.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents can confuse some pairs of intersecting lines as perpendicular. Encourage\nstudents to justify their thinking whenever they reason about geometric concepts. For\nexample, students can use the corners of a standard sheet of paper as a comparison to\ndetermine whether a pair of intersecting lines is perpendicular.\n\uf0b7\nStudents may struggle to identify examples of points, lines, line segments, rays,\nintersecting lines, perpendicular lines and parallel lines in real-world examples.\nClassroom instruction should include many examples for students to explore.",
+  "strategies": "The purpose of this benchmark is to build important vocabulary that allows students to describe\nand draw points, lines, line segments, rays, intersecting lines, perpendicular lines and parallel\nlines, and to identify examples in two-dimensional figures represented in mathematical and real-\nworld contexts. In Grade 2, students were expected to identify and draw two-dimensional figures\nbased on their defining attributes. In Grade 3, students can describe and draw geometric figures\nusing more formal vocabulary developed in this benchmark. Therefore, instruction of this\nbenchmark relies heavily on vocabulary development for students to internalize definitions and\nmake connections between the concepts. In Grade 4, students will explore and draw angles\nbeyond square angles.\n\uf0b7\nIn mathematical con"
  },
  {
   "code": "MA.3.GR.1.2",
@@ -816,11 +916,15 @@
   "strand": "GR",
   "subject": "MATH",
   "description": "Identify and draw quadrilaterals based on their defining attributes. Quadrilaterals include parallelograms, rhombi, rectangles, squares and trapezoids.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes a variety of quadrilaterals and a variety of non-examples that lack\none or more defining attributes when identifying quadrilaterals.",
+   "Quadrilaterals will be filled, outlined or both when identifying.",
+   "Drawing representations must be reasonably accurate."
+  ],
   "prerequisites": [],
   "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "misconceptions": "\uf0b7\nStudents can confuse some pairs of intersecting lines as perpendicular. Encourage\nstudents to justify their thinking whenever they reason about geometric concepts. For\nexample, students can use the corners of a standard sheet of paper as a comparison to\ndetermine whether a pair of intersecting lines is perpendicular.\n\uf0b7\nSome students may assume all quadrilaterals must have attributes of squares, rhombi,\nrectangles, squares, and trapezoids. During instruction, it is important for students to\ndetermine that a figure lacking further defining attributes (such as a kite) can still be a\nquadrilateral.",
+  "strategies": "The purpose of this benchmark is to provide opportunities for students to apply their formalized\ndefinitions of geometric attributes when identifying and drawing quadrilaterals (MTR.5.1). With\nthe support of vocabulary developed about geometric attributes in benchmark MA.3.GR.1.1, the\ngoal of this benchmark is for students to identify and draw quadrilaterals based on them. In\nGrade 2, students started to explore and draw quadrilaterals in less formal ways.\n\uf0b7\nThis benchmark gives students opportunities to build vocabulary around examples of\nquadrilaterals (e.g., parallelograms, rhombi, rectangles, squares, and trapezoids) based on\nthe attributes that define them. Understanding quadrilaterals will help them make\ncomparisons to non-quadrilaterals (MTR.4.1).\n\uf0b7\n\uf0b7\nIn Grade 4, students will class"
  },
  {
   "code": "MA.3.GR.1.3",
@@ -828,11 +932,16 @@
   "strand": "GR",
   "subject": "MATH",
   "description": "Draw line(s) of symmetry in a two-dimensional figure and identify line-symmetric two-dimensional figures.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction develops the understanding that there could be no line of symmetry, exactly\none line of symmetry or more than one line of symmetry.",
+   "Instruction includes folding paper along a line of symmetry so that both halves match\nexactly to confirm line-symmetric figures."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.GR.1.3"
+  ],
+  "misconceptions": "\uf0b7\nStudents can miss identifying all lines of symmetry in line-symmetric figures. Encourage\nclassroom discussions and have students justify their arguments about lines of symmetry\nusing their partitioned representations.\n9",
+  "strategies": "The purpose of this benchmark is for students to draw lines of symmetry and identify line-\nsymmetric figures. In Grade 2, students identify lines of symmetry in a two-dimensional figure\nby partitioning (e.g., folding) it and matching its halves. In addition, students in Grade 3 also\ndeveloped the understanding that a figure can have no lines of symmetry, exactly 1 line of\nsymmetry, or more than 1 line of symmetry.\n\uf0b7\nDuring instruction, teachers should continue encouraging students to partition figures and\nmatch their halves to identify line(s) of symmetry (MTR.2.1).\n\uf0b7\nInstruction can also ask students to build generalizations about which two-dimensional\nfigures are line symmetric and why. For example, students could argue that all squares\nshare similar defining attributes and only differ i"
  },
  {
   "code": "MA.3.GR.2.1",
@@ -840,11 +949,18 @@
   "strand": "GR",
   "subject": "MATH",
   "description": "Explore area as an attribute of a two-dimensional figure by covering the figure with unit squares without gaps or overlaps. Find areas of rectangles by counting unit squares.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction emphasizes the conceptual understanding that area is an attribute that can be\nmeasured for a two-dimensional figure. The measurement unit for area is the area of a unit square, which\nis a square with side length of 1 unit.",
+   "Two-dimensional figures cannot exceed 12 units by 12 units and responses include the\nappropriate units in word form (e.g., square centimeter or sq.cm.)."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.3.2",
+   "MA.2.GR.2.1",
+   "MA.4.GR.2.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents may miscount unit squares when they are laid out in a figure. Encourage\nstudents to mark unit squares as they are counted.\n\uf0b7\nStudents can confuse why area is measured in \u201csquare units.\u201d Use this exploratory\nbenchmark for students to relate area measurement to the counting of squares. This\nbenchmark provides the opportunity for students to build vocabulary necessary for area\nmeasurement.\n9",
+  "strategies": "The purpose of this benchmark is to provide the foundation for students to understand area\nmeasurement. In Grades 1 and 2, students learned about linear measurement using number lines,\nrulers, and calculating perimeter. In Grade 3, students build on their knowledge of measurement\nand multiplicative reasoning to explore and understand area measurement. Instruction\nemphasizes that area is a two-dimensional measurement, therefore it is measured in units that are\nalso two-dimensional \u2013 unit squares with side lengths that measure one unit. Area is calculated\nusing unit squares that cover a shape without gaps or overlap (MTR.5.1).\n\uf0b7\nThe expectation of this benchmark is for students to calculate area of rectangles by\ncounting unit squares (MTR.2.1).\n\uf0b7\nInstruction allows for students to draw concl"
  },
  {
   "code": "MA.3.GR.2.2",
@@ -852,11 +968,18 @@
   "strand": "GR",
   "subject": "MATH",
   "description": "Find the area of a rectangle with whole-number side lengths using a visual model and a multiplication formula.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes covering the figure with unit squares, a rectangular array or applying\na formula.",
+   "Two-dimensional figures cannot exceed 12 units by 12 units and responses include the\nappropriate units in word form.\n1"
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.3.2",
+   "MA.2.GR.2.2",
+   "MA.4.GR.2.1"
+  ],
+  "misconceptions": "\uf0b7\nWhen using a formula, students may be confused about which dimension to label the\nlength and width in a rectangle. During instruction, teachers should make connections to\nthe commutative property of multiplication to emphasize that the order in which\ndimensions are multiplied will not change the rectangle\u2019s area, and therefore the length\nand width can be labeled flexibly.\n1",
+  "strategies": "The purpose of this benchmark is for students to calculate the area of rectangles presented\nvisually as arrays or by using a multiplication formula (MTR.5.1).\n\uf0b7\nThe benchmark MA.3.GR.2.1 expects students to calculate the area of rectangles by\ncounting unit squares that covered them with no gaps or overlaps. As students count, they\nwill likely connect their calculations to rectangular arrays and connect understanding that\nmultiplication is a more efficient strategy for calculating than counting or adding unit\nsquares.\n\uf0b7\nInstruction should encourage students to discover a multiplication formula based on\npatterns they have observed through practice and classroom discussions. This will make a\nmultiplication formula more meaningful for students conceptually (MTR.5.1).\nTeachers can help students"
  },
  {
   "code": "MA.3.GR.2.3",
@@ -864,11 +987,17 @@
   "strand": "GR",
   "subject": "MATH",
   "description": "Solve mathematical and real-world problems involving the perimeter and area of rectangles with whole-number side lengths using a visual model and a formula.",
-  "clarifications": [],
+  "clarifications": [
+   "Within this benchmark, the expectation is not to find unknown side lengths.",
+   "Two-dimensional figures cannot exceed 12 units by 12 units and responses include the\nappropriate units in word form."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.GR.1.1",
+   "MA.4.GR.2.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents may confuse area and perimeter and use incorrect formulas to find\nmeasurements. During instruction, the teacher should continue to emphasize the\ndifference between perimeter as a one-dimensional measurement of length and area as a\ntwo-dimensional measurement that covers a shape with unit squares. The teacher can use\nvisuals to show the perimeter (e.g., yarn, string stretched around the rectangle) and area\n(e.g., square counters, square-shaped sticky notes, square-shaped crackers covering it) to\nhelp students differentiate between the measurements.",
+  "strategies": "The purpose of this benchmark is for students to solve mathematical and real-world problems\nusing the perimeter and area of rectangles using a visual model and/or a formula for each.\n\uf0b7\nIn the provided mathematical and real-world problems, instruction should include cases\nwhere students use a ruler to measure lengths before determining its perimeter and/or\narea (MTR.3.1).\n\uf0b7\nMathematical problems include visual models of rectangles, while examples of real-\nworld problems could include photos or classroom objects (e.g., measuring the area of\none face on a tissue box). Students will not be expected to find unknown side lengths\nuntil Grade 4 (MTR.7.1).\n\uf0b7\n\uf0b7\nThis benchmark gives students the chance to measure perimeter and area together and\nunderstand their differences \u2013 perimeter as a one-dimens"
  },
  {
   "code": "MA.3.GR.2.4",
@@ -876,11 +1005,16 @@
   "strand": "GR",
   "subject": "MATH",
   "description": "Solve mathematical and real-world problems involving the perimeter and area of composite figures composed of non-overlapping rectangles with whole-number side lengths.",
-  "clarifications": [],
+  "clarifications": [
+   "Composite figures must be composed of non-overlapping rectangles.",
+   "Each rectangle within the composite figure cannot exceed 12 units by 12 units and\nresponses include the appropriate units in word form."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.4.GR.2.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents can confuse the side lengths when determining area calculations once a\ncomposite figure has been decomposed. For example, a potential way to decompose the\nfigure from the task below is seen on the right. A student may not yet understand that\nonce decomposed in this way, the length of 14 \ud450\ua881 on the right side of the figure is now\nthe sum of 5 \ud450\ua881 + 9 \ud450\ua881. The student may continue to multiply by 14 \ud450\ua881 to find the\nareas of each rectangle instead. Likewise, they may multiply 5 \ud450\ua881 by 6 \ud450\ua881 (instead of\n9\n\ud450\ua881) to find the area of the upper rectangle. During instruction, encourage students to\nlabel how side lengths change once a composite figure has been decomposed.\n\uf0b7\nStudents may add all sides of the parts of the figure once it is decomposed to determine\nthe perimeter of the composite figur",
+  "strategies": "The purpose of this benchmark is for students to solve mathematical and real-world problems\ninvolving the perimeter and area of composite figures with whole-number side lengths. This\nbenchmark builds on the work with perimeter done in Grade 2. The area of each rectangle in a\ncomposite figure is expected to be within the appropriate multiplication limits for Grade 3 \u2013 up\nto 12 units by 12 units. All side lengths of composite figures should be given, though cases can\nbe provided where students are expected to use a ruler to measure before finding a composite\nfigure\u2019s perimeter and/or area.\n\uf0b7\nStudents have previous experience with decomposing larger rectangles into smaller\nrectangles to find individual areas. When students utilized the distributive property in\narea models to multiply 2-digit "
  },
  {
   "code": "MA.3.M.1.1",
@@ -975,11 +1109,18 @@
   "strand": "NSO",
   "subject": "MATH",
   "description": "Plot, order and compare whole numbers up to 10,000.",
-  "clarifications": [],
+  "clarifications": [
+   "When comparing numbers, instruction includes using an appropriately scaled number line\nand using place values of the thousands, hundreds, tens and ones digits.",
+   "Number lines, scaled by 50s, 100s or 1,000s, must be provided and can be a\nrepresentation of any range of numbers.",
+   "Within this benchmark, the expectation is to use symbols (<, > or =)."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.NSO.1.3",
+   "MA.4.NSO.1.3"
+  ],
+  "misconceptions": "\uf0b7\nOften students think of these relational symbols as operational symbols instead. In order\nto address this misconception, allow students to have practice using the number line\nand/or place value blocks to see the relationship between one number and the other.\n1",
+  "strategies": "This purpose of this benchmark is for students to compare two numbers by examining the place\nvalues of thousands, hundreds, tens and ones in each number. This work extends from the Grade\n2\nexpectation to plot, order and compare up to 1,000 (MA.2.NSO.1.2).\n\uf0b7\nInstruction should use the terms greater than, less, than, and equal. Students should use\nplace value strategies and number lines (horizontal and vertical) to justify how they\ncompare numbers and explain their reasoning. Instruction should not rely on tricks for\ndetermining the direction of the inequality symbols. Students should read entire\nstatements (e.g., read 7,309 > 7,039, \u201c7,309 is greater than 7,039\u201d and vice versa)\n(MTR.2.1, MTR.3.1).\n\uf0b7\nIt is imperative for teachers to define the meaning of the \u2260 symbol through instruction. It\n"
  },
  {
   "code": "MA.3.NSO.1.4",
@@ -1018,11 +1159,18 @@
   "strand": "NSO",
   "subject": "MATH",
   "description": "Explore multiplication of two whole numbers with products from 0 to 144, and related division facts.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction includes equal groups, arrays, area models and equations.",
+   "Within the benchmark, it is the expectation that one problem can be represented in\nmultiple ways and understanding how the different representations are related to each other.",
+   "Factors and divisors are limited to up to 12."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.3.2",
+   "MA.4.NSO.2.1"
+  ],
+  "misconceptions": "\uf0b7\nStudents may have difficulty relating word problems and real-world scenarios to models,\nexpressions, and equations. For example, students may not differentiate the number of\ngroups versus number in each group in multiplication, which then impacts their models,\nexpressions, and equations.\n\uf0b7\nStudents may be confused by measurement (or quotative) division, when the amount in\neach group is given and the number of equal-sized groups is found.",
+  "strategies": "The purpose of this benchmark is for students to build conceptual understanding of what\nmultiplication is and how it relates to division. Because the expectation of this benchmark is at\nthe explore level, instruction should focus on building understanding of multiplication and\ndivision facts from 0 to 144 using manipulatives (e.g., counters), visual models (e.g., rectangular\narrays, equal groups), discussions, estimation and drawings (e.g., rectangular arrays, equal\ngroups) (MTR.2.1).\n\uf0b7\nInstruction should relate multiplication to repeated addition work that began in Grade 2.\nIn Grade 2, students used repeated addition to find the total number of objects using\nrectangular arrays and equations (MA.2.AR.3.2).\n\uf0b7\n\uf0b7\nStudents should explore multiplication and division through word problems, writi"
  },
  {
   "code": "MA.3.NSO.2.3",
@@ -1030,11 +1178,17 @@
   "strand": "NSO",
   "subject": "MATH",
   "description": "Multiply a one-digit whole number by a multiple of 10, up to 90, or a multiple of 100, up to 900, with procedural reliability.",
-  "clarifications": [],
+  "clarifications": [
+   "When multiplying one-digit numbers by multiples of 10 or 100, instruction focuses on\nmethods that are based on place value."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.NSO.2.2",
+   "MA.4.NSO.2.2",
+   "MA.4.NSO.2.3"
+  ],
+  "misconceptions": "\uf0b7\nStudents can quickly jump to the conclusion that they can \u201ccount zeroes\u201d to determine the\nnumber of zeroes in the product (e.g., the product of 7 \ud465 500 will have two zeroes\nbecause 500 has two zeroes). This can confuse students when the products of the known\nfacts already end in zero (e.g., using 5 \u00d7 8 = 40 to multiply 5 \u00d7 80). Students who\nrely on this trick will often indicate that 5 \u00d7 80 = 40 because they see only one zero in\nthe factors.",
+  "strategies": "The purpose of this benchmark is for students to use place value reasoning to multiply single-\ndigit factors (0-9) by multiples of 10 up to 90 (10, 20, 30, 40, 50, 60, 70, 80, 90) and multiples of\n1\n00 up to 900 (100, 200, 300, 400, 500, 600, 700, 800, 900). Because the expectation of this\nbenchmark is at the procedural reliability level, students should develop accurate, reliable\nmethods for multiplication that align with their understanding and learning style.\n\uf0b7\n\uf0b7\nInstruction should connect known facts of one-digit factors (e.g., 6 \u00d7 7), to then apply to\nproducts of one-digit numbers and multiples of 10 or 100 (e.g., 6 \u00d7 70, 60 \u00d7 7, 6 \u00d7\n700, 600 \u00d7 7) (MTR.5.1).\nTeachers should use place value representations (e.g., pictures, diagrams, base ten blocks,\nplace value chips) to show relations"
  },
  {
   "code": "MA.3.NSO.2.4",
@@ -1042,11 +1196,19 @@
   "strand": "NSO",
   "subject": "MATH",
   "description": "Multiply two whole numbers, each from 0 to 12, and divide using related facts, with procedural reliability.",
-  "clarifications": [],
+  "clarifications": [
+   "Instruction focuses on helping a student choose a method they can use reliably."
+  ],
   "prerequisites": [],
-  "next": [],
-  "misconceptions": "",
-  "strategies": ""
+  "next": [
+   "MA.2.AR.3.2",
+   "MA.4.NSO.2.1",
+   "MA.4.NSO.2.2",
+   "MA.4.NSO.2.3",
+   "MA.4.NSO.2.4"
+  ],
+  "misconceptions": "\uf0b7\nThis benchmark does not support students\u2019 memorization of multiplication and division\nfacts. Memorization does not indicate work toward multiplication and division fact\nfluency. Students should be able to explain how they know multiplication and division\nfacts, and how they can find products and quotients of unknown facts.",
+  "strategies": "The purpose of this benchmark is for students to utilize skills from the exploration stage of\nmultiplication and division (MA.3.NSO.2.2) to develop an accurate, reliable method that aligns\nwith the student\u2019s understanding and learning style. Procedural fluency of multiplication facts\nwith factors up to 12 and their related division facts is not expected until Grade 4 (MTR.2.1,\nMTR.3.1).\n\uf0b7\nThis benchmark provides the opportunity for students to generalize patterns they see\nwithin the tools used during the exploration stage (e.g., rectangular arrays, equal groups)\nto then identify multiplication and related division facts (MTR.4.1).\n\uf0b7\nInstruction that builds procedural reliability should connect multiplication understanding\nwith the properties of multiplication (commutative, associative and "
  },
  {
   "code": "MA.K.AR.1.1",
