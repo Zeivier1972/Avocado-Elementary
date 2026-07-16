@@ -63,16 +63,36 @@ COURSE_SUBJECT = [
 ]
 
 
+def _split_section(section: str):
+    """A Class List sheet is '<class code> - <Teacher>' (e.g. 'K01 - Mathis',
+    '301 – Porco', 'T11 VPK — Guerrero'). Return (class_code, teacher) when the
+    label matches that pattern, else None. Tolerant of hyphen / en-dash / em-dash
+    and missing spaces. Requires the left side to look like a short class code so
+    hyphenated teacher names (e.g. a tracker sheet 'Smith-Jones') don't split."""
+    s = re.sub(r"\s+", " ", (section or "").strip())
+    if not s:
+        return None
+    # Normalise dash variants to a plain hyphen, then split on the first one.
+    norm = s.replace("–", "-").replace("—", "-")
+    m = re.match(r"^([A-Za-z0-9]{1,6}(?:\s+[A-Za-z0-9]{1,4})?)\s*-\s*(.+)$", norm)
+    if not m:
+        return None
+    code, teacher = m.group(1).strip(), m.group(2).strip()
+    # Left side must contain a digit (class codes like K01, 301, T11) so a plain
+    # hyphenated surname isn't misread as "<code> - <name>".
+    if not any(ch.isdigit() for ch in code):
+        return None
+    return code, teacher
+
+
 def _teacher_from_section(section: str) -> str:
     """Derive a teacher name from a sheet/section label.
     'K01 - Mathis' -> 'Mathis'; 'T11 VPK - Guerrero' -> 'Guerrero';
     'Porco  St. Aubin' -> 'Porco St. Aubin' (tracker sheets are teacher names)."""
-    s = (section or "").strip()
-    if not s:
-        return ""
-    if " - " in s:
-        s = s.split(" - ", 1)[1]
-    return re.sub(r"\s+", " ", s).strip()
+    parsed = _split_section(section)
+    if parsed:
+        return parsed[1]
+    return re.sub(r"\s+", " ", (section or "").strip())
 
 
 def _subject_from_course(course: str, fallback: str) -> str:
@@ -347,9 +367,10 @@ async def import_excel(
         # so we keep ONE teacher per class. Other sheets (e.g. the Topic Tracker,
         # whose combined names mean co-taught classes) only add assessment data.
         for section in m.get("sections", set()):
-            if " - " not in section:
+            parsed = _split_section(section)
+            if not parsed:
                 continue
-            tname = _teacher_from_section(section)
+            tname = parsed[1]
             if not tname:
                 continue
             teacher = teacher_cache.get(tname.lower())

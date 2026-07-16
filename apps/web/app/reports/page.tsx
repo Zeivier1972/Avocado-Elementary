@@ -18,12 +18,14 @@ export default function ReportsPage() {
   const [msg, setMsg] = useState("");
   const [mode, setMode] = useState<"grade" | "teacher">("grade");
   const [teacherList, setTeacherList] = useState<any[]>([]);
+  const [teacherDiag, setTeacherDiag] = useState<any>(null);
   const [teacherRep, setTeacherRep] = useState<any>(null);
 
   async function loadTeachers() {
     try {
       const r = await api.teachers();
       setTeacherList(r.teachers || []);
+      setTeacherDiag(r.diagnostics || null);
     } catch {
       /* ignore */
     }
@@ -207,6 +209,7 @@ export default function ReportsPage() {
         {mode === "teacher" && (
           <TeacherView
             teachers={teacherList}
+            diagnostics={teacherDiag}
             report={teacherRep}
             onOpen={openTeacher}
           />
@@ -365,10 +368,12 @@ export default function ReportsPage() {
 
 function TeacherView({
   teachers,
+  diagnostics,
   report,
   onOpen,
 }: {
   teachers: any[];
+  diagnostics: any;
   report: any;
   onOpen: (id: string) => void;
 }) {
@@ -376,10 +381,19 @@ function TeacherView({
     <div className="space-y-4">
       <Card title="Teachers">
         {teachers.length === 0 ? (
-          <p className="text-sm text-gray-400">
-            No teachers linked yet. Upload the Class Lists (or student roster CSV)
-            to establish teacher rosters.
-          </p>
+          <div className="text-sm text-gray-500 space-y-1">
+            <p>
+              {diagnostics?.message ||
+                "No teachers linked yet. Upload the Class Lists (or student roster CSV) to establish teacher rosters."}
+            </p>
+            {diagnostics && (
+              <p className="text-xs text-gray-400">
+                Loaded: {diagnostics.total_teachers} teachers ·{" "}
+                {diagnostics.total_classes} classes ·{" "}
+                {diagnostics.total_enrollments} enrollments.
+              </p>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

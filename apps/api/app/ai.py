@@ -259,21 +259,92 @@ def ai_diagnostics() -> dict:
     return out
 
 
+def _parse_misconceptions(raw: str) -> list[dict]:
+    """Turn a B1G-M misconception string ('... Fix: ... Next mistake. Fix: ...')
+    into structured {misconception, fix} pairs for the guide."""
+    import re as _re
+    if not raw:
+        return []
+    # Split into "<misconception> Fix: <fix>" chunks. Each fix ends where the
+    # next misconception sentence begins.
+    pairs = []
+    # Break on "Fix:" but keep the misconception that precedes it.
+    parts = _re.split(r"\bFix:\s*", raw)
+    # parts[0] = first misconception; parts[i] = fix_i + next misconception.
+    lead = parts[0].strip()
+    for i in range(1, len(parts)):
+        chunk = parts[i].strip()
+        if i < len(parts) - 1:
+            # The fix is everything up to the last sentence boundary; the tail
+            # sentence(s) become the next misconception.
+            m = _re.match(r"(.*?[.!?])\s+(.*)$", chunk, _re.S)
+            if m:
+                fix, nxt = m.group(1).strip(), m.group(2).strip()
+            else:
+                fix, nxt = chunk, ""
+        else:
+            fix, nxt = chunk, ""
+        if lead:
+            pairs.append({"misconception": lead, "fix": fix})
+        lead = nxt
+    if not pairs and raw.strip():
+        pairs.append({"misconception": raw.strip(), "fix": ""})
+    return pairs
+
+
 def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
+    """Grounded, genuinely useful lessons built from the pacing outline + B1G-M
+    standard metadata (clarifications, misconceptions, prerequisites). Used both
+    as the pre-AI skeleton and as the fallback when the LLM call fails, so the
+    guide is never blank."""
+    vocab = topic.get("vocabulary", [])
+    materials = topic.get("materials", [])
+    conc = ", ".join(materials[:3]) if materials else "base-ten blocks / manipulatives"
     out = []
     for L in topic.get("lessons", []):
-        code = (L.get("benchmarks") or [""])[0]
-        s = std_by_code.get(code, {})
+        title = L.get("title", "")
+        focus = L.get("focus", "")
+        codes = L.get("benchmarks") or []
+        s = std_by_code.get(codes[0], {}) if codes else {}
+        clar = s.get("clarifications") or []
+        pre = s.get("prerequisites") or []
+        # Success criteria grounded in the lesson focus and standard clarifications.
+        crit = []
+        if focus:
+            crit.append(focus)
+        crit.extend(clar[:2])
+        # Teaching strategy: an explicit I-Do / We-Do / You-Do arc anchored to CPA.
+        strategy = [
+            f"Activate prior knowledge ({', '.join(pre) if pre else 'prerequisite skills'}) "
+            "and introduce vocabulary: " + (", ".join(vocab[:4]) if vocab else "key terms") + ".",
+            f"I Do — model with {conc}; think aloud through {title.lower() or 'the skill'}.",
+            "We Do — guided practice with immediate feedback; students explain their reasoning (MTR 4.1).",
+            "You Do — students practice independently; teacher pulls a small group for reteach.",
+        ]
         out.append({
-            "code": L.get("code", ""), "title": L.get("title", ""),
-            "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", ""),
-            "learning_goal": f"I can {L.get('title','').lower()}.",
-            "success_criteria": [],
-            "benchmark_clarification": (s.get("clarifications") or [""])[0],
-            "misconceptions": [{"misconception": s.get("misconceptions", ""), "fix": ""}]
-                              if s.get("misconceptions") else [],
-            "teaching_strategy": [], "cpa": {"concrete": "", "pictorial": "", "abstract": ""},
-            "level3_example": "", "cfu": [], "you_do": "", "exit_ticket": "",
+            "code": L.get("code", ""), "title": title,
+            "benchmarks": codes, "focus": focus,
+            "learning_goal": f"I can {title[:1].lower() + title[1:]}." if title else "",
+            "success_criteria": crit,
+            "benchmark_clarification": " ".join(clar) or s.get("description", ""),
+            "misconceptions": _parse_misconceptions(s.get("misconceptions", "")),
+            "teaching_strategy": strategy,
+            "cpa": {
+                "concrete": f"Use {conc} to build/represent the concept.",
+                "pictorial": "Draw place-value charts, number lines, or models to represent it.",
+                "abstract": "Record with numbers and symbols; explain the reasoning in writing.",
+            },
+            "level3_example": (
+                "An ALD Level 3 student can independently " + (focus[:1].lower() + focus[1:] if focus else title.lower())
+                + " and explain their reasoning using correct vocabulary."
+            ),
+            "cfu": [
+                "Quick check: have students show the skill on mini-whiteboards.",
+                "Ask a 'why' question to surface reasoning, not just the answer.",
+            ],
+            "you_do": f"Independent practice on {title.lower() or 'the skill'} "
+                      "(3–5 problems); reteach small group as needed.",
+            "exit_ticket": "One problem targeting today's benchmark — score for green (≥69%) mastery.",
         })
     return out
 
@@ -335,10 +406,14 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             "benchmarks; do not invent standards or student data.\n\n"
             f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
         )
-        msg = client.messages.create(
+        # Stream — an 8k-token, 7-lesson generation is long enough to hit a
+        # request timeout on a plain create() call, which would drop us to the
+        # empty template. Streaming keeps the connection alive.
+        with client.messages.stream(
             model=settings.ai_model, max_tokens=8000,
             messages=[{"role": "user", "content": prompt}],
-        )
+        ) as stream:
+            msg = stream.get_final_message()
         text = "".join(b.text for b in msg.content if b.type == "text").strip()
         if text.startswith("```"):
             text = text.split("```", 2)[1]

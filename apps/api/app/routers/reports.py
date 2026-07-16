@@ -230,7 +230,38 @@ def teachers(
                                 if levels else None,
         })
     out.sort(key=lambda x: (x["grades"], x["name"]))
-    return {"teachers": out}
+    # Diagnostics so the UI can explain an empty list (helps triage "no data by
+    # teacher": are there teachers/classes/enrollments at all?).
+    total_teachers = len(tlist)
+    total_classes = db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == user.tenant_id).count()
+    total_enroll = (db.query(Enrollment)
+                    .join(ClassRoom, Enrollment.class_id == ClassRoom.id)
+                    .filter(ClassRoom.tenant_id == user.tenant_id).count())
+    if not out:
+        if total_teachers == 0:
+            diag = ("No teachers found. Upload a Class Lists workbook (sheets "
+                    "named '<class code> - <Teacher>') or a roster CSV with a "
+                    "teacher column on the Coach page.")
+        elif total_enroll == 0:
+            diag = (f"{total_teachers} teachers exist but no students are linked "
+                    "to a class. Upload the Class Lists workbook so students are "
+                    "enrolled in a teacher's class.")
+        else:
+            diag = ("Teachers and classes exist but none matched. Try re-importing "
+                    "the Class Lists workbook.")
+    else:
+        diag = None
+    return {
+        "teachers": out,
+        "diagnostics": {
+            "total_teachers": total_teachers,
+            "teachers_with_students": len(out),
+            "total_classes": total_classes,
+            "total_enrollments": total_enroll,
+            "message": diag,
+        },
+    }
 
 
 def _l25_ids(db, tenant_id, grade):
