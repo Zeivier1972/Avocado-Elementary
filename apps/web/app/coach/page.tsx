@@ -358,13 +358,8 @@ function GuideView({ guide }: any) {
       )}
 
       {guide.common_misconceptions?.length > 0 && (
-        <Section title="Common Misconceptions & Fixes">
-          {guide.common_misconceptions.map((m: any, i: number) => (
-            <p key={i} className="text-xs text-gray-600 mb-1">
-              <span className="font-medium text-red-600">{m.code}: </span>
-              {m.note}
-            </p>
-          ))}
+        <Section title="Common Misconceptions">
+          <MisconceptionTable rows={guide.common_misconceptions} showCode />
         </Section>
       )}
 
@@ -386,18 +381,16 @@ function GuideView({ guide }: any) {
             <div className="mt-2 space-y-2 text-sm">
               <Line label="🎯 Learning Goal" value={L.learning_goal} />
               <List label="Success Criteria" items={L.success_criteria} />
+              <Line label="Example" value={L.success_example} />
               <Line label="Benchmark Clarification" value={L.benchmark_clarification} />
+              <Line label="Example" value={L.benchmark_example} />
+              <Line label="Sentence Frame" value={L.sentence_frame} />
               {L.misconceptions?.length > 0 && (
                 <div>
-                  <div className="font-semibold text-gray-700 text-xs">
-                    Misconceptions & Fixes
+                  <div className="font-semibold text-gray-700 text-xs mb-1">
+                    Common Misconceptions & Fixes
                   </div>
-                  {L.misconceptions.map((m: any, i: number) => (
-                    <p key={i} className="text-xs text-gray-600">
-                      ⚠ {m.misconception}
-                      {m.fix ? ` → ${m.fix}` : ""}
-                    </p>
-                  ))}
+                  <MisconceptionTable rows={L.misconceptions} />
                 </div>
               )}
               <List label="Teaching Strategy (step-by-step)" items={L.teaching_strategy} ordered />
@@ -411,7 +404,17 @@ function GuideView({ guide }: any) {
               <Line label="⭐ Level 3 Proficiency Example" value={L.level3_example} />
               <List label="Checks for Understanding" items={L.cfu} />
               <Line label="You Do (Independent Practice)" value={L.you_do} />
-              <Line label="🎫 Exit Ticket" value={L.exit_ticket} highlight />
+              <Line
+                label="🎫 Exit Ticket"
+                value={
+                  L.exit_ticket && typeof L.exit_ticket === "object"
+                    ? `${L.exit_ticket.problem || ""}${
+                        L.exit_ticket.answer ? `  →  ${L.exit_ticket.answer}` : ""
+                      }`
+                    : L.exit_ticket
+                }
+                highlight
+              />
             </div>
           </details>
         ))}
@@ -463,6 +466,38 @@ function CPA({ label, value }: { label: string; value: string }) {
     <div className="bg-gray-50 rounded p-2">
       <div className="text-xs font-semibold text-avocado-dark">{label}</div>
       <p className="text-xs text-gray-600 whitespace-pre-wrap">{value || "—"}</p>
+    </div>
+  );
+}
+
+function MisconceptionTable({ rows, showCode }: { rows: any[]; showCode?: boolean }) {
+  if (!rows?.length) return null;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border border-gray-100">
+        <thead>
+          <tr className="bg-red-50 text-left text-gray-600">
+            {showCode && <th className="p-1 font-semibold">Benchmark</th>}
+            <th className="p-1 font-semibold">Misconception</th>
+            <th className="p-1 font-semibold">Example Error</th>
+            <th className="p-1 font-semibold">Correction Strategy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((m, i) => (
+            <tr key={i} className="border-t border-gray-100 align-top">
+              {showCode && (
+                <td className="p-1 font-medium text-red-600 whitespace-nowrap">
+                  {m.code}
+                </td>
+              )}
+              <td className="p-1 text-gray-700">{m.misconception}</td>
+              <td className="p-1 text-gray-500">{m.example || "—"}</td>
+              <td className="p-1 text-gray-700">{m.fix || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

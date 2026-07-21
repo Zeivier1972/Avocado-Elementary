@@ -108,10 +108,12 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
          "clarifications": s.get("clarifications", [])}
         for s in standards
     ]
-    misconceptions = [
-        {"code": s["code"], "note": s["misconceptions"]}
-        for s in standards if s.get("misconceptions")
-    ]
+    # Topic-level Common Misconceptions as the 3-column table (Misconception |
+    # Example Error | Correction Strategy), grounded in each B1G-M standard.
+    misconceptions = []
+    for s in standards:
+        for row in _parse_misconceptions(s.get("misconceptions", "")):
+            misconceptions.append({"code": s["code"], **row})
     base = {
         "title": f"Grade {topic.get('grade_level','')} Collaborative Planning Guide — "
                  f"{topic['topic_code']}: {topic['name']}",
@@ -259,24 +261,32 @@ def ai_diagnostics() -> dict:
     return out
 
 
+def _split_example(text: str):
+    """Pull a worked 'example error' out of a misconception sentence — usually a
+    parenthetical like '(says the 6 in 3,674 is \"6\")'. Returns (statement,
+    example) to fill the guide's Misconception | Example | Correction columns."""
+    import re as _re
+    m = _re.search(r"\(([^)]*)\)", text)
+    if m and any(ch.isdigit() for ch in m.group(1)):
+        example = m.group(1).strip()
+        statement = _re.sub(r"\s*\([^)]*\)", "", text).strip()
+        return statement, example
+    return text.strip(), ""
+
+
 def _parse_misconceptions(raw: str) -> list[dict]:
     """Turn a B1G-M misconception string ('... Fix: ... Next mistake. Fix: ...')
-    into structured {misconception, fix} pairs for the guide."""
+    into structured {misconception, example, fix} rows — the 3-column
+    Misconception | Example Error | Correction Strategy table in the guide."""
     import re as _re
     if not raw:
         return []
-    # Split into "<misconception> Fix: <fix>" chunks. Each fix ends where the
-    # next misconception sentence begins.
-    pairs = []
-    # Break on "Fix:" but keep the misconception that precedes it.
+    rows = []
     parts = _re.split(r"\bFix:\s*", raw)
-    # parts[0] = first misconception; parts[i] = fix_i + next misconception.
     lead = parts[0].strip()
     for i in range(1, len(parts)):
         chunk = parts[i].strip()
         if i < len(parts) - 1:
-            # The fix is everything up to the last sentence boundary; the tail
-            # sentence(s) become the next misconception.
             m = _re.match(r"(.*?[.!?])\s+(.*)$", chunk, _re.S)
             if m:
                 fix, nxt = m.group(1).strip(), m.group(2).strip()
@@ -285,11 +295,13 @@ def _parse_misconceptions(raw: str) -> list[dict]:
         else:
             fix, nxt = chunk, ""
         if lead:
-            pairs.append({"misconception": lead, "fix": fix})
+            statement, example = _split_example(lead)
+            rows.append({"misconception": statement, "example": example, "fix": fix})
         lead = nxt
-    if not pairs and raw.strip():
-        pairs.append({"misconception": raw.strip(), "fix": ""})
-    return pairs
+    if not rows and raw.strip():
+        statement, example = _split_example(raw.strip())
+        rows.append({"misconception": statement, "example": example, "fix": ""})
+    return rows
 
 
 def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
@@ -326,7 +338,10 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             "benchmarks": codes, "focus": focus,
             "learning_goal": f"I can {title[:1].lower() + title[1:]}." if title else "",
             "success_criteria": crit,
+            "success_example": "",
             "benchmark_clarification": " ".join(clar) or s.get("description", ""),
+            "benchmark_example": "",
+            "sentence_frame": "",
             "misconceptions": _parse_misconceptions(s.get("misconceptions", "")),
             "teaching_strategy": strategy,
             "cpa": {
@@ -374,20 +389,27 @@ def _llm_lessons(topic: dict, standards: list[dict]):
         ) or "Design a logical sequence of 5-7 lessons covering the benchmarks."
         schema = (
             '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
-            '"learning_goal":"I can ...","success_criteria":["..."],'
-            '"benchmark_clarification":"... with a worked example",'
-            '"misconceptions":[{"misconception":"...","fix":"..."}],'
-            '"teaching_strategy":["step 1","step 2"],'
-            '"cpa":{"concrete":"...","pictorial":"...","abstract":"..."},'
-            '"level3_example":"student explanation at ALD Level 3",'
-            '"cfu":["..."],"you_do":"independent practice task",'
-            '"exit_ticket":"one problem with the answer"}]'
+            '"learning_goal":"I can ... (student-friendly)",'
+            '"success_criteria":["observable behavior 1","observable behavior 2"],'
+            '"success_example":"a worked example that shows mastery (e.g. In 4,582: 4=4,000 ...)",'
+            '"benchmark_clarification":"what students must understand",'
+            '"benchmark_example":"a specific worked numeric example",'
+            '"sentence_frame":"The __ is in the __ place, so it means __.",'
+            '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
+            '"teaching_strategy":["step 1","step 2","step 3"],'
+            '"cpa":{"concrete":"hands-on with materials; INCLUDE base-ten emoji visuals like 🟦 thousands 🟩 hundreds 🟨 tens ⬜ ones","pictorial":"place-value chart / number line drawing","abstract":"the numbers and symbols, e.g. 3,476 = 3,000 + 400 + 70 + 6"},'
+            '"level3_example":"a first-person student quote explaining the reasoning at ALD Level 3",'
+            '"cfu":["specific problem 1","specific problem 2"],'
+            '"you_do":"independent practice task with specific numbers",'
+            '"exit_ticket":{"problem":"one problem","answer":"the answer"}}]'
         )
         prompt = (
             "You are an elementary math instructional coach writing a lesson-by-lesson "
-            "Collaborative Planning Guide for teachers, grounded ONLY in the Florida "
-            "B.E.S.T. benchmarks and pacing content below. Use the CPA (Concrete-"
-            "Pictorial-Abstract) model and ALD Level 3 proficiency examples.\n\n"
+            "Collaborative Planning Guide for teachers. Match the M-DCPS format EXACTLY "
+            "and at high specificity. Ground everything ONLY in the Florida B.E.S.T. "
+            "(B1G-M) benchmark detail and pacing content below — use their real "
+            "clarifications and misconceptions, and write concrete WORKED numeric "
+            "examples (actual numbers, not placeholders).\n\n"
             f"Grade {topic.get('grade_level')} {topic.get('subject')} — "
             f"{topic['topic_code']}: {topic['name']}\n"
             f"Topic learning goal: {topic.get('learning_target','')}\n"
@@ -395,15 +417,23 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             f"Vocabulary: {topic.get('vocabulary', [])}\n"
             f"MTR practices: {topic.get('mtr_practices', [])}\n"
             f"Materials: {topic.get('materials', [])}\n\n"
-            f"Benchmarks (with B1G-M detail):\n{std_ctx}\n\n"
+            f"Benchmarks (with B1G-M detail — use these clarifications & misconceptions):\n{std_ctx}\n\n"
             f"Lesson outline to expand:\n{outline_txt}\n\n"
-            "For EACH lesson produce: student-friendly learning goal, success "
-            "criteria, a benchmark clarification with a worked example, likely "
-            "misconceptions with fixes, a step-by-step teaching strategy, a CPA "
-            "model (concrete/pictorial/abstract), an ALD Level 3 proficiency "
-            "example, checks for understanding, a 'You Do' task, and a single "
-            "exit-ticket problem with its answer. Ground everything in the "
-            "benchmarks; do not invent standards or student data.\n\n"
+            "For EACH lesson produce, at the depth of a real teacher-ready plan:\n"
+            "- a student-friendly 'I can' learning goal\n"
+            "- observable success criteria PLUS a worked success_example with real numbers\n"
+            "- a benchmark clarification and a specific benchmark_example (real numbers)\n"
+            "- a sentence_frame students use to explain their reasoning\n"
+            "- a 3-column misconceptions table: each row has the misconception, a "
+            "specific EXAMPLE ERROR a student makes (real numbers), and the correction strategy\n"
+            "- a numbered step-by-step teaching strategy\n"
+            "- a CPA model where Concrete INCLUDES base-ten emoji block visuals "
+            "(🟦 thousands, 🟩 hundreds, 🟨 tens, ⬜ ones), Pictorial is a place-value "
+            "chart or number line, and Abstract shows the expanded-form equation\n"
+            "- a Level 3 proficiency example written as a first-person student quote\n"
+            "- checks for understanding (specific problems), a 'You Do' task, and a "
+            "single exit ticket with BOTH the problem and its answer\n"
+            "Do not invent standards or student data.\n\n"
             f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
         )
         # Stream — an 8k-token, 7-lesson generation is long enough to hit a
