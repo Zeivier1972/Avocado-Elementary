@@ -393,7 +393,18 @@ function GuideView({ guide }: any) {
                   <MisconceptionTable rows={L.misconceptions} />
                 </div>
               )}
-              <List label="Teaching Strategy (step-by-step)" items={L.teaching_strategy} ordered />
+              {(L.activate_prior_knowledge || L.i_do || L.we_do) ? (
+                <div className="space-y-1">
+                  <div className="font-semibold text-gray-700 text-xs">
+                    Teaching Strategy
+                  </div>
+                  <Line label="Activate Prior Knowledge" value={L.activate_prior_knowledge} />
+                  <Line label="I Do (Model)" value={L.i_do} />
+                  <Line label="We Do (Guided Practice)" value={L.we_do} />
+                </div>
+              ) : (
+                <List label="Teaching Strategy (step-by-step)" items={L.teaching_strategy} ordered />
+              )}
               {L.cpa && (L.cpa.concrete || L.cpa.pictorial || L.cpa.abstract) && (
                 <div className="grid sm:grid-cols-3 gap-2">
                   <CPA label="Concrete" value={L.cpa.concrete} />

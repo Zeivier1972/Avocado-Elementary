@@ -119,7 +119,13 @@ def guide_to_docx(guide: dict) -> bytes:
         if L.get("misconceptions"):
             _heading(doc, "Common Misconceptions & Fixes", 11)
             _misconception_table(doc, L["misconceptions"])
-        if L.get("teaching_strategy"):
+        # Named instructional phases, each with its own lesson-specific example.
+        if any(L.get(k) for k in ("activate_prior_knowledge", "i_do", "we_do")):
+            _heading(doc, "Teaching Strategy", 11)
+            _label(doc, "Activate Prior Knowledge", L.get("activate_prior_knowledge"))
+            _label(doc, "I Do (Model)", L.get("i_do"))
+            _label(doc, "We Do (Guided Practice)", L.get("we_do"))
+        elif L.get("teaching_strategy"):
             _heading(doc, "Teaching Strategy (Step-by-Step)", 11)
             _bullets(doc, L["teaching_strategy"], style="List Number")
         cpa = L.get("cpa", {})

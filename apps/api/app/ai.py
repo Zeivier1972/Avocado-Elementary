@@ -305,10 +305,11 @@ def _parse_misconceptions(raw: str) -> list[dict]:
 
 
 def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
-    """Grounded, genuinely useful lessons built from the pacing outline + B1G-M
-    standard metadata (clarifications, misconceptions, prerequisites). Used both
-    as the pre-AI skeleton and as the fallback when the LLM call fails, so the
-    guide is never blank."""
+    """Build the per-lesson breakdown. Prefer lesson-specific content authored in
+    the pacing guide (activate_prior_knowledge, i_do, we_do, cfu, you_do,
+    exit_ticket, cpa, level3_example, misconceptions...); only synthesize a
+    generic scaffold for whatever a lesson leaves blank. This keeps every lesson
+    distinct even when the LLM is unavailable, instead of repeating one template."""
     vocab = topic.get("vocabulary", [])
     materials = topic.get("materials", [])
     conc = ", ".join(materials[:3]) if materials else "base-ten blocks / manipulatives"
@@ -320,46 +321,67 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
         s = std_by_code.get(codes[0], {}) if codes else {}
         clar = s.get("clarifications") or []
         pre = s.get("prerequisites") or []
-        # Success criteria grounded in the lesson focus and standard clarifications.
-        crit = []
-        if focus:
-            crit.append(focus)
-        crit.extend(clar[:2])
-        # Teaching strategy: an explicit I-Do / We-Do / You-Do arc anchored to CPA.
-        strategy = [
-            f"Activate prior knowledge ({', '.join(pre) if pre else 'prerequisite skills'}) "
-            "and introduce vocabulary: " + (", ".join(vocab[:4]) if vocab else "key terms") + ".",
-            f"I Do — model with {conc}; think aloud through {title.lower() or 'the skill'}.",
-            "We Do — guided practice with immediate feedback; students explain their reasoning (MTR 4.1).",
-            "You Do — students practice independently; teacher pulls a small group for reteach.",
-        ]
+
+        def pick(key, default):
+            v = L.get(key)
+            return v if v not in (None, "", [], {}) else default
+
+        activate = pick("activate_prior_knowledge",
+            f"Review prerequisite skills ({', '.join(pre) if pre else 'earlier-grade foundations'}) "
+            "and introduce vocabulary: " + (", ".join(vocab[:4]) if vocab else "key terms") + ".")
+        i_do = pick("i_do",
+            f"Model {title.lower() or 'the skill'} with {conc}; think aloud step by step.")
+        we_do = pick("we_do",
+            "Guided practice with immediate feedback; students explain their reasoning (MTR 4.1).")
+        you_do = pick("you_do",
+            f"Students practice {title.lower() or 'the skill'} independently "
+            "(3–5 problems); pull a small group for reteach.")
+        cfu = pick("cfu", [
+            "Quick check on mini-whiteboards.",
+            "Ask a 'why' question to surface reasoning, not just the answer.",
+        ])
+        exit_ticket = pick("exit_ticket",
+            "One problem targeting today's benchmark — score ≥69% = green.")
+        cpa = pick("cpa", {
+            "concrete": f"Use {conc} to build/represent the concept.",
+            "pictorial": "Draw place-value charts, number lines, or models to represent it.",
+            "abstract": "Record with numbers and symbols; explain the reasoning in writing.",
+        })
+        level3 = pick("level3_example",
+            "A Level 3 student can independently "
+            + (focus[:1].lower() + focus[1:] if focus else title.lower())
+            + " and explain their reasoning using correct vocabulary.")
+        misc = pick("misconceptions", _parse_misconceptions(s.get("misconceptions", "")))
+        crit = pick("success_criteria", ([focus] if focus else []) + clar[:2])
+        # Back-compat numbered strategy, assembled from the named phases.
+        strategy = pick("teaching_strategy", [
+            f"Activate Prior Knowledge — {activate}",
+            f"I Do — {i_do}",
+            f"We Do — {we_do}",
+            f"You Do — {you_do}",
+        ])
+
         out.append({
             "code": L.get("code", ""), "title": title,
             "benchmarks": codes, "focus": focus,
-            "learning_goal": f"I can {title[:1].lower() + title[1:]}." if title else "",
+            "learning_goal": pick("learning_goal",
+                f"I can {title[:1].lower() + title[1:]}." if title else ""),
             "success_criteria": crit,
-            "success_example": "",
-            "benchmark_clarification": " ".join(clar) or s.get("description", ""),
-            "benchmark_example": "",
-            "sentence_frame": "",
-            "misconceptions": _parse_misconceptions(s.get("misconceptions", "")),
+            "success_example": L.get("success_example", ""),
+            "benchmark_clarification": pick("benchmark_clarification",
+                " ".join(clar) or s.get("description", "")),
+            "benchmark_example": L.get("benchmark_example", ""),
+            "sentence_frame": L.get("sentence_frame", ""),
+            "misconceptions": misc,
+            "activate_prior_knowledge": activate,
+            "i_do": i_do,
+            "we_do": we_do,
             "teaching_strategy": strategy,
-            "cpa": {
-                "concrete": f"Use {conc} to build/represent the concept.",
-                "pictorial": "Draw place-value charts, number lines, or models to represent it.",
-                "abstract": "Record with numbers and symbols; explain the reasoning in writing.",
-            },
-            "level3_example": (
-                "An ALD Level 3 student can independently " + (focus[:1].lower() + focus[1:] if focus else title.lower())
-                + " and explain their reasoning using correct vocabulary."
-            ),
-            "cfu": [
-                "Quick check: have students show the skill on mini-whiteboards.",
-                "Ask a 'why' question to surface reasoning, not just the answer.",
-            ],
-            "you_do": f"Independent practice on {title.lower() or 'the skill'} "
-                      "(3–5 problems); reteach small group as needed.",
-            "exit_ticket": "One problem targeting today's benchmark — score for green (≥69%) mastery.",
+            "cpa": cpa,
+            "level3_example": level3,
+            "cfu": cfu,
+            "you_do": you_do,
+            "exit_ticket": exit_ticket,
         })
     return out
 
@@ -396,7 +418,9 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             '"benchmark_example":"a specific worked numeric example",'
             '"sentence_frame":"The __ is in the __ place, so it means __.",'
             '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
-            '"teaching_strategy":["step 1","step 2","step 3"],'
+            '"activate_prior_knowledge":"how to activate prior knowledge for THIS lesson, with a specific warm-up",'
+            '"i_do":"teacher models with a specific worked example and think-aloud",'
+            '"we_do":"guided practice with a specific example and how to engage students together",'
             '"cpa":{"concrete":"hands-on with materials; INCLUDE base-ten emoji visuals like 🟦 thousands 🟩 hundreds 🟨 tens ⬜ ones","pictorial":"place-value chart / number line drawing","abstract":"the numbers and symbols, e.g. 3,476 = 3,000 + 400 + 70 + 6"},'
             '"level3_example":"a first-person student quote explaining the reasoning at ALD Level 3",'
             '"cfu":["specific problem 1","specific problem 2"],'
@@ -419,6 +443,12 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             f"Materials: {topic.get('materials', [])}\n\n"
             f"Benchmarks (with B1G-M detail — use these clarifications & misconceptions):\n{std_ctx}\n\n"
             f"Lesson outline to expand:\n{outline_txt}\n\n"
+            "CRITICAL: every lesson must be DIFFERENT and specific to its own "
+            "benchmark and skill — never reuse the same activate/I Do/We Do/CFU/"
+            "You Do/exit wording across lessons. Each field must use worked "
+            "numbers appropriate to THAT lesson (e.g. a 'round to nearest ten' "
+            "lesson uses ones-digit examples like 47→50; a 'compare' lesson uses "
+            "two 4-digit numbers).\n\n"
             "For EACH lesson produce, at the depth of a real teacher-ready plan:\n"
             "- a student-friendly 'I can' learning goal\n"
             "- observable success criteria PLUS a worked success_example with real numbers\n"
@@ -426,13 +456,17 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             "- a sentence_frame students use to explain their reasoning\n"
             "- a 3-column misconceptions table: each row has the misconception, a "
             "specific EXAMPLE ERROR a student makes (real numbers), and the correction strategy\n"
-            "- a numbered step-by-step teaching strategy\n"
+            "- activate_prior_knowledge: a specific warm-up that connects to THIS lesson\n"
+            "- i_do: the teacher models ONE specific worked example with a think-aloud\n"
+            "- we_do: guided practice on a DIFFERENT specific example, plus how students "
+            "engage together (turn-and-talk, whiteboards, the sentence frame)\n"
             "- a CPA model where Concrete INCLUDES base-ten emoji block visuals "
             "(🟦 thousands, 🟩 hundreds, 🟨 tens, ⬜ ones), Pictorial is a place-value "
-            "chart or number line, and Abstract shows the expanded-form equation\n"
+            "chart or number line, and Abstract shows the expanded-form/equation\n"
             "- a Level 3 proficiency example written as a first-person student quote\n"
-            "- checks for understanding (specific problems), a 'You Do' task, and a "
-            "single exit ticket with BOTH the problem and its answer\n"
+            "- cfu: specific problems (real numbers), a 'You Do' task with specific "
+            "numbers, and a single exit ticket with BOTH the problem and its answer, "
+            "written so a correct answer demonstrates Level 3 mastery\n"
             "Do not invent standards or student data.\n\n"
             f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
         )

@@ -84,18 +84,15 @@ def _load_pacing(db, tenant_id):
         return 0
     p = json.loads(path.read_text())
     existing = {
-        (pt.grade_level, pt.topic_code)
+        (pt.grade_level, pt.topic_code): pt
         for pt in db.query(PacingTopic).filter(
             PacingTopic.tenant_id == tenant_id
         ).all()
     }
     n = 0
     for order, t in enumerate(p.get("topics", [])):
-        if (p["grade"], t["topic_code"]) in existing:
-            continue  # already loaded — idempotent
-        db.add(PacingTopic(
-            tenant_id=tenant_id, subject=p["subject"], grade_level=p["grade"],
-            topic_code=t["topic_code"], chapter=t.get("chapter", ""),
+        fields = dict(
+            subject=p["subject"], chapter=t.get("chapter", ""),
             name=t["name"], quarter=t.get("quarter", ""), week_order=order,
             benchmarks=t.get("benchmarks", []),
             learning_target=t.get("learning_target", ""),
@@ -108,8 +105,17 @@ def _load_pacing(db, tenant_id):
             mtr_practices=t.get("mtr_practices", []),
             materials=t.get("materials", []),
             lessons=t.get("lessons", []),
-        ))
-        n += 1
+        )
+        pt = existing.get((p["grade"], t["topic_code"]))
+        if pt:
+            # Update in place so enriched lesson content reaches an existing DB.
+            for k, v in fields.items():
+                setattr(pt, k, v)
+        else:
+            db.add(PacingTopic(
+                tenant_id=tenant_id, grade_level=p["grade"],
+                topic_code=t["topic_code"], **fields))
+            n += 1
     return n
 
 

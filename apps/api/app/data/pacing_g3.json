@@ -16,100 +16,272 @@
    ],
    "learning_target": "I can read, write, model, compare, and round numbers up to 10,000.",
    "success_criteria": [
-    "Identify each digit's value (e.g., in 4,582 the 5 means fifty... 500).",
+    "Identify each digit's value (e.g., in 4,582 the 5 means 500).",
     "Represent a number using base-ten models.",
     "Write numbers in standard, word, and expanded form.",
     "Compare numbers using >, <, = correctly.",
     "Round numbers to the nearest ten or hundred using place value reasoning."
    ],
    "vocabulary": [
-    "place value",
-    "standard form",
-    "expanded form",
-    "word form",
-    "digit",
-    "round",
-    "compare",
-    "base-ten",
-    "thousands",
-    "hundreds",
-    "tens",
-    "ones"
+    "place value", "standard form", "expanded form", "word form", "digit",
+    "round", "compare", "base-ten", "thousands", "hundreds", "tens", "ones"
    ],
    "time_frame": "~10 instructional days + CFA & Review",
    "topic_focus": "Understanding place value up to 10,000 and rounding to the nearest ten and hundred",
-   "ald_focus": "ALD Level 3 In-Class Practice only",
+   "ald_focus": "ALD Level 3 In-Class Practice only (not homework column)",
    "mtr_practices": [
-    "MTR 2.1 (Representation)",
-    "MTR 4.1 (Talk About Math)",
-    "MTR 5.1 (Use Patterns)",
-    "MTR 7.1 (Real-World Application)"
+    "MTR 2.1 (Representation)", "MTR 4.1 (Talk About Math)",
+    "MTR 5.1 (Use Patterns)", "MTR 7.1 (Real-World Application)"
    ],
    "materials": [
-    "Place value charts",
-    "base-ten blocks",
-    "place value disks",
-    "number lines",
-    "mini-whiteboards",
-    "digit cards"
+    "Place value charts", "base-ten blocks", "place value disks",
+    "number lines", "mini-whiteboards", "digit cards"
    ],
    "lessons": [
     {
      "code": "7.1",
      "title": "Place Value to the Thousands",
-     "benchmarks": [
-      "MA.3.NSO.1.1"
+     "benchmarks": ["MA.3.NSO.1.1"],
+     "focus": "Understanding the value of each digit in a 4-digit number.",
+     "learning_goal": "I can explain the value of each digit in a number up to 10,000.",
+     "success_criteria": [
+      "Identify the value of each digit in a 4-digit number.",
+      "Represent the number using base-ten models.",
+      "Write the number in expanded form correctly."
      ],
-     "focus": "Understanding the value of each digit in a 4-digit number."
+     "success_example": "In 4,582: 4 = 4,000 (thousands), 5 = 500 (hundreds), 8 = 80 (tens), 2 = 2 (ones).",
+     "benchmark_clarification": "Students explain the value of each digit based on its place, and understand zero as a placeholder.",
+     "benchmark_example": "“The 5 in 4,582 is in the hundreds place, so it represents 500, not 5.”",
+     "sentence_frame": "The __ is in the __ place, so it means __.",
+     "misconceptions": [
+      {"misconception": "Reads the digit instead of its value", "example": "Says the 6 in 3,674 is “6”", "fix": "Build with base-ten blocks and label each place; say “6 hundreds,” not “6.”"},
+      {"misconception": "Writes incorrect expanded form", "example": "Writes 4,582 = 4 + 5 + 8 + 2", "fix": "Model expanded form on a place-value chart with blocks."}
+     ],
+     "activate_prior_knowledge": "Review 2nd-grade place value to hundreds (MA.2.NSO.1.1). Flash 3-digit numbers (e.g., 348) and ask “What is the value of the 4?” (40). Then extend: “What happens when we add a digit in front — 3,048?”",
+     "i_do": "Model with 3,476. Build it with base-ten blocks (3 thousand-cubes, 4 flats, 7 rods, 6 units). Think aloud: “The 3 is in the thousands place, so it means 3,000. The 4 is in the hundreds place, so it means 400…” Record it on a place-value chart, then expanded form: 3,476 = 3,000 + 400 + 70 + 6.",
+     "we_do": "Together, build 5,281. Call on students to place each digit on the chart and state its value using the frame “The __ is in the __ place, so it means __.” Turn-and-talk: partner A builds, partner B checks each digit's value (MTR 4.1).",
+     "cfu": [
+      "Write the value of the underlined digit: 5,3̩3 → the 3",
+      "6,742 → the 6",
+      "9,413 → the 4"
+     ],
+     "you_do": "Represent 2,861 three ways: place-value chart, expanded form, and one sentence explaining the value of a digit you choose.",
+     "cpa": {
+      "concrete": "Build 3,476 with base-ten blocks:\n🟦🟦🟦 thousands   🟩🟩🟩🟩 hundreds   🟨🟨🟨🟨🟨🟨🟨 tens   ⬜⬜⬜⬜⬜⬜ ones",
+      "pictorial": "Place-value chart — Th 3 | H 4 | T 7 | O 6",
+      "abstract": "3,476 = 3,000 + 400 + 70 + 6"
+     },
+     "level3_example": "“The 7 is in the tens place, which means 70, because each ten is worth ten ones.”",
+     "exit_ticket": {"problem": "What is the value of the 8 in 8,145?", "answer": "8,000"}
     },
     {
      "code": "7.2",
      "title": "Read & Write Numbers in Standard, Word & Expanded Form",
-     "benchmarks": [
-      "MA.3.NSO.1.1"
+     "benchmarks": ["MA.3.NSO.1.1"],
+     "focus": "Writing numbers in multiple forms; zero as a placeholder.",
+     "learning_goal": "I can write a number in standard form, word form, and expanded form.",
+     "success_criteria": [
+      "Read a 4-digit number correctly.",
+      "Write the same number in standard, word, and expanded form.",
+      "Use zero as a placeholder correctly."
      ],
-     "focus": "Writing numbers in multiple forms; zero as a placeholder."
+     "success_example": "4,209 → Standard: 4,209 · Word: four thousand two hundred nine · Expanded: 4,000 + 200 + 9.",
+     "benchmark_clarification": "Students understand zero as a placeholder and do not use “and” in whole-number word form.",
+     "benchmark_example": "In 4,209 the 0 shows there are no tens; it is written but not said as a word.",
+     "sentence_frame": "In __ form, __ is written as __.",
+     "misconceptions": [
+      {"misconception": "Adds “and” in whole-number word form", "example": "Writes “four thousand two hundred and nine”", "fix": "There is no “and” in whole-number word form; “and” is used for decimals."},
+      {"misconception": "Runs digits together / drops a place", "example": "Writes 4,209 as 42009", "fix": "Write one place at a time using the place-value chart."}
+     ],
+     "activate_prior_knowledge": "Quick review of 7.1: show 4,582 and have students state each digit's value, then say the number aloud correctly (“four thousand five hundred eighty-two”).",
+     "i_do": "Model with 3,067. Build with place-value disks. Write standard (3,067), word (three thousand sixty-seven), and expanded (3,000 + 60 + 7). Think aloud about the 0: “There are no hundreds, so I hold the place with a 0 — but I don't say it in word form.”",
+     "we_do": "Together convert 4,209 into all three forms, emphasizing zero as a placeholder. Students whisper-read the word form to a partner and write the expanded form on whiteboards to hold up.",
+     "cfu": [
+      "Write 5,410 in expanded form",
+      "Write 2,904 in word form",
+      "Write “three thousand eight” in standard form"
+     ],
+     "you_do": "Convert 7,026 into standard form, word form, and expanded form.",
+     "cpa": {
+      "concrete": "Place-value disks: 3 in thousands, 0 in hundreds, 6 in tens, 7 in ones.",
+      "pictorial": "Place-value chart — Th 3 | H 0 | T 6 | O 7",
+      "abstract": "3,067 = 3,000 + 60 + 7 · word form: three thousand sixty-seven"
+     },
+     "level3_example": "“I needed a 0 in the hundreds place to show there are no hundreds, but I don't say ‘zero’ when I read it.”",
+     "exit_ticket": {"problem": "Write 3,560 in word form.", "answer": "three thousand five hundred sixty"}
     },
     {
      "code": "7.3",
      "title": "Model & Represent Numbers (Base-Ten Models)",
-     "benchmarks": [
-      "MA.3.NSO.1.1"
+     "benchmarks": ["MA.3.NSO.1.1"],
+     "focus": "Representing numbers up to 10,000 using models, pictures, and place value charts.",
+     "learning_goal": "I can represent a 4-digit number with base-ten models, drawings, and a place-value chart.",
+     "success_criteria": [
+      "Build numbers using base-ten materials.",
+      "Draw visual models (flats, rods, cubes) that match each digit's value.",
+      "Connect models to the place-value chart and expanded form."
      ],
-     "focus": "Representing numbers up to 10,000 using models, pictures, place value charts."
+     "success_example": "Represent 2,547 = 2 thousands + 5 hundreds + 4 tens + 7 ones.",
+     "benchmark_clarification": "The model must match the value of each digit; each group is labeled with its place value.",
+     "benchmark_example": "For 2,547, draw 2 thousand-cubes, 5 flats, 4 rods, 7 units and label 1,000 / 100 / 10 / 1.",
+     "sentence_frame": "I drew __ __, which stands for __.",
+     "misconceptions": [
+      {"misconception": "Mislabels the value of a drawn model", "example": "Draws 5 flats but calls it “5” instead of 500", "fix": "Label each model piece with its place value (100, 10)."},
+      {"misconception": "Miscounts when regrouping", "example": "Writes 14 tens as 14 instead of 140", "fix": "Model an exchange/trade: 10 tens = 1 hundred."}
+     ],
+     "activate_prior_knowledge": "Show a place-value chart with 2,547 and have students sketch quick base-ten pictures for a 3-digit warm-up (e.g., 253) to practice drawing flats, rods, and units.",
+     "i_do": "Model 4,283: build with blocks, then draw a quick picture (squares = thousands, flats = hundreds, lines = tens, dots = ones), then connect to the chart and expanded form. Think aloud matching each piece to its value.",
+     "we_do": "Together represent 3,709. Highlight the 0 hundreds — no flats drawn. Students build with a partner and label each group with its value (1,000, 100, 10, 1).",
+     "cfu": [
+      "Build and represent 3,709 as a chart, a quick picture, and expanded form"
+     ],
+     "you_do": "Represent 5,682 three ways: a drawn base-ten model, a place-value chart, and expanded form.",
+     "cpa": {
+      "concrete": "Build 4,543 with blocks:\n🟥🟥🟥🟥 = 4 thousands   🟩🟩🟩🟩🟩 = 5 hundreds   🟨🟨🟨🟨 = 4 tens   ⬜⬜⬜ = 3 ones",
+      "pictorial": "Place-value chart — TH 4 | H 5 | T 4 | O 3",
+      "abstract": "4,543 = 4,000 + 500 + 40 + 3"
+     },
+     "level3_example": "“4 thousands means 4,000 because each thousand is ten hundreds.”",
+     "exit_ticket": {"problem": "Which model shows 4,201? Circle the correct base-ten picture.", "answer": "4 thousand-cubes, 2 flats, 0 rods, 1 unit"}
     },
     {
      "code": "7.4",
      "title": "Compare Numbers to 10,000 Using >, <, =",
-     "benchmarks": [
-      "MA.3.NSO.1.2"
+     "benchmarks": ["MA.3.NSO.1.2"],
+     "focus": "Comparing using place value reasoning.",
+     "learning_goal": "I can compare numbers up to 10,000 using >, <, and =.",
+     "success_criteria": [
+      "Compare thousands → hundreds → tens → ones, in order.",
+      "Justify the comparison using place value."
      ],
-     "focus": "Comparing using place value reasoning."
+     "success_example": "3,842 > 3,624 because 8 hundreds > 6 hundreds (the thousands are equal).",
+     "benchmark_clarification": "Comparisons are based on place value — start from the largest place (left) and find the first place where the digits differ.",
+     "benchmark_example": "7,214 > 6,998 because 7 thousands > 6 thousands, even though 6,998 has larger later digits.",
+     "sentence_frame": "I compared the __ place and saw __ > __, so __ __ __.",
+     "misconceptions": [
+      {"misconception": "Compares digits out of order", "example": "Compares the ones first", "fix": "Always compare from left to right (largest place first)."},
+      {"misconception": "Thinks a bigger first digit means bigger", "example": "Says 3,912 > 12,000 because 3 > 1", "fix": "Align digits on a place-value chart; more places = greater."}
+     ],
+     "activate_prior_knowledge": "Review comparison symbols with 2-digit numbers (the symbol “opens” toward the larger number). Ask: “How do we decide which is bigger when numbers have 4 digits?”",
+     "i_do": "Model comparing 4,752 and 4,529. Line them up on a place-value chart. Think aloud: “Thousands are equal (4 = 4). Move to hundreds: 7 > 5, so 4,752 > 4,529.” Stress starting from the LEFT (largest place).",
+     "we_do": "Together compare 6,201 and 6,128. Students find the first place where digits differ and justify with the frame. Use thumbs signals for >, <, =.",
+     "cfu": [
+      "6,201 ___ 6,128",
+      "9,045 ___ 8,999",
+      "3,760 ___ 3,706"
+     ],
+     "you_do": "Compare 7,432 ___ 7,423 and write a sentence justifying your answer using place value.",
+     "cpa": {
+      "concrete": "Build both numbers with blocks side by side and compare the largest place first.",
+      "pictorial": "Two rows of a place-value chart aligned vertically.",
+      "abstract": "4,752 > 4,529 because 7 hundreds > 5 hundreds"
+     },
+     "level3_example": "“Since the thousands are equal, I compared the hundreds: 7 hundreds > 5 hundreds, so 4,752 > 4,529.”",
+     "exit_ticket": {"problem": "Circle the greater number: 5,908 or 5,890", "answer": "5,908"}
     },
     {
      "code": "7.5",
      "title": "Round to Nearest Ten",
-     "benchmarks": [
-      "MA.3.NSO.1.4"
+     "benchmarks": ["MA.3.NSO.1.4"],
+     "focus": "Rounding to the nearest 10 using the ones digit.",
+     "learning_goal": "I can round a number to the nearest ten.",
+     "success_criteria": [
+      "Identify the two tens the number is between.",
+      "Use the ones digit to decide round up or round down."
      ],
-     "focus": "Rounding to the nearest 10 using the ones digit."
+     "success_example": "47 → 50 (ones digit 7 is ≥ 5, round up); 42 → 40 (ones digit 2 is < 5, round down).",
+     "benchmark_clarification": "Rounding to the nearest ten uses the ONES digit; 5 rounds up.",
+     "benchmark_example": "45 is the midpoint between 40 and 50, so 45 rounds up to 50.",
+     "sentence_frame": "__ is closer to __ than __, so it rounds to __.",
+     "misconceptions": [
+      {"misconception": "Rounds using the wrong place", "example": "Uses the tens digit to round to the nearest ten", "fix": "To round to the nearest ten, look at the ONES digit."},
+      {"misconception": "Thinks 5 rounds down", "example": "Rounds 65 → 60", "fix": "5 means round UP; show 65 at the midpoint on a number line."}
+     ],
+     "activate_prior_knowledge": "Skip-count by 10s (10, 20, 30…). Show a number line from 40 to 50 and ask which tens 47 sits between.",
+     "i_do": "Model rounding 47. Place it on a 40–50 number line and mark the midpoint 45. Think aloud: “47 is past 45, so it's closer to 50 → 47 rounds to 50.” State the rule (ones ≥ 5 round up, < 5 round down). Then round 42 → 40.",
+     "we_do": "Together round 63, 28, and 94 on a number line. Students place each number, find the midpoint, and decide up or down using the sentence frame.",
+     "cfu": [
+      "Round 63 → ___",
+      "Round 28 → ___",
+      "Round 94 → ___"
+     ],
+     "you_do": "Round 57 to the nearest ten and explain why, using the number line.",
+     "cpa": {
+      "concrete": "Build the number with cubes; walk it to the nearest ten on a floor number-line tape.",
+      "pictorial": "Number line 40–50 with the midpoint 45 marked.",
+      "abstract": "If ones ≥ 5 → round up; if ones < 5 → round down. 47 → 50"
+     },
+     "level3_example": "“47 is closer to 50 than 40, so it rounds to 50 — the ones digit 7 is more than 5.”",
+     "exit_ticket": {"problem": "Round 71 to the nearest ten.", "answer": "70"}
     },
     {
      "code": "7.6",
      "title": "Round to Nearest Hundred",
-     "benchmarks": [
-      "MA.3.NSO.1.4"
+     "benchmarks": ["MA.3.NSO.1.4"],
+     "focus": "Rounding to the nearest 100 using the tens digit.",
+     "learning_goal": "I can round a number to the nearest hundred.",
+     "success_criteria": [
+      "Identify which two hundreds the number is between.",
+      "Use the tens digit to decide round up or round down."
      ],
-     "focus": "Rounding to the nearest 100 using the tens digit."
+     "success_example": "378 → 400 (tens digit 7 is ≥ 5, round up); 612 → 600 (tens digit 1 is < 5, round down).",
+     "benchmark_clarification": "Rounding to the nearest hundred uses the TENS digit.",
+     "benchmark_example": "378 is between 300 and 400; the tens digit 7 is ≥ 5, so it rounds up to 400.",
+     "sentence_frame": "__ is between __ and __; the tens digit is __, so it rounds to __.",
+     "misconceptions": [
+      {"misconception": "Uses the ones digit to round to the nearest hundred", "example": "Rounds 378 using the 8", "fix": "To round to the nearest hundred, look at the TENS digit."},
+      {"misconception": "Rounds down when the tens digit is 5", "example": "Rounds 950 → 900", "fix": "A tens digit of 5 rounds UP: 950 → 1,000."}
+     ],
+     "activate_prior_knowledge": "Skip-count by 100s. Review 7.5: which digit rounds to the nearest ten? (ones) Predict: “Which digit do we use for the nearest hundred?”",
+     "i_do": "Model rounding 378. Place it between 300 and 400; mark the midpoint 350. Think aloud: “378 is past 350 → closer to 400. The tens digit 7 is ≥ 5, so round up → 400.”",
+     "we_do": "Together round 612 and 841. Students name the two hundreds each is between and use the tens digit to decide, using the sentence frame.",
+     "cfu": [
+      "Round 367 → ___",
+      "Round 841 → ___",
+      "Round 950 → ___"
+     ],
+     "you_do": "Round 729 to the nearest hundred and explain which two hundreds it is between.",
+     "cpa": {
+      "concrete": "Locate the number on a number line marked in 100 intervals.",
+      "pictorial": "Number line 300–400 with midpoint 350; plot 378.",
+      "abstract": "If tens ≥ 5 → round up; if tens < 5 → round down. 378 → 400"
+     },
+     "level3_example": "“612 rounds to 600 because the tens digit is 1, which is less than 5, so I round down.”",
+     "exit_ticket": {"problem": "Round 729 to the nearest hundred.", "answer": "700"}
     },
     {
      "code": "7.7",
      "title": "Problem Solving with Place Value & Rounding",
-     "benchmarks": [
-      "MA.3.NSO.1.1",
-      "MA.3.NSO.1.4"
+     "benchmarks": ["MA.3.NSO.1.1", "MA.3.NSO.1.4"],
+     "focus": "Estimate, calculate, and check reasonableness in real-world problems.",
+     "learning_goal": "I can use place value and rounding to estimate and solve real-world problems.",
+     "success_criteria": [
+      "Estimate by rounding to the nearest ten or hundred.",
+      "Solve and then check whether the answer is reasonable."
      ],
-     "focus": "Estimate, calculate, check reasonableness in real-world problems."
+     "success_example": "There are 3,287 people in the stadium → about 3,300 to the nearest hundred (tens digit 8 rounds up).",
+     "benchmark_clarification": "Use estimate → calculate → check reasonableness; round to the place the problem asks for.",
+     "benchmark_example": "Round 3,287 to the nearest hundred: tens digit 8 ≥ 5 → 3,300; then confirm 3,300 is close to 3,287.",
+     "sentence_frame": "I rounded __ to the nearest __ to estimate, and __ is reasonable because __.",
+     "misconceptions": [
+      {"misconception": "Rounds to the wrong place in a word problem", "example": "Rounds 3,287 to 3,290 when asked for the nearest hundred", "fix": "Underline “nearest hundred”; use the tens digit."},
+      {"misconception": "Does not check reasonableness", "example": "Estimates 3,287 ≈ 4,000", "fix": "Compare the estimate back to the original — it should be close."}
+     ],
+     "activate_prior_knowledge": "Review the rounding rules from 7.5–7.6 (ones digit → nearest ten; tens digit → nearest hundred). Ask when estimating is useful in real life (crowds, money, distance).",
+     "i_do": "Model: “There are 3,287 people in the stadium. About how many is that to the nearest hundred?” Think aloud: tens digit 8 ≥ 5 → round up → 3,300. Then check: “Is 3,300 close to 3,287? Yes.”",
+     "we_do": "Together solve: “A store sold 1,564 stickers. About how many to the nearest hundred?” Students estimate first, then justify using estimate → calculate → check reasonableness.",
+     "cfu": [
+      "Round 3,287 to the nearest hundred",
+      "Is 3,300 a reasonable estimate for 3,287? Explain."
+     ],
+     "you_do": "A library has 2,438 books. About how many to the nearest hundred? Show your rounding and explain why the estimate is reasonable.",
+     "cpa": {
+      "concrete": "Model the quantity with grouped materials or locate it on a number line for estimation.",
+      "pictorial": "Number line to place the number between benchmark hundreds.",
+      "abstract": "3,287 → 3,300 (nearest hundred); estimate, then verify against the real number"
+     },
+     "level3_example": "“I rounded 3,287 to the nearest hundred because it makes the number easier to use, and 3,300 is close to the real number, so my estimate is reasonable.”",
+     "exit_ticket": {"problem": "A store sold 1,564 stickers. About how many is that to the nearest hundred?", "answer": "1,600"}
     }
    ]
   },
@@ -131,20 +303,9 @@
     "describe a fraction as a sum of unit fractions."
    ],
    "vocabulary": [
-    "denominator",
-    "eighths",
-    "fifths",
-    "fraction",
-    "mixed number",
-    "numeral-word",
-    "form",
-    "numerator",
-    "sixths",
-    "tenths",
-    "twelfths",
-    "unit fraction",
-    "whole",
-    "whole numbers"
+    "denominator", "eighths", "fifths", "fraction", "mixed number",
+    "numeral-word", "form", "numerator", "sixths", "tenths", "twelfths",
+    "unit fraction", "whole", "whole numbers"
    ]
   }
  ]
