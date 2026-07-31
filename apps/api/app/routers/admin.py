@@ -14,6 +14,7 @@ from app.fast_import import detect as detect_fast
 from app.fast_import import parse_fast_export
 from app.import_excel import parse_workbook
 from app.iready_import import detect_iready, parse_iready
+from app.roster_import import detect_district_roster, import_district_roster
 from app.models import (
     ClassRoom,
     District,
@@ -130,8 +131,19 @@ async def import_roster(
     db: Session = Depends(get_db),
     user: User = Depends(_require_admin),
 ):
-    raw = (await file.read()).decode("utf-8-sig")
+    data = await file.read()
+    raw = data.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(raw))
+
+    district = db.query(District).first()
+    school = db.query(School).filter(School.tenant_id == district.id).first()
+    tenant_id, school_id = district.id, school.id
+
+    # M-DCPS whole-school export (one row per student per period; homeroom teacher
+    # on the HR row) gets the dedicated dedup importer.
+    if detect_district_roster(reader.fieldnames or []):
+        return import_district_roster(db, data, tenant_id, school_id, user)
+
     fmap = _build_map(reader.fieldnames or [])
     missing = [f for f in ("student_id", "first_name", "last_name", "grade")
                if f not in fmap]
@@ -141,10 +153,6 @@ async def import_roster(
             f"CSV is missing required column(s): {', '.join(missing)}. "
             f"Detected headers: {reader.fieldnames}",
         )
-
-    district = db.query(District).first()
-    school = db.query(School).filter(School.tenant_id == district.id).first()
-    tenant_id, school_id = district.id, school.id
 
     students_new = students_upd = teachers_new = classes_new = enroll_new = 0
     errors: list[str] = []
@@ -293,6 +301,8 @@ async def import_excel(
         import io as _io
         text = data.decode("utf-8-sig", errors="replace")
         headers = next(_csv.reader(_io.StringIO(text)), [])
+        if detect_district_roster(headers):
+            return import_district_roster(db, data, tenant_id, school_id, user)
         if detect_iready(headers):
             return _import_iready(db, data, tenant_id, school_id, user)
         raise HTTPException(
@@ -619,8 +629,16 @@ def school_summary(
         return {"students": 0, "teachers": 0, "classes": 0, "by_grade": {}}
     students = db.query(Student).filter(Student.tenant_id == district.id).all()
     by_grade: dict[str, int] = {}
+    ell = ese = fast_baseline = 0
     for s in students:
         by_grade[s.grade_level] = by_grade.get(s.grade_level, 0) + 1
+        f = s.flags or {}
+        if f.get("ell"):
+            ell += 1
+        if f.get("ese"):
+            ese += 1
+        if f.get("fast_math_baseline"):
+            fast_baseline += 1
     teachers = (db.query(User)
                 .filter(User.tenant_id == district.id, User.role == "teacher")
                 .count())
@@ -629,4 +647,5 @@ def school_summary(
     return {
         "students": len(students), "teachers": teachers, "classes": classes,
         "by_grade": dict(sorted(by_grade.items())),
+        "ell": ell, "ese": ese, "fast_math_baseline": fast_baseline,
     }

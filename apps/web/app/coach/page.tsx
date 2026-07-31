@@ -142,15 +142,26 @@ export default function CoachPage() {
           <div className="flex-1 min-w-[200px]">
             <div className="text-sm font-semibold text-gray-700">School Roster</div>
             {summary ? (
-              <div className="text-xs text-gray-500">
-                {summary.students} students · {summary.teachers} teachers ·{" "}
-                {summary.classes} classes
-                {summary.by_grade &&
-                  Object.keys(summary.by_grade).length > 0 &&
-                  " · by grade: " +
-                    Object.entries(summary.by_grade)
-                      .map(([g, n]) => `${g}=${n}`)
-                      .join("  ")}
+              <div className="text-xs text-gray-500 space-y-0.5">
+                <div>
+                  {summary.students} students · {summary.teachers} teachers ·{" "}
+                  {summary.classes} classes
+                  {summary.by_grade &&
+                    Object.keys(summary.by_grade).length > 0 &&
+                    " · by grade: " +
+                      Object.entries(summary.by_grade)
+                        .map(([g, n]) => `${g}=${n}`)
+                        .join("  ")}
+                </div>
+                {(summary.ell != null || summary.ese != null) && (
+                  <div className="text-gray-400">
+                    {summary.ell ? `${summary.ell} ELL · ` : ""}
+                    {summary.ese ? `${summary.ese} ESE · ` : ""}
+                    {summary.fast_math_baseline
+                      ? `${summary.fast_math_baseline} FAST Math baseline`
+                      : ""}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-xs text-gray-400">No roster loaded yet.</div>
