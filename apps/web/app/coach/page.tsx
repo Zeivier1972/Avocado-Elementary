@@ -287,6 +287,7 @@ function TopicPanel({ topic, busy, onGuide }: any) {
       {/* Quick Facts */}
       <div className="mt-3 grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs bg-gray-50 rounded-lg p-3">
         <Fact label="Time Frame" value={qf.time_frame} />
+        <Fact label="Assessment Date" value={qf.assessment_date} />
         <Fact label="ALD Focus" value={qf.ald_focus} />
         <Fact label="Topic Focus" value={qf.topic_focus} />
         <Fact label="Key Benchmarks" value={(qf.key_benchmarks || []).join(", ")} />
@@ -423,7 +424,34 @@ function GuideView({ guide }: any) {
                   <CPA label="Abstract" value={L.cpa.abstract} />
                 </div>
               )}
-              <Line label="⭐ Level 3 Proficiency Example" value={L.level3_example} />
+              {L.ald && (L.ald.level3 || L.ald.level2 || L.ald.level4) && (
+                <div className="rounded-lg border border-avocado/40 bg-avocado/5 p-2">
+                  <div className="font-semibold text-gray-700 text-xs mb-1">
+                    Achievement Level Descriptors — what each level looks like
+                  </div>
+                  {L.ald.level2 && (
+                    <p className="text-xs text-gray-500">
+                      <span className="font-semibold">Level 2 (below):</span> {L.ald.level2}
+                    </p>
+                  )}
+                  {L.ald.level3 && (
+                    <p className="text-xs text-green-800 bg-green-50 rounded px-1 py-0.5">
+                      <span className="font-semibold">⭐ Level 3 (ON GRADE — goal):</span> {L.ald.level3}
+                    </p>
+                  )}
+                  {L.ald.level4 && (
+                    <p className="text-xs text-gray-500">
+                      <span className="font-semibold">Level 4 (above):</span> {L.ald.level4}
+                    </p>
+                  )}
+                  {L.ald.level5 && (
+                    <p className="text-xs text-gray-500">
+                      <span className="font-semibold">Level 5 (mastery):</span> {L.ald.level5}
+                    </p>
+                  )}
+                </div>
+              )}
+              <Line label="⭐ Level 3 Proficiency Example (student voice)" value={L.level3_example} />
               <List label="Checks for Understanding" items={L.cfu} />
               <Line label="You Do (Independent Practice)" value={L.you_do} />
               <Line

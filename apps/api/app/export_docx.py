@@ -74,6 +74,7 @@ def guide_to_docx(guide: dict) -> bytes:
         table.style = "Light Grid Accent 1"
         rows = [
             ("Time Frame", qf.get("time_frame", "")),
+            ("Assessment Date", qf.get("assessment_date", "")),
             ("Topic Focus", qf.get("topic_focus", "")),
             ("Key Benchmarks", ", ".join(qf.get("key_benchmarks", []))),
             ("ALD Focus", qf.get("ald_focus", "")),
@@ -134,7 +135,25 @@ def guide_to_docx(guide: dict) -> bytes:
             _label(doc, "Concrete", cpa.get("concrete"))
             _label(doc, "Pictorial", cpa.get("pictorial"))
             _label(doc, "Abstract", cpa.get("abstract"))
-        _label(doc, "Level 3 Proficiency Example", L.get("level3_example"))
+        # Achievement Level Descriptors — what each level looks like for this
+        # benchmark, with Level 3 (on-grade, the goal) emphasized.
+        ald = L.get("ald") or {}
+        if any(ald.get(k) for k in ("level2", "level3", "level4", "level5")):
+            _heading(doc, "Achievement Level Descriptors (ALD)", 11)
+            rows = [("Level 2 — below", ald.get("level2")),
+                    ("Level 3 — ON GRADE (goal)", ald.get("level3")),
+                    ("Level 4 — above", ald.get("level4")),
+                    ("Level 5 — mastery", ald.get("level5"))]
+            for lbl, val in rows:
+                if not val:
+                    continue
+                p = doc.add_paragraph(style="List Bullet")
+                r = p.add_run(f"{lbl}: ")
+                r.bold = True
+                if "ON GRADE" in lbl:
+                    r.font.color.rgb = RGBColor(0x1F, 0x7A, 0x1F)
+                p.add_run(str(val))
+        _label(doc, "Level 3 Proficiency Example (student voice)", L.get("level3_example"))
         if L.get("cfu"):
             _heading(doc, "Checks for Understanding (CFU)", 11)
             _bullets(doc, L["cfu"])

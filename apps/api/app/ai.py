@@ -97,6 +97,7 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
     std_by_code = {s["code"]: s for s in standards}
     quick_facts = {
         "time_frame": topic.get("time_frame", ""),
+        "assessment_date": topic.get("assessment_date", ""),
         "topic_focus": topic.get("topic_focus", ""),
         "key_benchmarks": [s["code"] for s in standards],
         "ald_focus": topic.get("ald_focus", "ALD Level 3 In-Class Practice"),
@@ -129,6 +130,11 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
     if settings.ai_provider == "anthropic" and settings.ai_api_key:
         lessons, err = _llm_lessons(topic, standards)
         if lessons:
+            # Attach the AUTHORITATIVE FLDOE ALDs (don't let the model invent
+            # them) so each lesson shows the official "what Level 3 looks like".
+            for L in lessons:
+                code = (L.get("benchmarks") or [""])[0]
+                L["ald"] = std_by_code.get(code, {}).get("alds", {})
             base.update({"generated_by": settings.ai_model, "ai_generated": True,
                          "ai_status": "ok", "lessons": lessons,
                          "note": "AI-generated draft — review with your team before teaching."})
@@ -372,6 +378,9 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
                 " ".join(clar) or s.get("description", "")),
             "benchmark_example": L.get("benchmark_example", ""),
             "sentence_frame": L.get("sentence_frame", ""),
+            # Official FLDOE Achievement Level Descriptors for this benchmark —
+            # "what a Level 3 (on-grade) looks like", plus 2/4/5 for the progression.
+            "ald": s.get("alds", {}),
             "misconceptions": misc,
             "activate_prior_knowledge": activate,
             "i_do": i_do,
@@ -396,11 +405,22 @@ def _llm_lessons(topic: dict, standards: list[dict]):
     try:
         import json as _json
         client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        def _ald_line(s):
+            a = s.get("alds") or {}
+            if not a:
+                return ""
+            parts = []
+            for lvl, lbl in (("level2", "L2 below"), ("level3", "L3 ON-GRADE"),
+                             ("level4", "L4 above"), ("level5", "L5 mastery")):
+                if a.get(lvl):
+                    parts.append(f"{lbl}: {a[lvl]}")
+            return "\n    Achievement Level Descriptors — " + " | ".join(parts) if parts else ""
         std_ctx = "\n".join(
             f"- {s['code']}: {s.get('description','')}"
             + (f"\n    Clarifications: {' | '.join(s.get('clarifications', []))}" if s.get('clarifications') else "")
             + (f"\n    Common misconceptions: {s['misconceptions']}" if s.get('misconceptions') else "")
             + (f"\n    Instructional strategies (B1G-M): {s['strategies']}" if s.get('strategies') else "")
+            + _ald_line(s)
             for s in standards
         )
         outline = topic.get("lessons") or []
