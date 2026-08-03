@@ -281,6 +281,54 @@ export default function ReportsPage() {
               <ProficiencyCard title="FAST ELA — % Proficient (Level 3+)" data={report.fast_ela} />
             </div>
 
+            {report.roster?.length > 0 && (
+              <Card title={`Students in ${grade === "K" ? "Kindergarten" : `Grade ${grade}`} (${report.roster.length})`}>
+                <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                        <th className="py-1">Student</th>
+                        <th className="py-1">Homeroom Teacher</th>
+                        <th className="py-1">FAST Math</th>
+                        <th className="py-1">Topic Avg</th>
+                        <th className="py-1">Flags</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.roster.map((s: any) => (
+                        <tr key={s.student_id} className="border-b border-gray-50">
+                          <td className="py-1 font-medium">{s.name}</td>
+                          <td className="py-1 text-gray-500">{s.teacher || "—"}</td>
+                          <td className="py-1">
+                            {s.fast_math_level != null ? (
+                              <span className={s.fast_math_level < 3 ? "text-red-600 font-semibold" : "text-green-700 font-semibold"}>
+                                L{s.fast_math_level}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="py-1">
+                            {s.topic_avg != null ? `${s.topic_avg}%` : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="py-1">
+                            <span className="flex gap-1">
+                              {s.ell && (
+                                <span className="text-[10px] bg-blue-50 text-blue-600 rounded px-1">ELL</span>
+                              )}
+                              {s.ese && (
+                                <span className="text-[10px] bg-purple-50 text-purple-600 rounded px-1">ESE</span>
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
             {Object.keys(report.topic_assessments || {}).length > 0 && (
               <Card title="Math Topic Assessments — class average %">
                 <div className="flex flex-wrap gap-2">
@@ -744,7 +792,7 @@ function TargetList({ rows, showScale }: { rows: any[]; showScale?: boolean }) {
 }
 
 function ProficiencyCard({ title, data }: { title: string; data: any }) {
-  const periods = PM.filter((p) => data && data[p]);
+  const periods = ["Baseline", ...PM].filter((p) => data && data[p]);
   return (
     <Card title={title}>
       {periods.length === 0 ? (

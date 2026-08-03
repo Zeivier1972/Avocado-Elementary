@@ -22,6 +22,9 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 # FAST achievement levels are 1-5; level >= 3 is proficient.
 FAST_PERIODS = ["PM1", "PM2", "PM3"]
+# "Baseline" = prior-year FAST carried in on the roster; shown until PM windows
+# are uploaded, and reported alongside them.
+FAST_REPORT_PERIODS = ["Baseline"] + FAST_PERIODS
 IREADY_PERIODS = ["AP1", "AP2", "AP3"]
 
 
@@ -36,7 +39,7 @@ def _fast_summary(rows, subject):
         if a.source == "FAST" and a.subject == subject and _is_level(a.level):
             by_period[a.period].append(int(a.level))
     out = {}
-    for p in FAST_PERIODS:
+    for p in FAST_REPORT_PERIODS:
         levels = by_period.get(p, [])
         if not levels:
             continue
@@ -554,14 +557,37 @@ def grade_report(
             topic_avg[a.student_id].append(a.percent)
 
     name = {s.id: f"{s.first_name.title()} {s.last_name.title()}" for s in students}
+
+    # Homeroom teacher per student (via the HOMEROOM class enrollment).
+    hr_classes = {c.id: c for c in db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == user.tenant_id).all()}
+    teacher_name = {u.id: u.name for u in db.query(User).filter(
+        User.tenant_id == user.tenant_id, User.role == "teacher").all()}
+    stu_teacher = {}
+    if sids:
+        for e in db.query(Enrollment).filter(Enrollment.student_id.in_(sids)).all():
+            c = hr_classes.get(e.class_id)
+            if c and e.student_id not in stu_teacher:
+                stu_teacher[e.student_id] = teacher_name.get(c.teacher_id, "")
+
     watch = []
-    for sid in sids:
+    roster = []
+    for s in students:
+        sid = s.id
         lvl = latest_math.get(sid, (None, None))[1]
         tavg = (sum(topic_avg[sid]) / len(topic_avg[sid])) if topic_avg.get(sid) else None
+        f = s.flags or {}
+        entry = {
+            "student_id": sid, "name": name.get(sid, ""),
+            "teacher": stu_teacher.get(sid, "—"),
+            "fast_math_level": lvl,
+            "topic_avg": round(100 * tavg) if tavg is not None else None,
+            "ell": bool(f.get("ell")), "ese": bool(f.get("ese")),
+        }
+        roster.append(entry)
         if (lvl is not None and lvl < 3) or (tavg is not None and tavg < 0.6):
-            watch.append({"student_id": sid, "name": name.get(sid, ""),
-                          "fast_math_level": lvl,
-                          "topic_avg": round(100 * tavg) if tavg is not None else None})
+            watch.append(entry)
+    roster.sort(key=lambda r: r["name"])
     watch.sort(key=lambda x: (x["fast_math_level"] or 9, x["topic_avg"] or 100))
 
     return {
@@ -572,6 +598,7 @@ def grade_report(
         "iready_math": _iready_summary(rows, "MATH"),
         "iready_ela": _iready_summary(rows, "ELA"),
         "topic_assessments": _topic_summary(rows),
+        "roster": roster,
         "watchlist": watch[:40],
         "watchlist_count": len(watch),
     }
