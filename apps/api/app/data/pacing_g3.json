@@ -5,6 +5,355 @@
  "source": "M-DCPS 2025-2026 District Pacing Guide",
  "topics": [
   {
+   "topic_code": "TOPIC 1",
+   "chapter": "Chapter 1",
+   "name": "Understand Multiplication",
+   "quarter": "First Nine Weeks",
+   "benchmarks": [
+    "MA.3.NSO.2.2",
+    "MA.3.AR.1.1",
+    "MA.3.AR.1.2"
+   ],
+   "learning_target": "I can understand multiplication as equal groups and arrays, use the properties of multiplication, and solve real-world problems.",
+   "success_criteria": [
+    "Model multiplication with equal groups and arrays.",
+    "Write a multiplication equation for a model (factor × factor = product).",
+    "Use the commutative and associative properties to multiply.",
+    "Solve one- and two-step real-world multiplication problems."
+   ],
+   "vocabulary": [
+    "factor",
+    "product",
+    "multiply",
+    "equal groups",
+    "array",
+    "row",
+    "column",
+    "commutative property",
+    "associative property",
+    "skip count",
+    "repeated addition",
+    "number line",
+    "multiple"
+   ],
+   "time_frame": "~10 instructional days + CFA & Review",
+   "assessment_date": "Topic 1 Assessment — administer by Aug 28, 2026 (recommended Aug 26)",
+   "topic_focus": "Building conceptual understanding of multiplication (equal groups, arrays, properties) and applying it to real-world problems",
+   "ald_focus": "ALD Level 3 In-Class Practice only (not homework column)",
+   "mtr_practices": [
+    "MTR 2.1 (Representation)",
+    "MTR 3.1 (Multiple Methods)",
+    "MTR 4.1 (Talk About Math)",
+    "MTR 5.1 (Use Patterns)"
+   ],
+   "materials": [
+    "two-color counters",
+    "grid/array paper",
+    "number lines",
+    "mini-whiteboards",
+    "index cards"
+   ],
+   "resources": [
+    "Grade 3 Topic 1 Bellringer (use to open each instructional day; revisit prior day or a prerequisite skill)"
+   ],
+   "lessons": [
+    {
+     "code": "1.1",
+     "title": "Multiplication as Equal Groups",
+     "benchmarks": [
+      "MA.3.NSO.2.2"
+     ],
+     "focus": "Understanding multiplication as a number of equal groups.",
+     "learning_goal": "I can use equal groups to multiply.",
+     "success_criteria": [
+      "Build equal groups with counters.",
+      "Write a multiplication equation for the groups.",
+      "Connect repeated addition to multiplication."
+     ],
+     "success_example": "4 groups of 3 counters = 12; written as 4 × 3 = 12 (same as 3 + 3 + 3 + 3).",
+     "benchmark_clarification": "Multiplication is a number of equal groups; the first factor is the number of groups and the second is the number in each group.",
+     "benchmark_example": "3 plates with 5 cookies each → 3 × 5 = 15.",
+     "sentence_frame": "There are __ groups of __, so __ × __ = __.",
+     "misconceptions": [
+      {
+       "misconception": "Counts total objects but writes the wrong factors",
+       "example": "For 4 groups of 3 writes 3 × 4 groups incorrectly / confuses which number is groups",
+       "fix": "Label the model: number of groups × number in each group."
+      },
+      {
+       "misconception": "Confuses repeated addition of unequal groups",
+       "example": "Groups of 3, 2, 3 and still writes 3 × 3",
+       "fix": "Stress groups must be EQUAL before multiplying."
+      }
+     ],
+     "activate_prior_knowledge": "Review Grade 2 repeated addition (MA.2.AR.3.2): show 2 + 2 + 2 and ask 'how many groups of 2?' Connect to counting equal groups.",
+     "i_do": "Model 4 × 3: place 4 groups of 3 counters. Think aloud: '4 equal groups, 3 in each. That's 3 + 3 + 3 + 3 = 12, or 4 × 3 = 12.' Write the equation and label groups × in-each.",
+     "we_do": "Together build 5 × 2 with counters. Students state it with the sentence frame and write both the repeated-addition and multiplication forms on whiteboards.",
+     "cfu": [
+      "Draw 3 groups of 4 and write the equation",
+      "Write a multiplication equation for 2 + 2 + 2 + 2 + 2",
+      "How many in 6 groups of 2?"
+     ],
+     "you_do": "Build and draw 4 groups of 5; write the repeated-addition and the multiplication equation; find the product.",
+     "cpa": {
+      "concrete": "Place counters in equal groups:\n(●●●)(●●●)(●●●)(●●●) = 4 groups of 3",
+      "pictorial": "Draw circles as groups with dots inside; label 4 × 3.",
+      "abstract": "4 × 3 = 3 + 3 + 3 + 3 = 12"
+     },
+     "level3_example": "“There are 4 groups with 3 in each group, so I multiply 4 × 3 to get 12.”",
+     "exit_ticket": {
+      "problem": "Write a multiplication equation for 5 groups of 2 and find the product.",
+      "answer": "5 × 2 = 10"
+     }
+    },
+    {
+     "code": "1.2",
+     "title": "Multiplication as Arrays",
+     "benchmarks": [
+      "MA.3.NSO.2.2"
+     ],
+     "focus": "Representing multiplication with rows and columns (arrays).",
+     "learning_goal": "I can use an array to multiply.",
+     "success_criteria": [
+      "Build an array with equal rows.",
+      "Write a multiplication equation (rows × columns).",
+      "Explain how the array shows the product."
+     ],
+     "success_example": "3 rows of 5 = 15; written as 3 × 5 = 15.",
+     "benchmark_clarification": "An array shows equal rows and columns; rows × columns = total.",
+     "benchmark_example": "An array of 4 rows and 6 columns → 4 × 6 = 24.",
+     "sentence_frame": "The array has __ rows of __, so __ × __ = __.",
+     "misconceptions": [
+      {
+       "misconception": "Miscounts rows vs columns",
+       "example": "Calls a 3×5 array '5 × 3 rows'",
+       "fix": "Point: rows go across, columns go down; count rows first."
+      },
+      {
+       "misconception": "Rows are not equal",
+       "example": "Draws rows of 5, 4, 5",
+       "fix": "Every row in an array must have the SAME number."
+      }
+     ],
+     "activate_prior_knowledge": "Show yesterday's equal groups (4 × 3) and ask 'how could we line these up neatly in rows?' Introduce the array as organized equal groups.",
+     "i_do": "Model 3 × 5: build 3 rows of 5 counters. Think aloud: '3 rows, 5 in each row → 3 × 5 = 15.' Skip count the rows: 5, 10, 15.",
+     "we_do": "Together build a 4 × 2 array. Students count by rows, write the equation, and use the sentence frame with a partner.",
+     "cfu": [
+      "Draw a 2 × 6 array and write the equation",
+      "How many dots in 5 rows of 3?",
+      "Write the equation for an array with 4 rows of 4"
+     ],
+     "you_do": "Draw a 3 × 6 array on grid paper, label rows and columns, and write the multiplication equation and product.",
+     "cpa": {
+      "concrete": "Build rows of counters:\n● ● ● ● ●\n● ● ● ● ●\n● ● ● ● ●  = 3 × 5",
+      "pictorial": "Draw an array on grid paper; circle the rows.",
+      "abstract": "3 × 5 = 15 (skip count 5, 10, 15)"
+     },
+     "level3_example": "“The array has 3 rows of 5, so 3 × 5 = 15 — I skip-counted 5, 10, 15.”",
+     "exit_ticket": {
+      "problem": "Write the multiplication equation for an array with 4 rows of 5.",
+      "answer": "4 × 5 = 20"
+     }
+    },
+    {
+     "code": "1.3",
+     "title": "Skip Counting & Number Lines",
+     "benchmarks": [
+      "MA.3.NSO.2.2"
+     ],
+     "focus": "Using skip counting and number lines to multiply.",
+     "learning_goal": "I can skip count on a number line to multiply.",
+     "success_criteria": [
+      "Skip count by a factor.",
+      "Show equal jumps on a number line.",
+      "Write the matching multiplication equation."
+     ],
+     "success_example": "4 jumps of 5 on a number line lands on 20 → 4 × 5 = 20.",
+     "benchmark_clarification": "Equal jumps on a number line show a number of equal groups; number of jumps × size of jump = product.",
+     "benchmark_example": "Start at 0, make 3 jumps of 4 → 4, 8, 12 → 3 × 4 = 12.",
+     "sentence_frame": "__ jumps of __ lands on __, so __ × __ = __.",
+     "misconceptions": [
+      {
+       "misconception": "Counts the starting 0 as a jump",
+       "example": "Says 3 jumps of 4 ends at 8",
+       "fix": "Start counting jumps AFTER 0; each jump adds the factor."
+      },
+      {
+       "misconception": "Unequal jumps",
+       "example": "Jumps of 4, 3, 4",
+       "fix": "Every jump must be the same size."
+      }
+     ],
+     "activate_prior_knowledge": "Warm up skip counting by 2s, 5s, and 10s aloud. Ask 'if I count 5, 10, 15, 20 — how many 5s did I count?'",
+     "i_do": "Model 4 × 5 on a number line: start at 0, make 4 equal jumps of 5 (5, 10, 15, 20). Think aloud connecting jumps to groups.",
+     "we_do": "Together show 3 × 4 on a number line. Students mark the jumps and write the equation using the sentence frame.",
+     "cfu": [
+      "Show 5 × 2 on a number line",
+      "3 jumps of 6 land on ___",
+      "Write the equation for jumps landing on 4, 8, 12, 16"
+     ],
+     "you_do": "On a number line, show 4 × 3 with equal jumps, label each jump, and write the equation and product.",
+     "cpa": {
+      "concrete": "Hop counters/feet along a floor number line in equal jumps.",
+      "pictorial": "Draw a number line with equal arcs: 0→5→10→15→20.",
+      "abstract": "4 × 5 = 20 (skip count by 5 four times)"
+     },
+     "level3_example": "“I made 4 jumps of 5 and landed on 20, so 4 × 5 = 20.”",
+     "exit_ticket": {
+      "problem": "How many jumps of 3 land on 12? Write the equation.",
+      "answer": "4 jumps; 4 × 3 = 12"
+     }
+    },
+    {
+     "code": "1.4",
+     "title": "Commutative Property of Multiplication",
+     "benchmarks": [
+      "MA.3.AR.1.1"
+     ],
+     "focus": "Understanding that the order of factors does not change the product.",
+     "learning_goal": "I can use the commutative property to multiply in any order.",
+     "success_criteria": [
+      "Show that a × b = b × a with a model.",
+      "Turn an array to prove the product is the same.",
+      "Use the property to solve an easier fact."
+     ],
+     "success_example": "3 × 4 = 12 and 4 × 3 = 12 — the array just turns; the product is the same.",
+     "benchmark_clarification": "The commutative property means factors can be multiplied in any order for the same product.",
+     "benchmark_example": "If 2 × 8 = 16, then 8 × 2 = 16.",
+     "sentence_frame": "Since __ × __ = __, I know __ × __ = __ too.",
+     "misconceptions": [
+      {
+       "misconception": "Thinks a × b and b × a give different products",
+       "example": "Says 3 × 4 = 12 but 4 × 3 = 7",
+       "fix": "Rotate the same array to show the total doesn't change."
+      },
+      {
+       "misconception": "Applies 'any order' to division",
+       "example": "Says 12 ÷ 3 = 3 ÷ 12",
+       "fix": "Commutative property is for multiplication (and addition), not division."
+      }
+     ],
+     "activate_prior_knowledge": "Show a 3 × 4 array from a prior day. Ask 'what happens to the total if I turn it sideways?' Predict before rotating.",
+     "i_do": "Model 3 × 4 and 4 × 3 with the same array rotated. Think aloud: 'The array turned, but there are still 12 — so 3 × 4 = 4 × 3.'",
+     "we_do": "Together prove 2 × 5 = 5 × 2 with counters. Students write both equations and explain with the sentence frame.",
+     "cfu": [
+      "If 6 × 2 = 12, what is 2 × 6?",
+      "Write the commutative partner of 4 × 3",
+      "True or false: 5 × 3 = 3 × 5"
+     ],
+     "you_do": "Build 3 × 6, then rotate it to show 6 × 3; write both equations and a sentence explaining why the product is equal.",
+     "cpa": {
+      "concrete": "Rotate one array of counters to see the same total both ways.",
+      "pictorial": "Draw a 3 × 4 array and the same array turned to 4 × 3.",
+      "abstract": "3 × 4 = 4 × 3 = 12"
+     },
+     "level3_example": "“I know 3 × 4 = 12, so 4 × 3 = 12 too, because turning the array doesn't change how many there are.”",
+     "exit_ticket": {
+      "problem": "If 7 × 2 = 14, what is 2 × 7? Explain in one sentence.",
+      "answer": "2 × 7 = 14 (commutative property — order doesn't change the product)"
+     }
+    },
+    {
+     "code": "1.5",
+     "title": "Associative Property of Multiplication",
+     "benchmarks": [
+      "MA.3.AR.1.1"
+     ],
+     "focus": "Grouping three factors in different ways to make multiplying easier.",
+     "learning_goal": "I can group factors to multiply three numbers.",
+     "success_criteria": [
+      "Multiply three factors by grouping two first.",
+      "Show that different groupings give the same product.",
+      "Choose an easier grouping."
+     ],
+     "success_example": "(2 × 3) × 4 = 6 × 4 = 24 and 2 × (3 × 4) = 2 × 12 = 24.",
+     "benchmark_clarification": "The associative property means you can group factors in any way; the product stays the same.",
+     "benchmark_example": "(2 × 2) × 5 = 4 × 5 = 20; 2 × (2 × 5) = 2 × 10 = 20.",
+     "sentence_frame": "I grouped __ × __ first to get __, then multiplied by __ to get __.",
+     "misconceptions": [
+      {
+       "misconception": "Multiplies only two of the three factors",
+       "example": "For 2 × 3 × 4 writes 2 × 3 = 6 and stops",
+       "fix": "All three factors must be multiplied; use parentheses to group two, then multiply the third."
+      },
+      {
+       "misconception": "Changes the factors, not just the grouping",
+       "example": "Turns 2 × 3 × 4 into 2 × 3 × 5",
+       "fix": "Only the GROUPING changes, never the numbers."
+      }
+     ],
+     "activate_prior_knowledge": "Review commutative property. Pose: '2 × 3 × 4 — which two should we multiply first to make it easy?'",
+     "i_do": "Model (2 × 3) × 4: '2 × 3 = 6, then 6 × 4 = 24.' Then 2 × (3 × 4): '3 × 4 = 12, then 2 × 12 = 24.' Same answer — grouping is our choice.",
+     "we_do": "Together solve 2 × 2 × 5 two different ways. Students show both groupings and use the sentence frame.",
+     "cfu": [
+      "Solve (3 × 2) × 4",
+      "Solve 2 × (2 × 6)",
+      "Which grouping of 5 × 2 × 3 is easiest? Why?"
+     ],
+     "you_do": "Solve 2 × 3 × 5 two ways (group different pairs first); show both give the same product.",
+     "cpa": {
+      "concrete": "Build 2 layers of a 3 × 4 array to model (2 × 3) × 4 vs 2 × (3 × 4).",
+      "pictorial": "Draw grouped factors with parentheses and arrows.",
+      "abstract": "(2 × 3) × 4 = 2 × (3 × 4) = 24"
+     },
+     "level3_example": "“I grouped 3 × 4 = 12 first, then 2 × 12 = 24 — I could also group 2 × 3 first and still get 24.”",
+     "exit_ticket": {
+      "problem": "Solve 2 × 2 × 4 by grouping. Show your grouping.",
+      "answer": "(2 × 2) × 4 = 4 × 4 = 16"
+     }
+    },
+    {
+     "code": "1.6",
+     "title": "Multiplication & Division Word Problems",
+     "benchmarks": [
+      "MA.3.AR.1.2"
+     ],
+     "focus": "Solving one- and two-step real-world problems using multiplication.",
+     "learning_goal": "I can solve real-world problems using multiplication.",
+     "success_criteria": [
+      "Identify the groups and the number in each group.",
+      "Write an equation to match the problem.",
+      "Solve and check that the answer is reasonable."
+     ],
+     "success_example": "6 bags with 4 apples each → 6 × 4 = 24 apples.",
+     "benchmark_clarification": "Understand the context: decide what is being grouped and how many groups, then write and solve an equation.",
+     "benchmark_example": "There are 5 tables with 3 students each → 5 × 3 = 15 students.",
+     "sentence_frame": "There are __ groups of __, so I multiply __ × __ = __.",
+     "misconceptions": [
+      {
+       "misconception": "Adds instead of multiplies equal groups",
+       "example": "For 6 bags of 4 writes 6 + 4 = 10",
+       "fix": "Ask: is it equal groups? If yes, multiply."
+      },
+      {
+       "misconception": "Uses the wrong operation in a two-step problem",
+       "example": "Multiplies then forgets the second step",
+       "fix": "Underline each question; solve step 1, then use it in step 2."
+      }
+     ],
+     "activate_prior_knowledge": "Revisit equal groups. Read a short story problem aloud and ask 'what are the groups? how many in each?'",
+     "i_do": "Model: 'There are 4 boxes with 6 crayons each. How many crayons?' Think aloud: 4 groups of 6 → 4 × 6 = 24. Check reasonableness.",
+     "we_do": "Together solve: 'A class has 5 rows with 4 desks each. How many desks?' Students draw the model, write 5 × 4 = 20, and justify with the sentence frame.",
+     "cfu": [
+      "3 bags with 5 apples — how many apples?",
+      "A shelf has 4 rows of 2 books — how many books?",
+      "Write an equation for: 6 groups of 3"
+     ],
+     "you_do": "Solve: 'There are 7 tables with 3 markers on each. How many markers?' Draw a model, write the equation, and explain if your answer is reasonable.",
+     "cpa": {
+      "concrete": "Act out the story with counters in equal groups.",
+      "pictorial": "Draw the groups (bags/rows) with objects; label the equation.",
+      "abstract": "6 × 4 = 24 (6 equal groups of 4)"
+     },
+     "level3_example": "“There are 6 bags with 4 apples in each, so I multiplied 6 × 4 = 24 apples, and 24 is reasonable for 6 small bags.”",
+     "exit_ticket": {
+      "problem": "There are 5 plates with 3 cookies on each. How many cookies? Write the equation.",
+      "answer": "5 × 3 = 15 cookies"
+     }
+    }
+   ]
+  },
+  {
    "topic_code": "TOPIC 7",
    "chapter": "Chapter 7",
    "name": "Place Value and Rounding",
@@ -23,26 +372,44 @@
     "Round numbers to the nearest ten or hundred using place value reasoning."
    ],
    "vocabulary": [
-    "place value", "standard form", "expanded form", "word form", "digit",
-    "round", "compare", "base-ten", "thousands", "hundreds", "tens", "ones"
+    "place value",
+    "standard form",
+    "expanded form",
+    "word form",
+    "digit",
+    "round",
+    "compare",
+    "base-ten",
+    "thousands",
+    "hundreds",
+    "tens",
+    "ones"
    ],
    "time_frame": "~10 instructional days + CFA & Review",
    "assessment_date": "Topic 7 Assessment — administer by Dec 11, 2026 (recommended Dec 9)",
    "topic_focus": "Understanding place value up to 10,000 and rounding to the nearest ten and hundred",
    "ald_focus": "ALD Level 3 In-Class Practice only (not homework column)",
    "mtr_practices": [
-    "MTR 2.1 (Representation)", "MTR 4.1 (Talk About Math)",
-    "MTR 5.1 (Use Patterns)", "MTR 7.1 (Real-World Application)"
+    "MTR 2.1 (Representation)",
+    "MTR 4.1 (Talk About Math)",
+    "MTR 5.1 (Use Patterns)",
+    "MTR 7.1 (Real-World Application)"
    ],
    "materials": [
-    "Place value charts", "base-ten blocks", "place value disks",
-    "number lines", "mini-whiteboards", "digit cards"
+    "Place value charts",
+    "base-ten blocks",
+    "place value disks",
+    "number lines",
+    "mini-whiteboards",
+    "digit cards"
    ],
    "lessons": [
     {
      "code": "7.1",
      "title": "Place Value to the Thousands",
-     "benchmarks": ["MA.3.NSO.1.1"],
+     "benchmarks": [
+      "MA.3.NSO.1.1"
+     ],
      "focus": "Understanding the value of each digit in a 4-digit number.",
      "learning_goal": "I can explain the value of each digit in a number up to 10,000.",
      "success_criteria": [
@@ -55,8 +422,16 @@
      "benchmark_example": "“The 5 in 4,582 is in the hundreds place, so it represents 500, not 5.”",
      "sentence_frame": "The __ is in the __ place, so it means __.",
      "misconceptions": [
-      {"misconception": "Reads the digit instead of its value", "example": "Says the 6 in 3,674 is “6”", "fix": "Build with base-ten blocks and label each place; say “6 hundreds,” not “6.”"},
-      {"misconception": "Writes incorrect expanded form", "example": "Writes 4,582 = 4 + 5 + 8 + 2", "fix": "Model expanded form on a place-value chart with blocks."}
+      {
+       "misconception": "Reads the digit instead of its value",
+       "example": "Says the 6 in 3,674 is “6”",
+       "fix": "Build with base-ten blocks and label each place; say “6 hundreds,” not “6.”"
+      },
+      {
+       "misconception": "Writes incorrect expanded form",
+       "example": "Writes 4,582 = 4 + 5 + 8 + 2",
+       "fix": "Model expanded form on a place-value chart with blocks."
+      }
      ],
      "activate_prior_knowledge": "Review 2nd-grade place value to hundreds (MA.2.NSO.1.1). Flash 3-digit numbers (e.g., 348) and ask “What is the value of the 4?” (40). Then extend: “What happens when we add a digit in front — 3,048?”",
      "i_do": "Model with 3,476. Build it with base-ten blocks (3 thousand-cubes, 4 flats, 7 rods, 6 units). Think aloud: “The 3 is in the thousands place, so it means 3,000. The 4 is in the hundreds place, so it means 400…” Record it on a place-value chart, then expanded form: 3,476 = 3,000 + 400 + 70 + 6.",
@@ -73,12 +448,17 @@
       "abstract": "3,476 = 3,000 + 400 + 70 + 6"
      },
      "level3_example": "“The 7 is in the tens place, which means 70, because each ten is worth ten ones.”",
-     "exit_ticket": {"problem": "What is the value of the 8 in 8,145?", "answer": "8,000"}
+     "exit_ticket": {
+      "problem": "What is the value of the 8 in 8,145?",
+      "answer": "8,000"
+     }
     },
     {
      "code": "7.2",
      "title": "Read & Write Numbers in Standard, Word & Expanded Form",
-     "benchmarks": ["MA.3.NSO.1.1"],
+     "benchmarks": [
+      "MA.3.NSO.1.1"
+     ],
      "focus": "Writing numbers in multiple forms; zero as a placeholder.",
      "learning_goal": "I can write a number in standard form, word form, and expanded form.",
      "success_criteria": [
@@ -91,8 +471,16 @@
      "benchmark_example": "In 4,209 the 0 shows there are no tens; it is written but not said as a word.",
      "sentence_frame": "In __ form, __ is written as __.",
      "misconceptions": [
-      {"misconception": "Adds “and” in whole-number word form", "example": "Writes “four thousand two hundred and nine”", "fix": "There is no “and” in whole-number word form; “and” is used for decimals."},
-      {"misconception": "Runs digits together / drops a place", "example": "Writes 4,209 as 42009", "fix": "Write one place at a time using the place-value chart."}
+      {
+       "misconception": "Adds “and” in whole-number word form",
+       "example": "Writes “four thousand two hundred and nine”",
+       "fix": "There is no “and” in whole-number word form; “and” is used for decimals."
+      },
+      {
+       "misconception": "Runs digits together / drops a place",
+       "example": "Writes 4,209 as 42009",
+       "fix": "Write one place at a time using the place-value chart."
+      }
      ],
      "activate_prior_knowledge": "Quick review of 7.1: show 4,582 and have students state each digit's value, then say the number aloud correctly (“four thousand five hundred eighty-two”).",
      "i_do": "Model with 3,067. Build with place-value disks. Write standard (3,067), word (three thousand sixty-seven), and expanded (3,000 + 60 + 7). Think aloud about the 0: “There are no hundreds, so I hold the place with a 0 — but I don't say it in word form.”",
@@ -109,12 +497,17 @@
       "abstract": "3,067 = 3,000 + 60 + 7 · word form: three thousand sixty-seven"
      },
      "level3_example": "“I needed a 0 in the hundreds place to show there are no hundreds, but I don't say ‘zero’ when I read it.”",
-     "exit_ticket": {"problem": "Write 3,560 in word form.", "answer": "three thousand five hundred sixty"}
+     "exit_ticket": {
+      "problem": "Write 3,560 in word form.",
+      "answer": "three thousand five hundred sixty"
+     }
     },
     {
      "code": "7.3",
      "title": "Model & Represent Numbers (Base-Ten Models)",
-     "benchmarks": ["MA.3.NSO.1.1"],
+     "benchmarks": [
+      "MA.3.NSO.1.1"
+     ],
      "focus": "Representing numbers up to 10,000 using models, pictures, and place value charts.",
      "learning_goal": "I can represent a 4-digit number with base-ten models, drawings, and a place-value chart.",
      "success_criteria": [
@@ -127,8 +520,16 @@
      "benchmark_example": "For 2,547, draw 2 thousand-cubes, 5 flats, 4 rods, 7 units and label 1,000 / 100 / 10 / 1.",
      "sentence_frame": "I drew __ __, which stands for __.",
      "misconceptions": [
-      {"misconception": "Mislabels the value of a drawn model", "example": "Draws 5 flats but calls it “5” instead of 500", "fix": "Label each model piece with its place value (100, 10)."},
-      {"misconception": "Miscounts when regrouping", "example": "Writes 14 tens as 14 instead of 140", "fix": "Model an exchange/trade: 10 tens = 1 hundred."}
+      {
+       "misconception": "Mislabels the value of a drawn model",
+       "example": "Draws 5 flats but calls it “5” instead of 500",
+       "fix": "Label each model piece with its place value (100, 10)."
+      },
+      {
+       "misconception": "Miscounts when regrouping",
+       "example": "Writes 14 tens as 14 instead of 140",
+       "fix": "Model an exchange/trade: 10 tens = 1 hundred."
+      }
      ],
      "activate_prior_knowledge": "Show a place-value chart with 2,547 and have students sketch quick base-ten pictures for a 3-digit warm-up (e.g., 253) to practice drawing flats, rods, and units.",
      "i_do": "Model 4,283: build with blocks, then draw a quick picture (squares = thousands, flats = hundreds, lines = tens, dots = ones), then connect to the chart and expanded form. Think aloud matching each piece to its value.",
@@ -143,12 +544,17 @@
       "abstract": "4,543 = 4,000 + 500 + 40 + 3"
      },
      "level3_example": "“4 thousands means 4,000 because each thousand is ten hundreds.”",
-     "exit_ticket": {"problem": "Which model shows 4,201? Circle the correct base-ten picture.", "answer": "4 thousand-cubes, 2 flats, 0 rods, 1 unit"}
+     "exit_ticket": {
+      "problem": "Which model shows 4,201? Circle the correct base-ten picture.",
+      "answer": "4 thousand-cubes, 2 flats, 0 rods, 1 unit"
+     }
     },
     {
      "code": "7.4",
      "title": "Compare Numbers to 10,000 Using >, <, =",
-     "benchmarks": ["MA.3.NSO.1.2"],
+     "benchmarks": [
+      "MA.3.NSO.1.2"
+     ],
      "focus": "Comparing using place value reasoning.",
      "learning_goal": "I can compare numbers up to 10,000 using >, <, and =.",
      "success_criteria": [
@@ -160,8 +566,16 @@
      "benchmark_example": "7,214 > 6,998 because 7 thousands > 6 thousands, even though 6,998 has larger later digits.",
      "sentence_frame": "I compared the __ place and saw __ > __, so __ __ __.",
      "misconceptions": [
-      {"misconception": "Compares digits out of order", "example": "Compares the ones first", "fix": "Always compare from left to right (largest place first)."},
-      {"misconception": "Thinks a bigger first digit means bigger", "example": "Says 3,912 > 12,000 because 3 > 1", "fix": "Align digits on a place-value chart; more places = greater."}
+      {
+       "misconception": "Compares digits out of order",
+       "example": "Compares the ones first",
+       "fix": "Always compare from left to right (largest place first)."
+      },
+      {
+       "misconception": "Thinks a bigger first digit means bigger",
+       "example": "Says 3,912 > 12,000 because 3 > 1",
+       "fix": "Align digits on a place-value chart; more places = greater."
+      }
      ],
      "activate_prior_knowledge": "Review comparison symbols with 2-digit numbers (the symbol “opens” toward the larger number). Ask: “How do we decide which is bigger when numbers have 4 digits?”",
      "i_do": "Model comparing 4,752 and 4,529. Line them up on a place-value chart. Think aloud: “Thousands are equal (4 = 4). Move to hundreds: 7 > 5, so 4,752 > 4,529.” Stress starting from the LEFT (largest place).",
@@ -178,12 +592,17 @@
       "abstract": "4,752 > 4,529 because 7 hundreds > 5 hundreds"
      },
      "level3_example": "“Since the thousands are equal, I compared the hundreds: 7 hundreds > 5 hundreds, so 4,752 > 4,529.”",
-     "exit_ticket": {"problem": "Circle the greater number: 5,908 or 5,890", "answer": "5,908"}
+     "exit_ticket": {
+      "problem": "Circle the greater number: 5,908 or 5,890",
+      "answer": "5,908"
+     }
     },
     {
      "code": "7.5",
      "title": "Round to Nearest Ten",
-     "benchmarks": ["MA.3.NSO.1.4"],
+     "benchmarks": [
+      "MA.3.NSO.1.4"
+     ],
      "focus": "Rounding to the nearest 10 using the ones digit.",
      "learning_goal": "I can round a number to the nearest ten.",
      "success_criteria": [
@@ -195,8 +614,16 @@
      "benchmark_example": "45 is the midpoint between 40 and 50, so 45 rounds up to 50.",
      "sentence_frame": "__ is closer to __ than __, so it rounds to __.",
      "misconceptions": [
-      {"misconception": "Rounds using the wrong place", "example": "Uses the tens digit to round to the nearest ten", "fix": "To round to the nearest ten, look at the ONES digit."},
-      {"misconception": "Thinks 5 rounds down", "example": "Rounds 65 → 60", "fix": "5 means round UP; show 65 at the midpoint on a number line."}
+      {
+       "misconception": "Rounds using the wrong place",
+       "example": "Uses the tens digit to round to the nearest ten",
+       "fix": "To round to the nearest ten, look at the ONES digit."
+      },
+      {
+       "misconception": "Thinks 5 rounds down",
+       "example": "Rounds 65 → 60",
+       "fix": "5 means round UP; show 65 at the midpoint on a number line."
+      }
      ],
      "activate_prior_knowledge": "Skip-count by 10s (10, 20, 30…). Show a number line from 40 to 50 and ask which tens 47 sits between.",
      "i_do": "Model rounding 47. Place it on a 40–50 number line and mark the midpoint 45. Think aloud: “47 is past 45, so it's closer to 50 → 47 rounds to 50.” State the rule (ones ≥ 5 round up, < 5 round down). Then round 42 → 40.",
@@ -213,12 +640,17 @@
       "abstract": "If ones ≥ 5 → round up; if ones < 5 → round down. 47 → 50"
      },
      "level3_example": "“47 is closer to 50 than 40, so it rounds to 50 — the ones digit 7 is more than 5.”",
-     "exit_ticket": {"problem": "Round 71 to the nearest ten.", "answer": "70"}
+     "exit_ticket": {
+      "problem": "Round 71 to the nearest ten.",
+      "answer": "70"
+     }
     },
     {
      "code": "7.6",
      "title": "Round to Nearest Hundred",
-     "benchmarks": ["MA.3.NSO.1.4"],
+     "benchmarks": [
+      "MA.3.NSO.1.4"
+     ],
      "focus": "Rounding to the nearest 100 using the tens digit.",
      "learning_goal": "I can round a number to the nearest hundred.",
      "success_criteria": [
@@ -230,8 +662,16 @@
      "benchmark_example": "378 is between 300 and 400; the tens digit 7 is ≥ 5, so it rounds up to 400.",
      "sentence_frame": "__ is between __ and __; the tens digit is __, so it rounds to __.",
      "misconceptions": [
-      {"misconception": "Uses the ones digit to round to the nearest hundred", "example": "Rounds 378 using the 8", "fix": "To round to the nearest hundred, look at the TENS digit."},
-      {"misconception": "Rounds down when the tens digit is 5", "example": "Rounds 950 → 900", "fix": "A tens digit of 5 rounds UP: 950 → 1,000."}
+      {
+       "misconception": "Uses the ones digit to round to the nearest hundred",
+       "example": "Rounds 378 using the 8",
+       "fix": "To round to the nearest hundred, look at the TENS digit."
+      },
+      {
+       "misconception": "Rounds down when the tens digit is 5",
+       "example": "Rounds 950 → 900",
+       "fix": "A tens digit of 5 rounds UP: 950 → 1,000."
+      }
      ],
      "activate_prior_knowledge": "Skip-count by 100s. Review 7.5: which digit rounds to the nearest ten? (ones) Predict: “Which digit do we use for the nearest hundred?”",
      "i_do": "Model rounding 378. Place it between 300 and 400; mark the midpoint 350. Think aloud: “378 is past 350 → closer to 400. The tens digit 7 is ≥ 5, so round up → 400.”",
@@ -248,12 +688,18 @@
       "abstract": "If tens ≥ 5 → round up; if tens < 5 → round down. 378 → 400"
      },
      "level3_example": "“612 rounds to 600 because the tens digit is 1, which is less than 5, so I round down.”",
-     "exit_ticket": {"problem": "Round 729 to the nearest hundred.", "answer": "700"}
+     "exit_ticket": {
+      "problem": "Round 729 to the nearest hundred.",
+      "answer": "700"
+     }
     },
     {
      "code": "7.7",
      "title": "Problem Solving with Place Value & Rounding",
-     "benchmarks": ["MA.3.NSO.1.1", "MA.3.NSO.1.4"],
+     "benchmarks": [
+      "MA.3.NSO.1.1",
+      "MA.3.NSO.1.4"
+     ],
      "focus": "Estimate, calculate, and check reasonableness in real-world problems.",
      "learning_goal": "I can use place value and rounding to estimate and solve real-world problems.",
      "success_criteria": [
@@ -265,8 +711,16 @@
      "benchmark_example": "Round 3,287 to the nearest hundred: tens digit 8 ≥ 5 → 3,300; then confirm 3,300 is close to 3,287.",
      "sentence_frame": "I rounded __ to the nearest __ to estimate, and __ is reasonable because __.",
      "misconceptions": [
-      {"misconception": "Rounds to the wrong place in a word problem", "example": "Rounds 3,287 to 3,290 when asked for the nearest hundred", "fix": "Underline “nearest hundred”; use the tens digit."},
-      {"misconception": "Does not check reasonableness", "example": "Estimates 3,287 ≈ 4,000", "fix": "Compare the estimate back to the original — it should be close."}
+      {
+       "misconception": "Rounds to the wrong place in a word problem",
+       "example": "Rounds 3,287 to 3,290 when asked for the nearest hundred",
+       "fix": "Underline “nearest hundred”; use the tens digit."
+      },
+      {
+       "misconception": "Does not check reasonableness",
+       "example": "Estimates 3,287 ≈ 4,000",
+       "fix": "Compare the estimate back to the original — it should be close."
+      }
      ],
      "activate_prior_knowledge": "Review the rounding rules from 7.5–7.6 (ones digit → nearest ten; tens digit → nearest hundred). Ask when estimating is useful in real life (crowds, money, distance).",
      "i_do": "Model: “There are 3,287 people in the stadium. About how many is that to the nearest hundred?” Think aloud: tens digit 8 ≥ 5 → round up → 3,300. Then check: “Is 3,300 close to 3,287? Yes.”",
@@ -282,7 +736,10 @@
       "abstract": "3,287 → 3,300 (nearest hundred); estimate, then verify against the real number"
      },
      "level3_example": "“I rounded 3,287 to the nearest hundred because it makes the number easier to use, and 3,300 is close to the real number, so my estimate is reasonable.”",
-     "exit_ticket": {"problem": "A store sold 1,564 stickers. About how many is that to the nearest hundred?", "answer": "1,600"}
+     "exit_ticket": {
+      "problem": "A store sold 1,564 stickers. About how many is that to the nearest hundred?",
+      "answer": "1,600"
+     }
     }
    ]
   },
@@ -304,10 +761,22 @@
     "describe a fraction as a sum of unit fractions."
    ],
    "vocabulary": [
-    "denominator", "eighths", "fifths", "fraction", "mixed number",
-    "numeral-word", "form", "numerator", "sixths", "tenths", "twelfths",
-    "unit fraction", "whole", "whole numbers"
-   ]
+    "denominator",
+    "eighths",
+    "fifths",
+    "fraction",
+    "mixed number",
+    "numeral-word",
+    "form",
+    "numerator",
+    "sixths",
+    "tenths",
+    "twelfths",
+    "unit fraction",
+    "whole",
+    "whole numbers"
+   ],
+   "assessment_date": "Topic 9 Assessment — administer by Jan 28, 2027 (recommended Jan 26)"
   }
  ]
 }

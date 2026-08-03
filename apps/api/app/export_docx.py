@@ -1,9 +1,30 @@
 """Render a Collaborative Planning Guide (the JSON produced by app.ai) into an
 editable Word document, mirroring the district's planning-guide format."""
 import io
+import os
 
 from docx import Document
-from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches, Pt, RGBColor
+
+# School logo shown at the top of every document, if the file is present.
+# Set AVOCADO_LOGO to an absolute path, or drop it at app/data/school_logo.png.
+_LOGO_PATHS = [
+    os.environ.get("AVOCADO_LOGO", ""),
+    os.path.join(os.path.dirname(__file__), "data", "school_logo.png"),
+]
+
+
+def _add_logo(doc):
+    for p in _LOGO_PATHS:
+        if p and os.path.exists(p):
+            try:
+                para = doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                para.add_run().add_picture(p, width=Inches(2.2))
+                return
+            except Exception:
+                return
 
 
 def _heading(doc, text, size, color=(0x38, 0x60, 0x1F), bold=True):
@@ -57,6 +78,7 @@ def _exit_ticket_text(et) -> str:
 
 def guide_to_docx(guide: dict) -> bytes:
     doc = Document()
+    _add_logo(doc)
     _heading(doc, guide.get("title", "Collaborative Planning Guide"), 16)
     meta = doc.add_paragraph()
     m = meta.add_run(
