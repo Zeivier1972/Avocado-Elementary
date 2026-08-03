@@ -93,6 +93,11 @@ export const api = {
     req(`/coach/documents/${id}/generate-guide`, { method: "POST" }),
   pacingFromDocument: (form: FormData) =>
     req("/coach/pacing/from-document", { method: "POST", body: form }),
+  listGuides: (grade: string) =>
+    req(`/coach/guides?grade_level=${encodeURIComponent(grade)}`),
+  getGuide: (id: string) => req(`/coach/guides/${id}`),
+  deleteGuide: (id: string) =>
+    req(`/coach/guides/${id}`, { method: "DELETE" }),
   aiCheck: () => req("/coach/ai-check"),
   assistant: (message: string, history: any[]) =>
     req("/coach/assistant", {

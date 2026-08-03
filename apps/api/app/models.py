@@ -283,6 +283,21 @@ class PlcAgenda(Base, TimestampMixin):
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class SavedGuide(Base, TimestampMixin):
+    """A generated Collaborative Planning Guide, persisted so it isn't lost when
+    the coach navigates away. Reopenable and downloadable from the DB."""
+    __tablename__ = "saved_guides"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    grade_level: Mapped[str] = mapped_column(String, default="", index=True)
+    topic_code: Mapped[str] = mapped_column(String, default="", index=True)
+    subject: Mapped[str] = mapped_column(String, default="MATH")
+    title: Mapped[str] = mapped_column(String, default="")
+    content: Mapped[dict] = mapped_column(JSON, default=dict)
+    ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str] = mapped_column(String, default="")
+
+
 class PlanningDocument(Base, TimestampMixin):
     """A file the coach uploads into a grade/topic folder in the planning area
     (pacing guides, bell ringers, year-at-a-glance, resources...). Stored in the

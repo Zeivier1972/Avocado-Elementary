@@ -25,6 +25,36 @@ export default function CoachPage() {
   const [docs, setDocs] = useState<any>({});
   const [docBusy, setDocBusy] = useState("");
   const [showNew, setShowNew] = useState(false);
+  const [savedGuides, setSavedGuides] = useState<any>({});
+
+  async function loadGuides(g: string) {
+    try {
+      const r = await api.listGuides(g);
+      setSavedGuides(r.folders || {});
+    } catch {
+      setSavedGuides({});
+    }
+  }
+
+  async function openSavedGuide(id: string) {
+    setTopic(null);
+    try {
+      const r = await api.getGuide(id);
+      setGuide(r.guide);
+    } catch (err) {
+      alert("Could not open guide: " + (err as Error).message);
+    }
+  }
+
+  async function removeSavedGuide(id: string) {
+    if (!confirm("Delete this saved guide?")) return;
+    try {
+      await api.deleteGuide(id);
+      await loadGuides(grade);
+    } catch (err) {
+      alert("Delete failed: " + (err as Error).message);
+    }
+  }
 
   async function createTopic(payload: any) {
     await api.createTopic({ grade_level: grade, subject: "MATH", ...payload });
@@ -92,6 +122,7 @@ export default function CoachPage() {
       const d = await api.coachDashboard();
       setDash(d);
       await loadDocs(grade);
+      await loadGuides(grade);
       setGuide(r.guide);
     } catch (err) {
       alert("Upload/generate failed: " + (err as Error).message);
@@ -108,6 +139,7 @@ export default function CoachPage() {
     try {
       const r = await api.generateGuideFromDoc(id);
       setGuide(r.guide);
+      await loadGuides(grade);
     } catch (err) {
       alert("Generate failed: " + (err as Error).message);
     } finally {
@@ -184,6 +216,7 @@ export default function CoachPage() {
         setDash(d);
         loadSummary();
         loadDocs(grade);
+        loadGuides(grade);
       })
       .catch(() => router.push("/"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,6 +260,7 @@ export default function CoachPage() {
     setBusy(true);
     try {
       setGuide((await api.generateGuide(id)).guide);
+      await loadGuides(grade);
     } finally {
       setBusy(false);
     }
@@ -335,6 +369,7 @@ export default function CoachPage() {
                   setTopic(null);
                   setGuide(null);
                   loadDocs(g);
+                  loadGuides(g);
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
                   grade === g
@@ -421,6 +456,47 @@ export default function CoachPage() {
               ))}
           </div>
         </div>
+
+        {/* Saved planning guides — persist across navigation */}
+        {Object.keys(savedGuides).length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
+            <div className="text-sm font-semibold text-gray-700 mb-2">
+              💾 Saved Planning Guides — click to reopen
+            </div>
+            <ul className="divide-y divide-gray-50">
+              {Object.values(savedGuides)
+                .flat()
+                .map((g: any) => (
+                  <li
+                    key={g.id}
+                    className="flex items-center justify-between py-1.5 text-xs gap-2"
+                  >
+                    <button
+                      onClick={() => openSavedGuide(g.id)}
+                      className="text-avocado-dark hover:underline text-left truncate"
+                      title={g.title}
+                    >
+                      📄 {g.title}
+                      <span className="text-gray-400">
+                        {" "}
+                        · {g.ai_generated ? "AI" : "template"}
+                        {g.created_at
+                          ? " · " + new Date(g.created_at).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => removeSavedGuide(g.id)}
+                      title="Delete saved guide"
+                      className="text-gray-300 hover:text-red-500 shrink-0"
+                    >
+                      🗑
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Pacing calendar */}

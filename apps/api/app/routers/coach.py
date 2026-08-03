@@ -28,6 +28,7 @@ from app.models import (
     PacingTopic,
     PlanningDocument,
     PlcAgenda,
+    SavedGuide,
     School,
     Standard,
     Student,
@@ -45,6 +46,18 @@ def _require_coach(user: User = Depends(get_current_user)) -> User:
     if user.role not in COACH_ROLES:
         raise HTTPException(403, "Coach/leadership role required")
     return user
+
+
+def _save_guide(db, user, grade_level, topic_code, subject, guide) -> str:
+    """Persist a generated guide so it survives navigating away."""
+    rec = SavedGuide(
+        tenant_id=user.tenant_id, grade_level=grade_level or "",
+        topic_code=topic_code or "", subject=(subject or "MATH"),
+        title=guide.get("title", "Planning Guide"), content=guide,
+        ai_generated=bool(guide.get("ai_generated")), created_by=user.id)
+    db.add(rec)
+    db.commit()
+    return rec.id
 
 
 @router.get("/dashboard")
@@ -132,15 +145,10 @@ def generate_guide(
         "materials": t.materials, "lessons": t.lessons,
     }
     guide = generate_planning_guide(topic_ctx, standards)
-    record = PlcAgenda(
-        tenant_id=user.tenant_id, pacing_topic_id=t.id, created_by=user.id,
-        content=guide, ai_generated=guide.get("ai_generated", False),
-    )
-    db.add(record)
-    db.commit()
+    guide_id = _save_guide(db, user, t.grade_level, t.topic_code, t.subject, guide)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
-          entity_id=record.id, purpose="collaborative_planning")
-    return {"topic": t.name, "guide": guide}
+          entity_id=guide_id, purpose="collaborative_planning")
+    return {"topic": t.name, "guide": guide, "guide_id": guide_id}
 
 
 @router.get("/ai-check")
@@ -355,11 +363,12 @@ async def pacing_from_document(
     standards = _resolve_standards(db, benchmarks) if benchmarks else []
     guide = generate_guide_from_pacing(
         text, standards, grade_level, (subject or "MATH").upper(), name)
+    guide_id = _save_guide(db, user, grade_level, code, subject, guide)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
-          entity_id=doc.id, purpose="upload_pacing_and_generate")
+          entity_id=guide_id, purpose="upload_pacing_and_generate")
     return {
         "topic": {"id": topic.id, "topic_code": code, "name": name},
-        "guide": guide, "document_id": doc.id,
+        "guide": guide, "document_id": doc.id, "guide_id": guide_id,
         "benchmarks_detected": benchmarks,
     }
 
@@ -516,9 +525,10 @@ def generate_guide_from_document(
 
     guide = generate_guide_from_pacing(
         text, standards, d.grade_level, d.subject or "MATH", topic_name)
+    guide_id = _save_guide(db, user, d.grade_level, d.topic_code, d.subject, guide)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
-          entity_id=doc_id, purpose="guide_from_pacing_document")
-    return {"topic": topic_name, "guide": guide,
+          entity_id=guide_id, purpose="guide_from_pacing_document")
+    return {"topic": topic_name, "guide": guide, "guide_id": guide_id,
             "benchmarks_detected": codes, "chars_read": len(text)}
 
 
@@ -537,3 +547,55 @@ def delete_document(
     audit(db, actor=user, action="delete", entity_type="planning_document",
           entity_id=doc_id, purpose="planning_management")
     return {"deleted": True, "name": name}
+
+
+# --- Saved planning guides ----------------------------------------------------
+
+@router.get("/guides")
+def list_guides(
+    grade_level: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """List saved planning guides (metadata), newest first, grouped by topic."""
+    q = db.query(SavedGuide).filter(SavedGuide.tenant_id == user.tenant_id)
+    if grade_level:
+        q = q.filter(SavedGuide.grade_level == grade_level)
+    folders: dict = {}
+    for g in q.order_by(SavedGuide.created_at.desc()).all():
+        key = g.topic_code or "_grade"
+        folders.setdefault(key, []).append({
+            "id": g.id, "title": g.title, "topic_code": g.topic_code,
+            "grade_level": g.grade_level, "ai_generated": g.ai_generated,
+            "created_at": g.created_at.isoformat() if g.created_at else "",
+        })
+    return {"grade_level": grade_level, "folders": folders}
+
+
+@router.get("/guides/{guide_id}")
+def get_guide(
+    guide_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    g = db.get(SavedGuide, guide_id)
+    if not g or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Saved guide not found")
+    return {"id": g.id, "title": g.title, "guide": g.content}
+
+
+@router.delete("/guides/{guide_id}")
+def delete_guide(
+    guide_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    g = db.get(SavedGuide, guide_id)
+    if not g or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Saved guide not found")
+    title = g.title
+    db.delete(g)
+    db.commit()
+    audit(db, actor=user, action="delete", entity_type="saved_guide",
+          entity_id=guide_id, purpose="planning_management")
+    return {"deleted": True, "title": title}
