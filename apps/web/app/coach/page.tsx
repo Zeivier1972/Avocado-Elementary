@@ -65,6 +65,42 @@ export default function CoachPage() {
     }
   }
 
+  async function uploadPacingAndGenerate(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const suggested = file.name.replace(/\.[^.]+$/, "");
+    const topicName = window.prompt(
+      "Name this topic (e.g., Topic 1: Understand Multiplication):",
+      suggested
+    );
+    if (topicName === null) {
+      e.target.value = "";
+      return;
+    }
+    setBusy(true);
+    setGuide(null);
+    setTopic(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("grade_level", grade);
+      form.append("subject", "MATH");
+      form.append("topic_name", topicName);
+      const r = await api.pacingFromDocument(form);
+      const d = await api.coachDashboard();
+      setDash(d);
+      await loadDocs(grade);
+      setGuide(r.guide);
+    } catch (err) {
+      alert("Upload/generate failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+      e.target.value = "";
+    }
+  }
+
   async function genFromDoc(id: string) {
     setBusy(true);
     setGuide(null);
@@ -311,6 +347,29 @@ export default function CoachPage() {
               </button>
             );
           })}
+        </div>
+
+        {/* Primary flow: upload a topic's pacing guide → generate the guide */}
+        <div className="bg-avocado-dark text-white rounded-xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold">
+              Upload {grade === "K" ? "Kindergarten" : `Grade ${grade}`} pacing guide → generate planning guide
+            </div>
+            <div className="text-xs opacity-80">
+              Pick this grade's topic pacing guide (PDF, Word, or Excel). It creates
+              the topic and writes the Collaborative Planning Guide from it.
+            </div>
+          </div>
+          <label className="inline-block bg-white text-avocado-dark hover:bg-gray-100 text-sm font-bold rounded-lg px-4 py-2 cursor-pointer whitespace-nowrap">
+            {busy ? "Working…" : "⬆ Upload pacing guide"}
+            <input
+              type="file"
+              accept=".pdf,.docx,.xlsx,.xls,.txt,.csv"
+              className="hidden"
+              disabled={busy}
+              onChange={uploadPacingAndGenerate}
+            />
+          </label>
         </div>
 
         {/* Document folders — organized by topic for this grade */}

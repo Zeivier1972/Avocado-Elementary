@@ -294,6 +294,76 @@ def list_grade_standards(
     return {"grade": grade, "standards": out}
 
 
+@router.post("/pacing/from-document")
+async def pacing_from_document(
+    file: UploadFile = File(...),
+    grade_level: str = Form(...),
+    subject: str = Form("MATH"),
+    topic_name: str = Form(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """One step: upload a topic's pacing guide -> create the topic (folder),
+    store the file in it, and generate the Collaborative Planning Guide from the
+    document's content. This is the primary 'upload a new topic' flow."""
+    import re as _re
+    from app.ai import generate_guide_from_pacing
+    from app.doc_text import extract_document_text
+
+    data = await file.read()
+    if len(data) > _MAX_DOC_BYTES:
+        raise HTTPException(400, "File is larger than the 25 MB limit.")
+    text, reason = extract_document_text(file.filename, file.content_type, data)
+    if not text:
+        raise HTTPException(
+            400, f"Could not read this document's text: {reason}. "
+                 "Upload a text-based PDF, Word, or Excel pacing guide.")
+
+    # Name / code: "Topic 1: Understand Multiplication" -> code "Topic 1",
+    # name "Understand Multiplication". Otherwise use the filename.
+    label = (topic_name or "").strip() or file.filename.rsplit(".", 1)[0]
+    if ":" in label:
+        code, name = [x.strip() for x in label.split(":", 1)]
+    else:
+        m = _re.search(r"(topic\s*\w+|chapter\s*\w+)", label, _re.I)
+        code = m.group(1).title() if m else label[:40]
+        name = label
+    benchmarks = list(dict.fromkeys(_re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text)))
+
+    last = (db.query(PacingTopic)
+            .filter(PacingTopic.tenant_id == user.tenant_id,
+                    PacingTopic.grade_level == grade_level)
+            .order_by(PacingTopic.week_order.desc()).first())
+    topic = PacingTopic(
+        tenant_id=user.tenant_id, subject=(subject or "MATH").upper(),
+        grade_level=grade_level, topic_code=code, name=name,
+        benchmarks=benchmarks, learning_target="", quarter="",
+        week_order=((last.week_order + 1) if last else 0),
+        source="Uploaded pacing guide", lessons=[])
+    db.add(topic)
+    db.flush()
+
+    doc = PlanningDocument(
+        tenant_id=user.tenant_id, grade_level=grade_level, topic_code=code,
+        subject=(subject or "MATH").upper(), name=file.filename,
+        filename=file.filename,
+        content_type=file.content_type or "application/octet-stream",
+        size=len(data), data=data, uploaded_by=user.id)
+    db.add(doc)
+    db.commit()
+
+    standards = _resolve_standards(db, benchmarks) if benchmarks else []
+    guide = generate_guide_from_pacing(
+        text, standards, grade_level, (subject or "MATH").upper(), name)
+    audit(db, actor=user, action="generate", entity_type="planning_guide",
+          entity_id=doc.id, purpose="upload_pacing_and_generate")
+    return {
+        "topic": {"id": topic.id, "topic_code": code, "name": name},
+        "guide": guide, "document_id": doc.id,
+        "benchmarks_detected": benchmarks,
+    }
+
+
 @router.post("/pacing/reload")
 def reload_pacing(
     db: Session = Depends(get_db),

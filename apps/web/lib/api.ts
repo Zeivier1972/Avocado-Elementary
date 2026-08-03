@@ -91,6 +91,8 @@ export const api = {
     req(`/coach/documents/${id}`, { method: "DELETE" }),
   generateGuideFromDoc: (id: string) =>
     req(`/coach/documents/${id}/generate-guide`, { method: "POST" }),
+  pacingFromDocument: (form: FormData) =>
+    req("/coach/pacing/from-document", { method: "POST", body: form }),
   aiCheck: () => req("/coach/ai-check"),
   assistant: (message: string, history: any[]) =>
     req("/coach/assistant", {
