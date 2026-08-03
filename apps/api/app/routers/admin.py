@@ -16,10 +16,14 @@ from app.import_excel import parse_workbook
 from app.iready_import import detect_iready, parse_iready
 from app.roster_import import detect_district_roster, import_district_roster
 from app.models import (
+    AssessmentResult,
     ClassRoom,
+    DiGroup,
+    DiGroupMember,
     District,
     Enrollment,
     School,
+    StandardMastery,
     Student,
     StudentAssessment,
     StudentBenchmarkResult,
@@ -596,23 +600,35 @@ def reset_roster(
     district = db.query(District).first()
     tid = district.id
     counts = {}
-    counts["benchmark_results"] = db.query(StudentBenchmarkResult).filter(
-        StudentBenchmarkResult.tenant_id == tid).delete()
-    counts["assessments"] = db.query(StudentAssessment).filter(
-        StudentAssessment.tenant_id == tid).delete()
+    d = lambda q: q.delete(synchronize_session=False)
+
+    # Delete children before parents so Postgres FK constraints are satisfied
+    # (local SQLite doesn't enforce these, which is why this passed in dev).
+    group_ids = [g.id for g in db.query(DiGroup).filter(
+        DiGroup.tenant_id == tid).all()]
+    if group_ids:
+        counts["di_group_members"] = d(db.query(DiGroupMember).filter(
+            DiGroupMember.di_group_id.in_(group_ids)))
+    counts["di_groups"] = d(db.query(DiGroup).filter(DiGroup.tenant_id == tid))
+    counts["standard_mastery"] = d(db.query(StandardMastery).filter(
+        StandardMastery.tenant_id == tid))
+    counts["assessment_results"] = d(db.query(AssessmentResult).filter(
+        AssessmentResult.tenant_id == tid))
+    counts["benchmark_results"] = d(db.query(StudentBenchmarkResult).filter(
+        StudentBenchmarkResult.tenant_id == tid))
+    counts["assessments"] = d(db.query(StudentAssessment).filter(
+        StudentAssessment.tenant_id == tid))
     class_ids = [c.id for c in db.query(ClassRoom).filter(
         ClassRoom.tenant_id == tid).all()]
     if class_ids:
-        counts["enrollments"] = db.query(Enrollment).filter(
-            Enrollment.class_id.in_(class_ids)).delete(synchronize_session=False)
-    counts["classes"] = db.query(ClassRoom).filter(
-        ClassRoom.tenant_id == tid).delete()
-    counts["students"] = db.query(Student).filter(
-        Student.tenant_id == tid).delete()
+        counts["enrollments"] = d(db.query(Enrollment).filter(
+            Enrollment.class_id.in_(class_ids)))
+    counts["classes"] = d(db.query(ClassRoom).filter(ClassRoom.tenant_id == tid))
+    counts["students"] = d(db.query(Student).filter(Student.tenant_id == tid))
     _keep = ["teacher@avocado.edu", "principal@avocado.edu", "coach@avocado.edu"]
-    counts["teachers"] = db.query(User).filter(
+    counts["teachers"] = d(db.query(User).filter(
         User.tenant_id == tid, User.role == "teacher",
-        User.email.notin_(_keep)).delete(synchronize_session=False)
+        User.email.notin_(_keep)))
     db.commit()
     audit(db, actor=user, action="reset", entity_type="roster",
           purpose="roster_reset")
