@@ -74,6 +74,7 @@ export const api = {
   resetRoster: () => req("/admin/roster/reset", { method: "POST" }),
   deletePacingTopic: (id: string) =>
     req(`/coach/pacing/${id}`, { method: "DELETE" }),
+  reloadPacing: () => req("/coach/pacing/reload", { method: "POST" }),
   listDocuments: (grade: string) =>
     req(`/coach/documents?grade_level=${encodeURIComponent(grade)}`),
   uploadDocument: (form: FormData) =>

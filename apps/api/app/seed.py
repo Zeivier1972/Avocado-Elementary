@@ -58,6 +58,7 @@ def _load_math_standards(db, existing_codes):
             "misconceptions": r.get("misconceptions", ""),
             "strategies": r.get("strategies", ""),
             "strand": r.get("strand", ""),
+            "alds": r.get("alds", {}),
         }
         if r["code"] in existing_codes:
             # Update in place so newly-loaded B1G-M detail (clarifications,

@@ -235,6 +235,28 @@ def export_guide_docx(
 
 # --- Topic management ---------------------------------------------------------
 
+@router.post("/pacing/reload")
+def reload_pacing(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Restore the bundled standard pacing guides and standards (with ALDs) from
+    the app's data files. Idempotent: updates existing topics/standards and adds
+    any that are missing. Does NOT touch roster, students, or uploaded documents."""
+    from app.seed import _load_math_standards, _load_pacing
+
+    existing = {s.code for s in db.query(Standard).all()}
+    n_std = _load_math_standards(db, existing)
+    n_pac = _load_pacing(db, user.tenant_id)
+    db.commit()
+    total = db.query(PacingTopic).filter(
+        PacingTopic.tenant_id == user.tenant_id).count()
+    audit(db, actor=user, action="reload", entity_type="pacing",
+          purpose="restore_pacing_guides")
+    return {"reloaded": True, "standards_added": n_std,
+            "pacing_added": n_pac, "topics_total": total}
+
+
 @router.delete("/pacing/{topic_id}")
 def delete_pacing_topic(
     topic_id: str,

@@ -22,6 +22,8 @@ def _resolve_standards(db: Session, codes: list[str]) -> list[dict]:
                 "clarifications": d.get("clarifications", []),
                 "prerequisites": d.get("prerequisites", []),
                 "next": d.get("next", []),
+                "strategies": d.get("strategies", ""),
+                "alds": d.get("alds", {}),
             })
         else:
             out.append({"code": code, "description": "(not yet loaded)"})

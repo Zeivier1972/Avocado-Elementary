@@ -67,6 +67,22 @@ export default function CoachPage() {
     }
   }
 
+  async function reloadPacing() {
+    setDocBusy("_reload");
+    try {
+      const r = await api.reloadPacing();
+      const d = await api.coachDashboard();
+      setDash(d);
+      alert(
+        `Pacing restored. ${r.topics_total} topics loaded (${r.pacing_added} added, standards synced).`
+      );
+    } catch (err) {
+      alert("Restore failed: " + (err as Error).message);
+    } finally {
+      setDocBusy("");
+    }
+  }
+
   async function deleteTopic(id: string, name: string) {
     if (
       !confirm(
@@ -306,15 +322,31 @@ export default function CoachPage() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Pacing calendar */}
           <div className="md:col-span-1">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">
-              {grade === "K" ? "Kindergarten" : `Grade ${grade}`} · Planning Weeks
-            </h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-gray-700">
+                {grade === "K" ? "Kindergarten" : `Grade ${grade}`} · Planning Weeks
+              </h2>
+              <button
+                onClick={reloadPacing}
+                disabled={docBusy === "_reload"}
+                title="Restore the built-in pacing guides (Topic 1, 7, …) and standards/ALDs"
+                className="text-xs text-avocado-dark hover:underline disabled:opacity-50"
+              >
+                {docBusy === "_reload" ? "Restoring…" : "↻ Restore pacing"}
+              </button>
+            </div>
             <div className="space-y-2">
               {dash.planning_weeks.filter((w: any) => w.grade_level === grade)
                 .length === 0 && (
-                <div className="text-sm text-gray-400 bg-white border border-dashed border-gray-200 rounded-xl p-4">
-                  No pacing guide loaded for this grade yet. Send the pacing guide
-                  and it will appear here.
+                <div className="text-sm text-gray-500 bg-white border border-dashed border-gray-200 rounded-xl p-4 space-y-2">
+                  <p>No pacing topics loaded for this grade yet.</p>
+                  <button
+                    onClick={reloadPacing}
+                    disabled={docBusy === "_reload"}
+                    className="bg-avocado hover:bg-avocado-dark text-white text-xs font-semibold rounded-lg px-3 py-2 disabled:opacity-60"
+                  >
+                    {docBusy === "_reload" ? "Restoring…" : "↻ Restore standard pacing guides"}
+                  </button>
                 </div>
               )}
               {dash.planning_weeks
