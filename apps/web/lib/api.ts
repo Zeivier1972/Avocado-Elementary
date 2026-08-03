@@ -75,6 +75,14 @@ export const api = {
   deletePacingTopic: (id: string) =>
     req(`/coach/pacing/${id}`, { method: "DELETE" }),
   reloadPacing: () => req("/coach/pacing/reload", { method: "POST" }),
+  createTopic: (body: any) =>
+    req("/coach/pacing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  gradeStandards: (grade: string) =>
+    req(`/coach/standards?grade=${encodeURIComponent(grade)}`),
   listDocuments: (grade: string) =>
     req(`/coach/documents?grade_level=${encodeURIComponent(grade)}`),
   uploadDocument: (form: FormData) =>

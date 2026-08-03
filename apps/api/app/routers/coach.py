@@ -235,6 +235,65 @@ def export_guide_docx(
 
 # --- Topic management ---------------------------------------------------------
 
+class NewTopicIn(BaseModel):
+    grade_level: str
+    subject: str = "MATH"
+    topic_code: str
+    name: str
+    benchmarks: list[str] = []
+    learning_target: str = ""
+    quarter: str = ""
+
+
+@router.post("/pacing")
+def create_topic(
+    body: NewTopicIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Create a new pacing topic (this year's planning week / folder). Generating
+    a guide for it builds lessons from its benchmarks (B1G-M + ALDs); the AI
+    designs the lesson sequence when the AI key is configured."""
+    if not body.topic_code.strip() or not body.name.strip():
+        raise HTTPException(400, "Topic code and name are required.")
+    benchmarks = [b.strip().upper() for b in body.benchmarks if b.strip()]
+    last = (db.query(PacingTopic)
+            .filter(PacingTopic.tenant_id == user.tenant_id,
+                    PacingTopic.grade_level == body.grade_level)
+            .order_by(PacingTopic.week_order.desc()).first())
+    t = PacingTopic(
+        tenant_id=user.tenant_id, subject=(body.subject or "MATH").upper(),
+        grade_level=body.grade_level, topic_code=body.topic_code.strip(),
+        name=body.name.strip(), benchmarks=benchmarks,
+        learning_target=body.learning_target.strip(),
+        quarter=body.quarter.strip(), week_order=((last.week_order + 1) if last else 0),
+        source="Coach-created", lessons=[],
+    )
+    db.add(t)
+    db.commit()
+    audit(db, actor=user, action="create", entity_type="pacing_topic",
+          entity_id=t.id, purpose="planning_management")
+    return {"id": t.id, "topic_code": t.topic_code, "name": t.name,
+            "grade_level": t.grade_level, "benchmarks": benchmarks}
+
+
+@router.get("/standards")
+def list_grade_standards(
+    grade: str = Query(...),
+    subject: str = Query("MATH"),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Benchmark codes available for a grade, to pick when creating a topic."""
+    rows = db.query(Standard).filter(
+        Standard.grade_level == grade,
+        Standard.subject == subject.upper()).all()
+    out = [{"code": s.code, "description": s.description,
+            "has_ald": bool((s.details or {}).get("alds"))} for s in rows]
+    out.sort(key=lambda x: x["code"])
+    return {"grade": grade, "standards": out}
+
+
 @router.post("/pacing/reload")
 def reload_pacing(
     db: Session = Depends(get_db),

@@ -24,6 +24,14 @@ export default function CoachPage() {
   const [rosterMsg, setRosterMsg] = useState("");
   const [docs, setDocs] = useState<any>({});
   const [docBusy, setDocBusy] = useState("");
+  const [showNew, setShowNew] = useState(false);
+
+  async function createTopic(payload: any) {
+    await api.createTopic({ grade_level: grade, subject: "MATH", ...payload });
+    const d = await api.coachDashboard();
+    setDash(d);
+    setShowNew(false);
+  }
 
   async function loadDocs(g: string) {
     try {
@@ -316,6 +324,25 @@ export default function CoachPage() {
                   onDelete={deleteDoc}
                 />
               ))}
+            {/* Folders for documents whose topic was deleted — kept, not lost */}
+            {Object.keys(docs)
+              .filter(
+                (k) =>
+                  k !== "_grade" &&
+                  !dash.planning_weeks.some(
+                    (w: any) => w.grade_level === grade && w.topic_code === k
+                  )
+              )
+              .map((k) => (
+                <DocFolder
+                  key={k}
+                  label={`${k} — documents (topic removed)`}
+                  files={docs[k] || []}
+                  busy={docBusy === k}
+                  onUpload={(e) => uploadDoc(e, k)}
+                  onDelete={deleteDoc}
+                />
+              ))}
           </div>
         </div>
 
@@ -326,15 +353,26 @@ export default function CoachPage() {
               <h2 className="text-sm font-semibold text-gray-700">
                 {grade === "K" ? "Kindergarten" : `Grade ${grade}`} · Planning Weeks
               </h2>
-              <button
-                onClick={reloadPacing}
-                disabled={docBusy === "_reload"}
-                title="Restore the built-in pacing guides (Topic 1, 7, …) and standards/ALDs"
-                className="text-xs text-avocado-dark hover:underline disabled:opacity-50"
-              >
-                {docBusy === "_reload" ? "Restoring…" : "↻ Restore pacing"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowNew((v) => !v)}
+                  className="text-xs font-semibold text-white bg-avocado hover:bg-avocado-dark rounded px-2 py-1"
+                >
+                  {showNew ? "Cancel" : "+ New Topic"}
+                </button>
+                <button
+                  onClick={reloadPacing}
+                  disabled={docBusy === "_reload"}
+                  title="Restore the built-in sample pacing guides (Topic 1, 7) and standards/ALDs"
+                  className="text-xs text-avocado-dark hover:underline disabled:opacity-50"
+                >
+                  {docBusy === "_reload" ? "Restoring…" : "↻ Restore samples"}
+                </button>
+              </div>
             </div>
+            {showNew && (
+              <NewTopicForm grade={grade} onCreate={createTopic} />
+            )}
             <div className="space-y-2">
               {dash.planning_weeks.filter((w: any) => w.grade_level === grade)
                 .length === 0 && (
@@ -454,6 +492,113 @@ function TopicPanel({ topic, busy, onGuide }: any) {
           </ol>
         </div>
       )}
+    </div>
+  );
+}
+
+function NewTopicForm({
+  grade,
+  onCreate,
+}: {
+  grade: string;
+  onCreate: (p: any) => Promise<void>;
+}) {
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [target, setTarget] = useState("");
+  const [quarter, setQuarter] = useState("");
+  const [stds, setStds] = useState<any[]>([]);
+  const [picked, setPicked] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .gradeStandards(grade)
+      .then((r) => setStds(r.standards || []))
+      .catch(() => setStds([]));
+  }, [grade]);
+
+  async function submit() {
+    const benchmarks = Object.keys(picked).filter((k) => picked[k]);
+    if (!code.trim() || !name.trim()) {
+      alert("Enter a topic code and name.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onCreate({
+        topic_code: code,
+        name,
+        learning_target: target,
+        quarter,
+        benchmarks,
+      });
+    } catch (err) {
+      alert("Create failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="bg-white border border-avocado/40 rounded-xl p-3 mb-2 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Topic code (e.g. Topic 1)"
+          className="border border-gray-200 rounded px-2 py-1 text-sm"
+        />
+        <input
+          value={quarter}
+          onChange={(e) => setQuarter(e.target.value)}
+          placeholder="Quarter (e.g. First Nine Weeks)"
+          className="border border-gray-200 rounded px-2 py-1 text-sm"
+        />
+      </div>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Topic name (e.g. Understand Multiplication)"
+        className="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+      />
+      <input
+        value={target}
+        onChange={(e) => setTarget(e.target.value)}
+        placeholder="Learning target (I can…)"
+        className="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+      />
+      <div>
+        <div className="text-xs font-semibold text-gray-600 mb-1">
+          Benchmarks for this topic {stds.length === 0 && "(none loaded — click ↻ Restore samples to load standards)"}
+        </div>
+        <div className="max-h-40 overflow-y-auto border border-gray-100 rounded p-1 space-y-0.5">
+          {stds.map((s) => (
+            <label key={s.code} className="flex items-start gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!picked[s.code]}
+                onChange={(e) =>
+                  setPicked((p) => ({ ...p, [s.code]: e.target.checked }))
+                }
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">{s.code}</span>
+                {s.has_ald && <span className="text-green-600"> ·ALD</span>}{" "}
+                <span className="text-gray-500">{s.description}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <button
+        onClick={submit}
+        disabled={busy}
+        className="bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-2 disabled:opacity-60"
+      >
+        {busy ? "Creating…" : "Create Topic"}
+      </button>
     </div>
   );
 }
