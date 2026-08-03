@@ -568,25 +568,81 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "Do not invent standards or student data.\n\n"
             f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
         )
-        # Stream — an 8k-token, 7-lesson generation is long enough to hit a
-        # request timeout on a plain create() call, which would drop us to the
-        # empty template. Streaming keeps the connection alive.
+        # Stream a generous budget — a full 7-lesson ACES guide is large, and a
+        # truncated response is the usual cause of "did not return JSON array".
         with client.messages.stream(
-            model=settings.ai_model, max_tokens=8000,
+            model=settings.ai_model, max_tokens=16000,
+            system=("You output ONLY a single valid JSON array. No prose, no "
+                    "markdown fences, no explanation before or after."),
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
             msg = stream.get_final_message()
         text = "".join(b.text for b in msg.content if b.type == "text").strip()
-        if text.startswith("```"):
-            text = text.split("```", 2)[1]
-            text = text[4:] if text.startswith("json") else text
-            text = text.rsplit("```", 1)[0] if "```" in text else text
-        start, end = text.find("["), text.rfind("]")
-        if start == -1 or end == -1:
-            return None, "model did not return JSON array"
-        return _json.loads(text[start:end + 1]), None
+        stop = getattr(msg, "stop_reason", "")
+        lessons = _parse_json_array(text)
+        if lessons:
+            return lessons, None
+        tail = text[-160:].replace("\n", " ") if text else "(empty response)"
+        note = " (response was truncated — hit the token limit)" if stop == "max_tokens" else ""
+        return None, f"model reply was not parseable JSON{note}. Ends with: …{tail}"
     except Exception as e:
         return None, f"{type(e).__name__}: {str(e)[:200]}"
+
+
+def _parse_json_array(text: str):
+    """Extract a JSON array from a model reply, tolerant of prose, markdown
+    fences, and truncation (salvages the complete objects before a cut-off)."""
+    import json as _json
+    import re as _re
+    if not text:
+        return None
+    t = text.strip()
+    fence = _re.search(r"```(?:json)?\s*(.*?)```", t, _re.S)
+    if fence:
+        t = fence.group(1).strip()
+    start = t.find("[")
+    if start == -1:
+        return None
+    t = t[start:]
+    try:
+        return _json.loads(t)
+    except Exception:
+        pass
+    end = t.rfind("]")
+    if end != -1:
+        try:
+            return _json.loads(t[:end + 1])
+        except Exception:
+            pass
+    # Salvage a truncated array: close it after the last complete top-level object.
+    depth = 0
+    in_str = False
+    esc = False
+    last_obj_end = -1
+    for i, ch in enumerate(t):
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                last_obj_end = i
+    if last_obj_end != -1:
+        try:
+            return _json.loads(t[:last_obj_end + 1] + "]")
+        except Exception:
+            return None
+    return None
 
 
 def generate_plc_agenda(topic: dict, standards: list[dict]) -> dict:
