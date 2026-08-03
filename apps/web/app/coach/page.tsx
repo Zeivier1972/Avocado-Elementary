@@ -65,6 +65,20 @@ export default function CoachPage() {
     }
   }
 
+  async function genFromDoc(id: string) {
+    setBusy(true);
+    setGuide(null);
+    setTopic(null);
+    try {
+      const r = await api.generateGuideFromDoc(id);
+      setGuide(r.guide);
+    } catch (err) {
+      alert("Generate failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function deleteDoc(id: string) {
     if (!confirm("Delete this document?")) return;
     try {
@@ -311,6 +325,7 @@ export default function CoachPage() {
               busy={docBusy === "_grade"}
               onUpload={(e) => uploadDoc(e, "")}
               onDelete={deleteDoc}
+              onGenerate={genFromDoc}
             />
             {dash.planning_weeks
               .filter((w: any) => w.grade_level === grade)
@@ -322,6 +337,7 @@ export default function CoachPage() {
                   busy={docBusy === w.topic_code}
                   onUpload={(e) => uploadDoc(e, w.topic_code)}
                   onDelete={deleteDoc}
+                  onGenerate={genFromDoc}
                 />
               ))}
             {/* Folders for documents whose topic was deleted — kept, not lost */}
@@ -341,6 +357,7 @@ export default function CoachPage() {
                   busy={docBusy === k}
                   onUpload={(e) => uploadDoc(e, k)}
                   onDelete={deleteDoc}
+                  onGenerate={genFromDoc}
                 />
               ))}
           </div>
@@ -609,12 +626,14 @@ function DocFolder({
   busy,
   onUpload,
   onDelete,
+  onGenerate,
 }: {
   label: string;
   files: any[];
   busy: boolean;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDelete: (id: string) => void;
+  onGenerate?: (id: string) => void;
 }) {
   return (
     <div className="border border-gray-100 rounded-lg">
@@ -654,6 +673,15 @@ function DocFolder({
                     📄 {f.name}
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
+                    {onGenerate && (
+                      <button
+                        onClick={() => onGenerate(f.id)}
+                        title="Generate a planning guide from this pacing document"
+                        className="text-avocado-dark font-semibold hover:underline whitespace-nowrap"
+                      >
+                        ✨ Generate guide
+                      </button>
+                    )}
                     <span className="text-gray-300">
                       {Math.max(1, Math.round((f.size || 0) / 1024))} KB
                     </span>

@@ -89,6 +89,59 @@ def _artifacts_for_day(day: int) -> list[str]:
     return mapping.get(day, [])
 
 
+def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
+                               grade: str, subject: str, topic_name: str) -> dict:
+    """Generate a Collaborative Planning Guide grounded in the coach's UPLOADED
+    pacing guide text (plus the B1G-M benchmark detail + FLDOE ALDs). The AI
+    reads the pacing content and writes the ACES lesson-by-lesson guide."""
+    std_by_code = {s["code"]: s for s in standards}
+    clarifications = [
+        {"code": s["code"], "description": s.get("description", ""),
+         "clarifications": s.get("clarifications", [])}
+        for s in standards
+    ]
+    misconceptions = []
+    for s in standards:
+        for row in _parse_misconceptions(s.get("misconceptions", "")):
+            misconceptions.append({"code": s["code"], **row})
+    base = {
+        "title": f"Grade {grade} Collaborative Planning Guide — {topic_name}",
+        "grade_level": grade, "subject": subject,
+        "quick_facts": {
+            "topic_focus": topic_name,
+            "key_benchmarks": [s["code"] for s in standards],
+            "ald_focus": "ALD Level 3 In-Class Practice",
+        },
+        "benchmark_clarifications": clarifications,
+        "common_misconceptions": misconceptions,
+        "from_document": True,
+    }
+    if settings.ai_provider == "anthropic" and settings.ai_api_key:
+        lessons, err = _llm_lessons(
+            {"grade_level": grade, "subject": subject, "topic_code": "",
+             "name": topic_name, "learning_target": "", "success_criteria": [],
+             "vocabulary": [], "mtr_practices": [], "materials": [], "lessons": []},
+            standards, pacing_text=pacing_text)
+        if lessons:
+            for L in lessons:
+                code = (L.get("benchmarks") or [""])[0]
+                L["ald"] = std_by_code.get(code, {}).get("alds", {})
+            base.update({"generated_by": settings.ai_model, "ai_generated": True,
+                         "ai_status": "ok", "lessons": lessons,
+                         "note": "AI-generated from your uploaded pacing guide — "
+                                 "review with your team before teaching."})
+            return base
+        ai_status = f"AI unavailable — showing benchmark detail only. Reason: {err}"
+    else:
+        ai_status = ("AI not enabled — set AI_PROVIDER=anthropic and AI_API_KEY "
+                     "to auto-write the lesson-by-lesson guide from your pacing document.")
+    base.update({"generated_by": "template", "ai_generated": False,
+                 "ai_status": ai_status, "lessons": [],
+                 "note": "Benchmark clarifications, misconceptions, and ALDs are "
+                         "shown; turn on the AI key to write the ACES lessons."})
+    return base
+
+
 def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
     """Generate a full lesson-by-lesson Collaborative Planning Guide matching the
     M-DCPS format (Quick Facts, benchmark clarifications, misconceptions, and a
@@ -402,9 +455,10 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
     return out
 
 
-def _llm_lessons(topic: dict, standards: list[dict]):
+def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = None):
     """Ask the LLM for the per-lesson breakdown as strict JSON, grounded in the
-    benchmarks. Returns (lessons | None, error_reason | None)."""
+    benchmarks (and the coach's uploaded pacing-guide text when provided).
+    Returns (lessons | None, error_reason | None)."""
     try:
         import anthropic
     except ImportError:
@@ -436,6 +490,16 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             f"(benchmarks {', '.join(L.get('benchmarks', []))}; focus: {L.get('focus','')})"
             for L in outline
         ) or "Design a logical sequence of 5-7 lessons covering the benchmarks."
+        # When the coach uploaded a pacing guide, use its text as the PRIMARY
+        # source for the lesson sequence and content (truncated to stay in budget).
+        pacing_block = ""
+        if pacing_text and pacing_text.strip():
+            pacing_block = (
+                "\n\nUPLOADED PACING GUIDE (primary source — extract the topic's "
+                "lesson sequence, learning goals, and content from this; align each "
+                "lesson to the benchmarks above):\n"
+                + pacing_text.strip()[:12000]
+            )
         schema = (
             '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
             '"learning_goal":"I can ... (student-friendly)",'
@@ -470,7 +534,8 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             f"MTR practices: {topic.get('mtr_practices', [])}\n"
             f"Materials: {topic.get('materials', [])}\n\n"
             f"Benchmarks (with B1G-M detail — use these clarifications & misconceptions):\n{std_ctx}\n\n"
-            f"Lesson outline to expand:\n{outline_txt}\n\n"
+            f"Lesson outline to expand:\n{outline_txt}\n"
+            f"{pacing_block}\n\n"
             "CRITICAL: every lesson must be DIFFERENT and specific to its own "
             "benchmark and skill — never reuse the same activate/I Do/We Do/CFU/"
             "You Do/exit wording across lessons. Each field must use worked "

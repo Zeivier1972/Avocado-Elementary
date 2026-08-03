@@ -407,6 +407,51 @@ def download_document(
     )
 
 
+@router.post("/documents/{doc_id}/generate-guide")
+def generate_guide_from_document(
+    doc_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Read an uploaded pacing-guide document and generate the Collaborative
+    Planning Guide from its content (grounded in the referenced B1G-M benchmarks
+    + ALDs)."""
+    import re as _re
+    from app.ai import generate_guide_from_pacing
+    from app.doc_text import extract_document_text
+
+    d = db.get(PlanningDocument, doc_id)
+    if not d or d.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Document not found")
+    text, reason = extract_document_text(d.filename, d.content_type, d.data)
+    if not text:
+        raise HTTPException(
+            400, f"Could not read this document's text: {reason}. "
+                 "Upload a text-based PDF, Word, or Excel pacing guide.")
+
+    # Benchmarks: any codes found in the document, plus the topic's benchmarks if
+    # the document sits in a topic folder that exists.
+    codes = list(dict.fromkeys(_re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text)))
+    if d.topic_code:
+        topic = db.query(PacingTopic).filter(
+            PacingTopic.tenant_id == user.tenant_id,
+            PacingTopic.topic_code == d.topic_code,
+            PacingTopic.grade_level == d.grade_level).first()
+        if topic and topic.benchmarks:
+            for c in topic.benchmarks:
+                if c not in codes:
+                    codes.append(c)
+    standards = _resolve_standards(db, codes) if codes else []
+    topic_name = d.topic_code or d.name.rsplit(".", 1)[0]
+
+    guide = generate_guide_from_pacing(
+        text, standards, d.grade_level, d.subject or "MATH", topic_name)
+    audit(db, actor=user, action="generate", entity_type="planning_guide",
+          entity_id=doc_id, purpose="guide_from_pacing_document")
+    return {"topic": topic_name, "guide": guide,
+            "benchmarks_detected": codes, "chars_read": len(text)}
+
+
 @router.delete("/documents/{doc_id}")
 def delete_document(
     doc_id: str,

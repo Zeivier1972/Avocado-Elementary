@@ -89,6 +89,8 @@ export const api = {
     req("/coach/documents", { method: "POST", body: form }),
   deleteDocument: (id: string) =>
     req(`/coach/documents/${id}`, { method: "DELETE" }),
+  generateGuideFromDoc: (id: string) =>
+    req(`/coach/documents/${id}/generate-guide`, { method: "POST" }),
   aiCheck: () => req("/coach/ai-check"),
   assistant: (message: string, history: any[]) =>
     req("/coach/assistant", {
