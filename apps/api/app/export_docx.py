@@ -142,12 +142,16 @@ def guide_to_docx(guide: dict) -> bytes:
         if L.get("misconceptions"):
             _heading(doc, "Common Misconceptions & Fixes", 11)
             _misconception_table(doc, L["misconceptions"])
-        # Named instructional phases, each with its own lesson-specific example.
-        if any(L.get(k) for k in ("activate_prior_knowledge", "i_do", "we_do")):
-            _heading(doc, "Teaching Strategy", 11)
+        # ACES gradual release: Assemble (I Do) -> Connect (We Do) -> Explore
+        # (Y'all Do, teams) -> Share (You Do, independent).
+        if any(L.get(k) for k in ("activate_prior_knowledge", "i_do", "we_do",
+                                  "explore_yall_do", "you_do")):
+            _heading(doc, "Teaching Strategy — ACES Gradual Release", 11)
             _label(doc, "Activate Prior Knowledge", L.get("activate_prior_knowledge"))
-            _label(doc, "I Do (Model)", L.get("i_do"))
-            _label(doc, "We Do (Guided Practice)", L.get("we_do"))
+            _label(doc, "ASSEMBLE · I Do (Teacher Models)", L.get("i_do"))
+            _label(doc, "CONNECT · We Do (Guided Practice)", L.get("we_do"))
+            _label(doc, "EXPLORE · Y'all Do (Collaborative Teams)", L.get("explore_yall_do"))
+            _label(doc, "SHARE · You Do (Independent Practice)", L.get("you_do"))
         elif L.get("teaching_strategy"):
             _heading(doc, "Teaching Strategy (Step-by-Step)", 11)
             _bullets(doc, L["teaching_strategy"], style="List Number")
@@ -179,7 +183,6 @@ def guide_to_docx(guide: dict) -> bytes:
         if L.get("cfu"):
             _heading(doc, "Checks for Understanding (CFU)", 11)
             _bullets(doc, L["cfu"])
-        _label(doc, "You Do (Independent Practice)", L.get("you_do"))
         _label(doc, "Exit Ticket", _exit_ticket_text(L.get("exit_ticket")))
 
     buf = io.BytesIO()

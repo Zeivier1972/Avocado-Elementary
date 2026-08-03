@@ -405,14 +405,16 @@ function GuideView({ guide }: any) {
                   <MisconceptionTable rows={L.misconceptions} />
                 </div>
               )}
-              {(L.activate_prior_knowledge || L.i_do || L.we_do) ? (
+              {(L.activate_prior_knowledge || L.i_do || L.we_do || L.explore_yall_do || L.you_do) ? (
                 <div className="space-y-1">
                   <div className="font-semibold text-gray-700 text-xs">
-                    Teaching Strategy
+                    Teaching Strategy — ACES Gradual Release
                   </div>
                   <Line label="Activate Prior Knowledge" value={L.activate_prior_knowledge} />
-                  <Line label="I Do (Model)" value={L.i_do} />
-                  <Line label="We Do (Guided Practice)" value={L.we_do} />
+                  <Line label="🅰 ASSEMBLE · I Do (Teacher Models)" value={L.i_do} />
+                  <Line label="🅲 CONNECT · We Do (Guided Practice)" value={L.we_do} />
+                  <Line label="🅴 EXPLORE · Y'all Do (Collaborative Teams)" value={L.explore_yall_do} />
+                  <Line label="🆂 SHARE · You Do (Independent Practice)" value={L.you_do} />
                 </div>
               ) : (
                 <List label="Teaching Strategy (step-by-step)" items={L.teaching_strategy} ordered />
@@ -453,7 +455,6 @@ function GuideView({ guide }: any) {
               )}
               <Line label="⭐ Level 3 Proficiency Example (student voice)" value={L.level3_example} />
               <List label="Checks for Understanding" items={L.cfu} />
-              <Line label="You Do (Independent Practice)" value={L.you_do} />
               <Line
                 label="🎫 Exit Ticket"
                 value={

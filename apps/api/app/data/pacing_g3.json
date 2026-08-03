@@ -104,7 +104,8 @@
      "exit_ticket": {
       "problem": "Write a multiplication equation for 5 groups of 2 and find the product.",
       "answer": "5 × 2 = 10"
-     }
+     },
+     "explore_yall_do": "In teams, each group draws a 'groups of' card (e.g., 3 groups of 4), builds it with counters, and writes the equation. Teams swap cards and check another team's model, using the sentence frame to explain."
     },
     {
      "code": "1.2",
@@ -153,7 +154,8 @@
      "exit_ticket": {
       "problem": "Write the multiplication equation for an array with 4 rows of 5.",
       "answer": "4 × 5 = 20"
-     }
+     },
+     "explore_yall_do": "Teams build an assigned array on grid paper (e.g., 4 × 3), then rotate to another team's array, count the rows, and write its equation. Teams compare answers and justify."
     },
     {
      "code": "1.3",
@@ -202,7 +204,8 @@
      "exit_ticket": {
       "problem": "How many jumps of 3 land on 12? Write the equation.",
       "answer": "4 jumps; 4 × 3 = 12"
-     }
+     },
+     "explore_yall_do": "In pairs, students take turns: one names a fact (e.g., 3 × 4), the partner shows the equal jumps on a number line, and they check the landing point together."
     },
     {
      "code": "1.4",
@@ -251,7 +254,8 @@
      "exit_ticket": {
       "problem": "If 7 × 2 = 14, what is 2 × 7? Explain in one sentence.",
       "answer": "2 × 7 = 14 (commutative property — order doesn't change the product)"
-     }
+     },
+     "explore_yall_do": "Teams get a fact (e.g., 2 × 6) and must prove its commutative partner (6 × 2) by rotating an array, then present their proof to a neighboring team."
     },
     {
      "code": "1.5",
@@ -300,7 +304,8 @@
      "exit_ticket": {
       "problem": "Solve 2 × 2 × 4 by grouping. Show your grouping.",
       "answer": "(2 × 2) × 4 = 4 × 4 = 16"
-     }
+     },
+     "explore_yall_do": "Teams solve 2 × 3 × 4 two different ways (grouping different pairs first) and compare with another team to confirm they reached the same product."
     },
     {
      "code": "1.6",
@@ -349,7 +354,8 @@
      "exit_ticket": {
       "problem": "There are 5 plates with 3 cookies on each. How many cookies? Write the equation.",
       "answer": "5 × 3 = 15 cookies"
-     }
+     },
+     "explore_yall_do": "Teams solve a shared story problem — draw the model, write the equation — then create their OWN multiplication story problem and trade it with another team to solve."
     }
    ]
   },
@@ -451,7 +457,8 @@
      "exit_ticket": {
       "problem": "What is the value of the 8 in 8,145?",
       "answer": "8,000"
-     }
+     },
+     "explore_yall_do": "In teams, each group builds an assigned 4-digit number with base-ten blocks, then quizzes another team on the value of each digit using the sentence frame."
     },
     {
      "code": "7.2",
@@ -500,7 +507,8 @@
      "exit_ticket": {
       "problem": "Write 3,560 in word form.",
       "answer": "three thousand five hundred sixty"
-     }
+     },
+     "explore_yall_do": "Teams rotate through stations, converting a given number among standard, word, and expanded form; the next team checks the previous team's work."
     },
     {
      "code": "7.3",
@@ -547,7 +555,8 @@
      "exit_ticket": {
       "problem": "Which model shows 4,201? Circle the correct base-ten picture.",
       "answer": "4 thousand-cubes, 2 flats, 0 rods, 1 unit"
-     }
+     },
+     "explore_yall_do": "Teams represent an assigned number three ways (blocks, chart, expanded form) and trade with another team to verify each representation matches."
     },
     {
      "code": "7.4",
@@ -595,7 +604,8 @@
      "exit_ticket": {
       "problem": "Circle the greater number: 5,908 or 5,890",
       "answer": "5,908"
-     }
+     },
+     "explore_yall_do": "Teams get a set of number pairs, compare each with >, <, or =, and justify to another team using place-value reasoning."
     },
     {
      "code": "7.5",
@@ -643,7 +653,8 @@
      "exit_ticket": {
       "problem": "Round 71 to the nearest ten.",
       "answer": "70"
-     }
+     },
+     "explore_yall_do": "Teams place assigned numbers on a shared number line and decide, as a group, whether each rounds up or down to the nearest ten, explaining why."
     },
     {
      "code": "7.6",
@@ -691,7 +702,8 @@
      "exit_ticket": {
       "problem": "Round 729 to the nearest hundred.",
       "answer": "700"
-     }
+     },
+     "explore_yall_do": "Teams round a set of numbers to the nearest hundred at stations, then compare answers with another team and resolve any disagreements using the tens digit."
     },
     {
      "code": "7.7",
@@ -739,7 +751,8 @@
      "exit_ticket": {
       "problem": "A store sold 1,564 stickers. About how many is that to the nearest hundred?",
       "answer": "1,600"
-     }
+     },
+     "explore_yall_do": "Teams solve a real-world rounding problem together (estimate → calculate → check), then share their reasoning with the class."
     }
    ]
   },

@@ -339,6 +339,11 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             f"Model {title.lower() or 'the skill'} with {conc}; think aloud step by step.")
         we_do = pick("we_do",
             "Guided practice with immediate feedback; students explain their reasoning (MTR 4.1).")
+        # ACES: Explore = Y'all Do — collaborative team practice between We Do and
+        # You Do (teacher observes and supports).
+        explore = pick("explore_yall_do",
+            f"In teams, students apply {title.lower() or 'the skill'} on a shared task; "
+            "they problem-solve together and justify their thinking while the teacher observes and supports.")
         you_do = pick("you_do",
             f"Students practice {title.lower() or 'the skill'} independently "
             "(3–5 problems); pull a small group for reteach.")
@@ -359,12 +364,13 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             + " and explain their reasoning using correct vocabulary.")
         misc = pick("misconceptions", _parse_misconceptions(s.get("misconceptions", "")))
         crit = pick("success_criteria", ([focus] if focus else []) + clar[:2])
-        # Back-compat numbered strategy, assembled from the named phases.
+        # Back-compat numbered strategy, assembled from the ACES phases.
         strategy = pick("teaching_strategy", [
             f"Activate Prior Knowledge — {activate}",
-            f"I Do — {i_do}",
-            f"We Do — {we_do}",
-            f"You Do — {you_do}",
+            f"Assemble (I Do) — {i_do}",
+            f"Connect (We Do) — {we_do}",
+            f"Explore (Y'all Do) — {explore}",
+            f"Share (You Do) — {you_do}",
         ])
 
         out.append({
@@ -385,6 +391,7 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             "activate_prior_knowledge": activate,
             "i_do": i_do,
             "we_do": we_do,
+            "explore_yall_do": explore,
             "teaching_strategy": strategy,
             "cpa": cpa,
             "level3_example": level3,
@@ -439,8 +446,9 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             '"sentence_frame":"The __ is in the __ place, so it means __.",'
             '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
             '"activate_prior_knowledge":"how to activate prior knowledge for THIS lesson, with a specific warm-up",'
-            '"i_do":"teacher models with a specific worked example and think-aloud",'
-            '"we_do":"guided practice with a specific example and how to engage students together",'
+            '"i_do":"ASSEMBLE (I Do): teacher models with a specific worked example and think-aloud",'
+            '"we_do":"CONNECT (We Do): guided practice with a specific example and how to engage students together",'
+            '"explore_yall_do":"EXPLORE (Y\'all Do): collaborative TEAM practice on a specific task; students work in teams, apply the skill, and problem-solve while the teacher observes",'
             '"cpa":{"concrete":"hands-on with materials; INCLUDE base-ten emoji visuals like 🟦 thousands 🟩 hundreds 🟨 tens ⬜ ones","pictorial":"place-value chart / number line drawing","abstract":"the numbers and symbols, e.g. 3,476 = 3,000 + 400 + 70 + 6"},'
             '"level3_example":"a first-person student quote explaining the reasoning at ALD Level 3",'
             '"cfu":["specific problem 1","specific problem 2"],'
@@ -476,10 +484,15 @@ def _llm_lessons(topic: dict, standards: list[dict]):
             "- a sentence_frame students use to explain their reasoning\n"
             "- a 3-column misconceptions table: each row has the misconception, a "
             "specific EXAMPLE ERROR a student makes (real numbers), and the correction strategy\n"
+            "Structure the lesson using the school's ACES gradual-release model: "
+            "Assemble (I Do) -> Connect (We Do) -> Explore (Y'all Do, collaborative "
+            "teams) -> Share (You Do, independent). Provide all four phases:\n"
             "- activate_prior_knowledge: a specific warm-up that connects to THIS lesson\n"
-            "- i_do: the teacher models ONE specific worked example with a think-aloud\n"
-            "- we_do: guided practice on a DIFFERENT specific example, plus how students "
-            "engage together (turn-and-talk, whiteboards, the sentence frame)\n"
+            "- i_do (Assemble): the teacher models ONE specific worked example with a think-aloud\n"
+            "- we_do (Connect): guided practice on a DIFFERENT specific example, plus how "
+            "students engage together (turn-and-talk, whiteboards, the sentence frame)\n"
+            "- explore_yall_do (Explore): a collaborative TEAM task where students apply the "
+            "skill together and problem-solve while the teacher observes and supports\n"
             "- a CPA model where Concrete INCLUDES base-ten emoji block visuals "
             "(🟦 thousands, 🟩 hundreds, 🟨 tens, ⬜ ones), Pictorial is a place-value "
             "chart or number line, and Abstract shows the expanded-form/equation\n"
