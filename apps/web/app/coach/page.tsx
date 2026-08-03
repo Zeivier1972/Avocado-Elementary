@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, downloadGuideDocx, getToken } from "@/lib/api";
+import {
+  api,
+  clearToken,
+  downloadDocument,
+  downloadGuideDocx,
+  getToken,
+} from "@/lib/api";
 
 const GRADES = ["K", "1", "2", "3"];
 
@@ -16,6 +22,70 @@ export default function CoachPage() {
   const [grade, setGrade] = useState("3");
   const [summary, setSummary] = useState<any>(null);
   const [rosterMsg, setRosterMsg] = useState("");
+  const [docs, setDocs] = useState<any>({});
+  const [docBusy, setDocBusy] = useState("");
+
+  async function loadDocs(g: string) {
+    try {
+      const r = await api.listDocuments(g);
+      setDocs(r.folders || {});
+    } catch {
+      setDocs({});
+    }
+  }
+
+  async function uploadDoc(
+    e: React.ChangeEvent<HTMLInputElement>,
+    topicCode: string
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocBusy(topicCode || "_grade");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("grade_level", grade);
+      form.append("topic_code", topicCode || "");
+      form.append("subject", "MATH");
+      await api.uploadDocument(form);
+      await loadDocs(grade);
+    } catch (err) {
+      alert("Upload failed: " + (err as Error).message);
+    } finally {
+      setDocBusy("");
+      e.target.value = "";
+    }
+  }
+
+  async function deleteDoc(id: string) {
+    if (!confirm("Delete this document?")) return;
+    try {
+      await api.deleteDocument(id);
+      await loadDocs(grade);
+    } catch (err) {
+      alert("Delete failed: " + (err as Error).message);
+    }
+  }
+
+  async function deleteTopic(id: string, name: string) {
+    if (
+      !confirm(
+        `Delete the topic "${name}"? This removes the planning week (uploaded documents in its folder are kept).`
+      )
+    )
+      return;
+    try {
+      await api.deletePacingTopic(id);
+      const d = await api.coachDashboard();
+      setDash(d);
+      if (topic?.id === id) {
+        setTopic(null);
+        setGuide(null);
+      }
+    } catch (err) {
+      alert("Delete failed: " + (err as Error).message);
+    }
+  }
 
   async function loadSummary() {
     try {
@@ -39,6 +109,7 @@ export default function CoachPage() {
       .then((d) => {
         setDash(d);
         loadSummary();
+        loadDocs(grade);
       })
       .catch(() => router.push("/"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,6 +260,7 @@ export default function CoachPage() {
                   setGrade(g);
                   setTopic(null);
                   setGuide(null);
+                  loadDocs(g);
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
                   grade === g
@@ -201,6 +273,34 @@ export default function CoachPage() {
               </button>
             );
           })}
+        </div>
+
+        {/* Document folders — organized by topic for this grade */}
+        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
+          <div className="text-sm font-semibold text-gray-700 mb-2">
+            📁 {grade === "K" ? "Kindergarten" : `Grade ${grade}`} Documents
+          </div>
+          <div className="space-y-2">
+            <DocFolder
+              label="General — Year at a Glance & grade-wide files"
+              files={docs["_grade"] || []}
+              busy={docBusy === "_grade"}
+              onUpload={(e) => uploadDoc(e, "")}
+              onDelete={deleteDoc}
+            />
+            {dash.planning_weeks
+              .filter((w: any) => w.grade_level === grade)
+              .map((w: any) => (
+                <DocFolder
+                  key={w.id}
+                  label={`${w.topic_code} · ${w.name}`}
+                  files={docs[w.topic_code] || []}
+                  busy={docBusy === w.topic_code}
+                  onUpload={(e) => uploadDoc(e, w.topic_code)}
+                  onDelete={deleteDoc}
+                />
+              ))}
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -220,25 +320,33 @@ export default function CoachPage() {
               {dash.planning_weeks
                 .filter((w: any) => w.grade_level === grade)
                 .map((w: any) => (
-                <button
-                  key={w.id}
-                  onClick={() => openWeek(w.id)}
-                  className={`w-full text-left bg-white rounded-xl border p-3 transition ${
-                    topic?.id === w.id
-                      ? "border-avocado ring-1 ring-avocado"
-                      : "border-gray-100 hover:border-avocado"
-                  }`}
-                >
-                  <div className="text-xs text-gray-400">
-                    Grade {w.grade_level} · {w.subject} · {w.quarter}
-                  </div>
-                  <div className="font-semibold text-sm text-gray-800">
-                    {w.topic_code} · {w.name}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    🎯 {w.learning_target} · {w.benchmark_count} benchmarks
-                  </div>
-                </button>
+                <div key={w.id} className="relative">
+                  <button
+                    onClick={() => openWeek(w.id)}
+                    className={`w-full text-left bg-white rounded-xl border p-3 pr-8 transition ${
+                      topic?.id === w.id
+                        ? "border-avocado ring-1 ring-avocado"
+                        : "border-gray-100 hover:border-avocado"
+                    }`}
+                  >
+                    <div className="text-xs text-gray-400">
+                      Grade {w.grade_level} · {w.subject} · {w.quarter}
+                    </div>
+                    <div className="font-semibold text-sm text-gray-800">
+                      {w.topic_code} · {w.name}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      🎯 {w.learning_target} · {w.benchmark_count} benchmarks
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => deleteTopic(w.id, w.name)}
+                    title="Delete topic"
+                    className="absolute top-2 right-2 text-gray-300 hover:text-red-500"
+                  >
+                    🗑
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -314,6 +422,78 @@ function TopicPanel({ topic, busy, onGuide }: any) {
           </ol>
         </div>
       )}
+    </div>
+  );
+}
+
+function DocFolder({
+  label,
+  files,
+  busy,
+  onUpload,
+  onDelete,
+}: {
+  label: string;
+  files: any[];
+  busy: boolean;
+  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="border border-gray-100 rounded-lg">
+      <details open={files.length > 0}>
+        <summary className="cursor-pointer px-3 py-2 flex items-center justify-between gap-2">
+          <span className="text-sm text-gray-700">
+            📂 {label}
+            <span className="text-xs text-gray-400 ml-1">({files.length})</span>
+          </span>
+          <label className="text-xs bg-gray-800 hover:bg-black text-white rounded px-2 py-1 cursor-pointer whitespace-nowrap">
+            {busy ? "Uploading…" : "Upload ⬆"}
+            <input
+              type="file"
+              className="hidden"
+              disabled={busy}
+              onChange={onUpload}
+            />
+          </label>
+        </summary>
+        <div className="px-3 pb-2">
+          {files.length === 0 ? (
+            <p className="text-xs text-gray-400 py-1">
+              No documents yet. Upload the pacing guide, bell ringer, resources…
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-50">
+              {files.map((f) => (
+                <li
+                  key={f.id}
+                  className="flex items-center justify-between py-1.5 text-xs"
+                >
+                  <button
+                    onClick={() => downloadDocument(f.id, f.filename)}
+                    className="text-avocado-dark hover:underline truncate text-left"
+                    title={f.name}
+                  >
+                    📄 {f.name}
+                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-gray-300">
+                      {Math.max(1, Math.round((f.size || 0) / 1024))} KB
+                    </span>
+                    <button
+                      onClick={() => onDelete(f.id)}
+                      title="Delete document"
+                      className="text-gray-300 hover:text-red-500"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

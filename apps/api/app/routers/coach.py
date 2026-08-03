@@ -1,5 +1,14 @@
 """Coach section — collaborative planning: pacing calendar + PLC agendas."""
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+)
 from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
@@ -17,6 +26,7 @@ from app.models import (
     ClassRoom,
     District,
     PacingTopic,
+    PlanningDocument,
     PlcAgenda,
     School,
     Standard,
@@ -221,3 +231,113 @@ def export_guide_docx(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
+
+
+# --- Topic management ---------------------------------------------------------
+
+@router.delete("/pacing/{topic_id}")
+def delete_pacing_topic(
+    topic_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Delete a pacing topic (planning week) and its generated PLC agendas."""
+    t = db.get(PacingTopic, topic_id)
+    if not t or t.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Pacing topic not found")
+    name = t.name
+    db.query(PlcAgenda).filter(PlcAgenda.pacing_topic_id == t.id).delete(
+        synchronize_session=False)
+    db.delete(t)
+    db.commit()
+    audit(db, actor=user, action="delete", entity_type="pacing_topic",
+          entity_id=topic_id, purpose="planning_management")
+    return {"deleted": True, "name": name}
+
+
+# --- Planning documents (grade / topic folders) -------------------------------
+
+_MAX_DOC_BYTES = 25 * 1024 * 1024  # 25 MB per file
+
+
+@router.get("/documents")
+def list_documents(
+    grade_level: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """List uploaded planning documents (metadata only), grouped by topic folder.
+    Grade-level documents (no topic) land in the '_grade' folder."""
+    q = db.query(PlanningDocument).filter(
+        PlanningDocument.tenant_id == user.tenant_id)
+    if grade_level:
+        q = q.filter(PlanningDocument.grade_level == grade_level)
+    folders: dict = {}
+    for d in q.order_by(PlanningDocument.created_at.desc()).all():
+        key = d.topic_code or "_grade"
+        folders.setdefault(key, []).append({
+            "id": d.id, "name": d.name, "filename": d.filename,
+            "content_type": d.content_type, "size": d.size,
+            "grade_level": d.grade_level, "topic_code": d.topic_code,
+        })
+    return {"grade_level": grade_level, "folders": folders}
+
+
+@router.post("/documents")
+async def upload_document(
+    file: UploadFile = File(...),
+    grade_level: str = Form(...),
+    topic_code: str = Form(""),
+    subject: str = Form("MATH"),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Upload a document into a grade folder (optionally a topic sub-folder)."""
+    data = await file.read()
+    if len(data) > _MAX_DOC_BYTES:
+        raise HTTPException(400, "File is larger than the 25 MB limit.")
+    doc = PlanningDocument(
+        tenant_id=user.tenant_id, grade_level=grade_level,
+        topic_code=(topic_code or ""), subject=(subject or "MATH").upper(),
+        name=file.filename, filename=file.filename,
+        content_type=file.content_type or "application/octet-stream",
+        size=len(data), data=data, uploaded_by=user.id,
+    )
+    db.add(doc)
+    db.commit()
+    audit(db, actor=user, action="upload", entity_type="planning_document",
+          entity_id=doc.id, purpose="planning_resource_upload")
+    return {"id": doc.id, "name": doc.name, "size": doc.size,
+            "grade_level": grade_level, "topic_code": topic_code}
+
+
+@router.get("/documents/{doc_id}/download")
+def download_document(
+    doc_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    d = db.get(PlanningDocument, doc_id)
+    if not d or d.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Document not found")
+    return Response(
+        content=d.data, media_type=d.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{d.filename}"'},
+    )
+
+
+@router.delete("/documents/{doc_id}")
+def delete_document(
+    doc_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    d = db.get(PlanningDocument, doc_id)
+    if not d or d.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Document not found")
+    name = d.name
+    db.delete(d)
+    db.commit()
+    audit(db, actor=user, action="delete", entity_type="planning_document",
+          entity_id=doc_id, purpose="planning_management")
+    return {"deleted": True, "name": name}

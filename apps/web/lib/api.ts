@@ -72,6 +72,14 @@ export const api = {
   teachers: () => req("/reports/teachers"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   resetRoster: () => req("/admin/roster/reset", { method: "POST" }),
+  deletePacingTopic: (id: string) =>
+    req(`/coach/pacing/${id}`, { method: "DELETE" }),
+  listDocuments: (grade: string) =>
+    req(`/coach/documents?grade_level=${encodeURIComponent(grade)}`),
+  uploadDocument: (form: FormData) =>
+    req("/coach/documents", { method: "POST", body: form }),
+  deleteDocument: (id: string) =>
+    req(`/coach/documents/${id}`, { method: "DELETE" }),
   aiCheck: () => req("/coach/ai-check"),
   assistant: (message: string, history: any[]) =>
     req("/coach/assistant", {
@@ -98,6 +106,24 @@ export async function downloadGuideDocx(guide: any) {
   const a = document.createElement("a");
   a.href = url;
   a.download = (guide.title || "planning-guide").replace(/[^\w]+/g, "_") + ".docx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Download an uploaded planning document (blob).
+export async function downloadDocument(id: string, filename: string) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/coach/documents/${id}/download`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error("Download failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "document";
   document.body.appendChild(a);
   a.click();
   a.remove();

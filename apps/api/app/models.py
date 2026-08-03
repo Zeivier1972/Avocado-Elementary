@@ -18,6 +18,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
 )
@@ -280,3 +281,22 @@ class PlcAgenda(Base, TimestampMixin):
     created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
     content: Mapped[dict] = mapped_column(JSON, default=dict)
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PlanningDocument(Base, TimestampMixin):
+    """A file the coach uploads into a grade/topic folder in the planning area
+    (pacing guides, bell ringers, year-at-a-glance, resources...). Stored in the
+    DB so it survives the ephemeral filesystem. topic_code is empty for
+    grade-level documents (e.g. Year at a Glance)."""
+    __tablename__ = "planning_documents"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    grade_level: Mapped[str] = mapped_column(String, index=True)
+    topic_code: Mapped[str] = mapped_column(String, default="", index=True)
+    subject: Mapped[str] = mapped_column(String, default="MATH")
+    name: Mapped[str] = mapped_column(String)          # display name
+    filename: Mapped[str] = mapped_column(String)
+    content_type: Mapped[str] = mapped_column(String, default="application/octet-stream")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    uploaded_by: Mapped[str] = mapped_column(String, default="")
