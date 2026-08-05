@@ -23,6 +23,7 @@ from app.export_docx import guide_to_docx
 from app.db.session import get_db
 from app.deps import audit, get_current_user
 from app.models import (
+    CalendarEntry,
     ClassRoom,
     District,
     PacingTopic,
@@ -413,6 +414,36 @@ def reload_pacing(
           purpose="restore_pacing_guides")
     return {"reloaded": True, "standards_added": n_std,
             "pacing_added": n_pac, "topics_total": total}
+
+
+class ClearIn(BaseModel):
+    grade_level: str = ""
+
+
+@router.post("/pacing/clear")
+def clear_topics(
+    body: ClearIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Delete pacing topics (and their agendas + calendar entries) for a grade,
+    or for all grades when grade_level is blank. Uploaded documents and saved
+    guides are kept."""
+    tq = db.query(PacingTopic).filter(PacingTopic.tenant_id == user.tenant_id)
+    cq = db.query(CalendarEntry).filter(CalendarEntry.tenant_id == user.tenant_id)
+    if body.grade_level:
+        tq = tq.filter(PacingTopic.grade_level == body.grade_level)
+        cq = cq.filter(CalendarEntry.grade_level == body.grade_level)
+    topic_ids = [t.id for t in tq.all()]
+    if topic_ids:
+        db.query(PlcAgenda).filter(
+            PlcAgenda.pacing_topic_id.in_(topic_ids)).delete(synchronize_session=False)
+    n = tq.delete(synchronize_session=False)
+    cn = cq.delete(synchronize_session=False)
+    db.commit()
+    audit(db, actor=user, action="clear", entity_type="pacing_topic",
+          purpose="planning_management")
+    return {"topics_deleted": n, "calendar_entries_deleted": cn}
 
 
 @router.delete("/pacing/{topic_id}")

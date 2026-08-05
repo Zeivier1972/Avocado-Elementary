@@ -75,6 +75,18 @@ export const api = {
   deletePacingTopic: (id: string) =>
     req(`/coach/pacing/${id}`, { method: "DELETE" }),
   reloadPacing: () => req("/coach/pacing/reload", { method: "POST" }),
+  clearTopics: (grade: string) =>
+    req("/coach/pacing/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grade_level: grade }),
+    }),
+  calendarFromDocument: (id: string, yearStart?: number) =>
+    req(`/coach/calendar/from-document/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ year_start: yearStart || null }),
+    }),
   createTopic: (body: any) =>
     req("/coach/pacing", {
       method: "POST",

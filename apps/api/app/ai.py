@@ -89,6 +89,57 @@ def _artifacts_for_day(day: int) -> list[str]:
     return mapping.get(day, [])
 
 
+def parse_pacing_schedule(pacing_text: str, year_start: int):
+    """Read a pacing guide's day-by-day schedule out of its text: for each dated
+    instructional day, the lesson/activity scheduled. Dates like 'August 13' are
+    resolved to the school year (Aug-Dec -> year_start, Jan-Jul -> year_start+1).
+    Returns (entries | None, reason). Entries: {date 'YYYY-MM-DD', lesson_code,
+    title, kind}."""
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        return None, "AI not enabled — set AI_API_KEY to read dates from the pacing guide."
+    try:
+        import anthropic
+    except ImportError:
+        return None, "anthropic SDK not installed"
+    try:
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        prompt = (
+            "You are reading a school PACING GUIDE. Extract the day-by-day teaching "
+            "schedule EXACTLY as written in the document. For every dated "
+            "instructional day, output what is scheduled that day.\n\n"
+            f"School year starts in August {year_start}. Resolve dates written like "
+            f"'August 13' or '8/13' to ISO YYYY-MM-DD using this rule: months "
+            f"August-December use {year_start}; January-July use {year_start + 1}. "
+            "If the document already gives full dates, use them.\n\n"
+            "For each day return an object: {\"date\":\"YYYY-MM-DD\", "
+            "\"lesson_code\":\"e.g. 1.1 or blank\", \"title\":\"the lesson/activity "
+            "as written\", \"kind\":\"lesson|review|assessment|note\"}. Use "
+            "\"assessment\" for topic/chapter assessment days, \"review\" for review "
+            "days. Only include days that have a real date in the document. Do not "
+            "invent dates or lessons.\n\n"
+            "PACING GUIDE:\n" + pacing_text.strip()[:14000]
+        )
+        with client.messages.stream(
+            model=settings.ai_model, max_tokens=8000,
+            system=("You output ONLY a single valid JSON array. No prose, no "
+                    "markdown fences."),
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            msg = stream.get_final_message()
+        text = "".join(b.text for b in msg.content if b.type == "text").strip()
+        entries = _parse_json_array(text)
+        if not entries:
+            tail = text[-160:].replace("\n", " ") if text else "(empty)"
+            return None, f"could not read a dated schedule from the guide. Ends with: …{tail}"
+        # keep only rows with a plausible ISO date
+        import re as _re
+        clean = [e for e in entries
+                 if isinstance(e, dict) and _re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("date", "")))]
+        return (clean, None) if clean else (None, "no dated rows found in the guide")
+    except Exception as e:
+        return None, f"{type(e).__name__}: {str(e)[:200]}"
+
+
 def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
                                grade: str, subject: str, topic_name: str) -> dict:
     """Generate a Collaborative Planning Guide grounded in the coach's UPLOADED

@@ -149,6 +149,43 @@ export default function CoachPage() {
     }
   }
 
+  async function addDocToCalendar(id: string) {
+    setBusy(true);
+    try {
+      const r = await api.calendarFromDocument(id);
+      alert(
+        `Read ${r.created} dated days from the pacing guide (${r.first} → ${r.last}). Open the 📅 Calendar to see them.`
+      );
+    } catch (err) {
+      alert(
+        "Couldn't read a dated schedule: " +
+          (err as Error).message +
+          "\n(The AI key must be on, and the guide must contain dates.)"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearTopics() {
+    if (
+      !confirm(
+        `Delete ALL topics and calendar entries for ${grade === "K" ? "Kindergarten" : `Grade ${grade}`}? Uploaded documents are kept.`
+      )
+    )
+      return;
+    try {
+      const r = await api.clearTopics(grade);
+      const d = await api.coachDashboard();
+      setDash(d);
+      setTopic(null);
+      setGuide(null);
+      alert(`Cleared ${r.topics_deleted} topics and ${r.calendar_entries_deleted} calendar days.`);
+    } catch (err) {
+      alert("Clear failed: " + (err as Error).message);
+    }
+  }
+
   async function deleteDoc(id: string) {
     if (!confirm("Delete this document?")) return;
     try {
@@ -428,6 +465,7 @@ export default function CoachPage() {
               onUpload={(e) => uploadDoc(e, "")}
               onDelete={deleteDoc}
               onGenerate={genFromDoc}
+                  onCalendar={addDocToCalendar}
             />
             {dash.planning_weeks
               .filter((w: any) => w.grade_level === grade)
@@ -440,6 +478,7 @@ export default function CoachPage() {
                   onUpload={(e) => uploadDoc(e, w.topic_code)}
                   onDelete={deleteDoc}
                   onGenerate={genFromDoc}
+                  onCalendar={addDocToCalendar}
                 />
               ))}
             {/* Folders for documents whose topic was deleted — kept, not lost */}
@@ -460,6 +499,7 @@ export default function CoachPage() {
                   onUpload={(e) => uploadDoc(e, k)}
                   onDelete={deleteDoc}
                   onGenerate={genFromDoc}
+                  onCalendar={addDocToCalendar}
                 />
               ))}
           </div>
@@ -519,6 +559,13 @@ export default function CoachPage() {
                   className="text-xs font-semibold text-white bg-avocado hover:bg-avocado-dark rounded px-2 py-1"
                 >
                   {showNew ? "Cancel" : "+ New Topic"}
+                </button>
+                <button
+                  onClick={clearTopics}
+                  title="Delete all topics + calendar days for this grade (keeps documents)"
+                  className="text-xs text-red-500 hover:underline"
+                >
+                  Clear topics
                 </button>
                 <button
                   onClick={reloadPacing}
@@ -770,6 +817,7 @@ function DocFolder({
   onUpload,
   onDelete,
   onGenerate,
+  onCalendar,
 }: {
   label: string;
   files: any[];
@@ -777,6 +825,7 @@ function DocFolder({
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDelete: (id: string) => void;
   onGenerate?: (id: string) => void;
+  onCalendar?: (id: string) => void;
 }) {
   return (
     <div className="border border-gray-100 rounded-lg">
@@ -823,6 +872,15 @@ function DocFolder({
                         className="text-avocado-dark font-semibold hover:underline whitespace-nowrap"
                       >
                         ✨ Generate guide
+                      </button>
+                    )}
+                    {onCalendar && (
+                      <button
+                        onClick={() => onCalendar(f.id)}
+                        title="Read the dates & lessons from this pacing guide onto the calendar"
+                        className="text-avocado-dark font-semibold hover:underline whitespace-nowrap"
+                      >
+                        📅 To calendar
                       </button>
                     )}
                     <span className="text-gray-300">

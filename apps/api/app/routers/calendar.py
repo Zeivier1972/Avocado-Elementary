@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.deps import audit, get_current_user
-from app.models import CalendarEntry, District, PacingTopic, User
+from app.models import CalendarEntry, District, PacingTopic, PlanningDocument, User
 
 router = APIRouter(prefix="/coach/calendar", tags=["calendar"])
 
@@ -108,6 +108,66 @@ def generate_calendar(
           purpose="pacing_calendar")
     return {"created": n, "topics": len(topics),
             "start": body.start_date, "through": d.isoformat()}
+
+
+class FromDocIn(BaseModel):
+    year_start: int | None = None
+
+
+@router.post("/from-document/{doc_id}")
+def calendar_from_document(
+    doc_id: str,
+    body: FromDocIn | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Read the actual dates + lessons out of an uploaded pacing guide and put
+    them on the calendar (e.g. 'Topic 1 begins August 13' → schedule from there).
+    Replaces existing entries for that grade + topic."""
+    from app.ai import parse_pacing_schedule
+    from app.doc_text import extract_document_text
+
+    d = db.get(PlanningDocument, doc_id)
+    if not d or d.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Document not found")
+    text, reason = extract_document_text(d.filename, d.content_type, d.data)
+    if not text:
+        raise HTTPException(400, f"Could not read the document: {reason}.")
+
+    ys = (body.year_start if body and body.year_start else None)
+    if not ys:
+        today = date.today()
+        ys = today.year if today.month >= 7 else today.year - 1
+
+    entries, err = parse_pacing_schedule(text, ys)
+    if not entries:
+        raise HTTPException(
+            400, err or "No dated schedule found in this pacing guide.")
+
+    subject = (d.subject or "MATH").upper()
+    db.query(CalendarEntry).filter(
+        CalendarEntry.tenant_id == user.tenant_id,
+        CalendarEntry.grade_level == d.grade_level,
+        CalendarEntry.subject == subject,
+        CalendarEntry.topic_code == d.topic_code).delete(synchronize_session=False)
+
+    created = 0
+    for e in entries:
+        kind = e.get("kind", "lesson")
+        if kind not in ("lesson", "review", "assessment", "note"):
+            kind = "lesson"
+        db.add(CalendarEntry(
+            tenant_id=user.tenant_id, grade_level=d.grade_level, subject=subject,
+            date=str(e.get("date", ""))[:10], topic_code=d.topic_code,
+            lesson_code=str(e.get("lesson_code", ""))[:20],
+            title=str(e.get("title", ""))[:200], kind=kind))
+        created += 1
+    db.commit()
+    dates = sorted(str(e.get("date")) for e in entries)
+    audit(db, actor=user, action="generate", entity_type="calendar",
+          purpose="calendar_from_pacing_document")
+    return {"created": created, "grade_level": d.grade_level,
+            "first": dates[0], "last": dates[-1]}
 
 
 @router.get("")

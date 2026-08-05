@@ -115,7 +115,15 @@ export default function CalendarPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          header { display: none !important; }
+          main { padding: 0 !important; }
+          .cal-grid { break-inside: avoid; }
+        }
+      `}</style>
+      <header className="no-print bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🥑</span>
           <span className="font-bold text-avocado-dark">Avocado</span>
@@ -139,10 +147,10 @@ export default function CalendarPage() {
       </header>
 
       <div className="max-w-6xl mx-auto p-6 space-y-4">
-        <h1 className="text-xl font-bold text-gray-800">Pacing Calendar</h1>
+        <h1 className="text-xl font-bold text-gray-800 no-print">Pacing Calendar</h1>
 
         {/* Grade tabs */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 no-print">
           {GRADES.map((g) => (
             <button
               key={g}
@@ -159,7 +167,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Generate control */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-center gap-3">
+        <div className="no-print bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-center gap-3">
           <div className="text-sm text-gray-600">
             Generate the day-by-day schedule from the topics' lessons, starting:
           </div>
@@ -189,23 +197,33 @@ export default function CalendarPage() {
             onClick={() =>
               setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))
             }
-            className="text-sm text-avocado-dark hover:underline"
+            className="no-print text-sm text-avocado-dark hover:underline"
           >
             ← Prev
           </button>
-          <div className="font-semibold text-gray-800">{monthLabel}</div>
-          <button
-            onClick={() =>
-              setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))
-            }
-            className="text-sm text-avocado-dark hover:underline"
-          >
-            Next →
-          </button>
+          <div className="font-semibold text-gray-800">
+            {grade === "K" ? "Kindergarten" : `Grade ${grade}`} · {monthLabel}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.print()}
+              className="no-print text-sm font-semibold text-avocado-dark hover:underline"
+            >
+              🖨 Print
+            </button>
+            <button
+              onClick={() =>
+                setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))
+              }
+              className="no-print text-sm text-avocado-dark hover:underline"
+            >
+              Next →
+            </button>
+          </div>
         </div>
 
         {/* Calendar grid */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="cal-grid bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="grid grid-cols-7 text-xs font-semibold text-gray-500 border-b border-gray-100">
             {DOW.map((d) => (
               <div key={d} className="px-2 py-1 text-center">
