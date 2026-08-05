@@ -170,7 +170,7 @@ export default function CoachPage() {
   async function clearTopics() {
     if (
       !confirm(
-        `Delete ALL topics and calendar entries for ${grade === "K" ? "Kindergarten" : `Grade ${grade}`}? Uploaded documents are kept.`
+        `Clean slate for ${grade === "K" ? "Kindergarten" : `Grade ${grade}`}?\n\nThis deletes its topics, uploaded documents, calendar days, and saved guides. The roster and standards are kept. You'll re-upload this grade's pacing guide fresh.`
       )
     )
       return;
@@ -180,7 +180,11 @@ export default function CoachPage() {
       setDash(d);
       setTopic(null);
       setGuide(null);
-      alert(`Cleared ${r.topics_deleted} topics and ${r.calendar_entries_deleted} calendar days.`);
+      await loadDocs(grade);
+      await loadGuides(grade);
+      alert(
+        `Cleared: ${r.topics_deleted} topics, ${r.documents_deleted} documents, ${r.calendar_entries_deleted} calendar days, ${r.guides_deleted} saved guides.`
+      );
     } catch (err) {
       alert("Clear failed: " + (err as Error).message);
     }
@@ -562,10 +566,10 @@ export default function CoachPage() {
                 </button>
                 <button
                   onClick={clearTopics}
-                  title="Delete all topics + calendar days for this grade (keeps documents)"
+                  title="Clean slate for this grade: delete its topics, documents, calendar, and guides"
                   className="text-xs text-red-500 hover:underline"
                 >
-                  Clear topics
+                  Clear grade
                 </button>
                 <button
                   onClick={reloadPacing}

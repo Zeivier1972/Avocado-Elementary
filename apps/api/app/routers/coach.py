@@ -426,24 +426,31 @@ def clear_topics(
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
-    """Delete pacing topics (and their agendas + calendar entries) for a grade,
-    or for all grades when grade_level is blank. Uploaded documents and saved
-    guides are kept."""
+    """Full clean slate for a grade (or all grades when grade_level is blank):
+    delete its pacing topics, agendas, calendar days, uploaded documents, and
+    saved guides. The roster, students, and standards are untouched."""
     tq = db.query(PacingTopic).filter(PacingTopic.tenant_id == user.tenant_id)
     cq = db.query(CalendarEntry).filter(CalendarEntry.tenant_id == user.tenant_id)
+    dq = db.query(PlanningDocument).filter(PlanningDocument.tenant_id == user.tenant_id)
+    gq = db.query(SavedGuide).filter(SavedGuide.tenant_id == user.tenant_id)
     if body.grade_level:
         tq = tq.filter(PacingTopic.grade_level == body.grade_level)
         cq = cq.filter(CalendarEntry.grade_level == body.grade_level)
+        dq = dq.filter(PlanningDocument.grade_level == body.grade_level)
+        gq = gq.filter(SavedGuide.grade_level == body.grade_level)
     topic_ids = [t.id for t in tq.all()]
     if topic_ids:
         db.query(PlcAgenda).filter(
             PlcAgenda.pacing_topic_id.in_(topic_ids)).delete(synchronize_session=False)
     n = tq.delete(synchronize_session=False)
     cn = cq.delete(synchronize_session=False)
+    dn = dq.delete(synchronize_session=False)
+    gn = gq.delete(synchronize_session=False)
     db.commit()
     audit(db, actor=user, action="clear", entity_type="pacing_topic",
           purpose="planning_management")
-    return {"topics_deleted": n, "calendar_entries_deleted": cn}
+    return {"topics_deleted": n, "calendar_entries_deleted": cn,
+            "documents_deleted": dn, "guides_deleted": gn}
 
 
 @router.delete("/pacing/{topic_id}")
