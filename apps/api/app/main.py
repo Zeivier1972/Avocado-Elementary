@@ -12,6 +12,7 @@ from app.routers import (
     admin,
     assessments,
     auth,
+    calendar,
     coach,
     dashboard,
     di,
@@ -47,7 +48,7 @@ app.add_middleware(
 )
 
 for r in (health, auth, standards, students, dashboard, assessments, di,
-          pacing, coach, admin, reports):
+          pacing, coach, calendar, admin, reports):
     app.include_router(r.router)
 
 

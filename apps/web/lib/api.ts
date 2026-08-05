@@ -98,6 +98,26 @@ export const api = {
   getGuide: (id: string) => req(`/coach/guides/${id}`),
   deleteGuide: (id: string) =>
     req(`/coach/guides/${id}`, { method: "DELETE" }),
+  getCalendar: (grade: string, subject = "MATH", start = "", end = "") =>
+    req(
+      `/coach/calendar?grade=${encodeURIComponent(grade)}&subject=${subject}` +
+        (start ? `&start=${start}` : "") +
+        (end ? `&end=${end}` : "")
+    ),
+  generateCalendar: (body: any) =>
+    req("/coach/calendar/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  addCalendarEntry: (body: any) =>
+    req("/coach/calendar/entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  deleteCalendarEntry: (id: string) =>
+    req(`/coach/calendar/entry/${id}`, { method: "DELETE" }),
   aiCheck: () => req("/coach/ai-check"),
   assistant: (message: string, history: any[]) =>
     req("/coach/assistant", {

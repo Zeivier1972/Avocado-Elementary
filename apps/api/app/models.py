@@ -283,6 +283,23 @@ class PlcAgenda(Base, TimestampMixin):
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class CalendarEntry(Base, TimestampMixin):
+    """A single day on a grade's pacing calendar: which lesson (or review /
+    assessment) is scheduled for that date. Dates are stored as ISO strings
+    (YYYY-MM-DD) for SQLite/Postgres portability."""
+    __tablename__ = "calendar_entries"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    grade_level: Mapped[str] = mapped_column(String, index=True)
+    subject: Mapped[str] = mapped_column(String, default="MATH")
+    date: Mapped[str] = mapped_column(String, index=True)   # YYYY-MM-DD
+    topic_code: Mapped[str] = mapped_column(String, default="")
+    lesson_code: Mapped[str] = mapped_column(String, default="")
+    title: Mapped[str] = mapped_column(String, default="")
+    kind: Mapped[str] = mapped_column(String, default="lesson")  # lesson|review|assessment|note
+    note: Mapped[str] = mapped_column(String, default="")
+
+
 class SavedGuide(Base, TimestampMixin):
     """A generated Collaborative Planning Guide, persisted so it isn't lost when
     the coach navigates away. Reopenable and downloadable from the DB."""
