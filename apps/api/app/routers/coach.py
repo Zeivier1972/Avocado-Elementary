@@ -327,15 +327,27 @@ async def pacing_from_document(
             400, f"Could not read this document's text: {reason}. "
                  "Upload a text-based PDF, Word, or Excel pacing guide.")
 
-    # Name / code: "Topic 1: Understand Multiplication" -> code "Topic 1",
-    # name "Understand Multiplication". Otherwise use the filename.
+    subject = (subject or "MATH").upper()
+    # Grade: honor an explicit "Grade N / Grd N / GK" in the filename so a file
+    # uploaded on the wrong tab still lands in the right grade.
+    gm = _re.search(r"gr(?:a?de?)?\s*_?\s*(k|[0-8])(?![0-9])", file.filename, _re.I)
+    if gm:
+        g = gm.group(1).upper()
+        grade_level = "K" if g == "K" else g
+
+    # Name / code from the user's label or the filename. "Topic 1: Name" splits
+    # cleanly; otherwise pull a clean "Topic N" / "Chapter N" (digits only, so
+    # "_AIR" and other suffixes are not swept into the code).
     label = (topic_name or "").strip() or file.filename.rsplit(".", 1)[0]
     if ":" in label:
         code, name = [x.strip() for x in label.split(":", 1)]
     else:
-        m = _re.search(r"(topic\s*\w+|chapter\s*\w+)", label, _re.I)
-        code = m.group(1).title() if m else label[:40]
-        name = label
+        m = _re.search(r"(topic|chapter)\s*_?\s*(\d+)", label, _re.I)
+        if m:
+            code = f"{m.group(1).title()} {m.group(2)}"
+            name = code
+        else:
+            code = name = _re.sub(r"[_\s]+", " ", label).strip()[:40]
     benchmarks = list(dict.fromkeys(_re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text)))
 
     last = (db.query(PacingTopic)
@@ -343,7 +355,7 @@ async def pacing_from_document(
                     PacingTopic.grade_level == grade_level)
             .order_by(PacingTopic.week_order.desc()).first())
     topic = PacingTopic(
-        tenant_id=user.tenant_id, subject=(subject or "MATH").upper(),
+        tenant_id=user.tenant_id, subject=subject,
         grade_level=grade_level, topic_code=code, name=name,
         benchmarks=benchmarks, learning_target="", quarter="",
         week_order=((last.week_order + 1) if last else 0),
@@ -353,21 +365,29 @@ async def pacing_from_document(
 
     doc = PlanningDocument(
         tenant_id=user.tenant_id, grade_level=grade_level, topic_code=code,
-        subject=(subject or "MATH").upper(), name=file.filename,
-        filename=file.filename,
+        subject=subject, name=file.filename, filename=file.filename,
         content_type=file.content_type or "application/octet-stream",
         size=len(data), data=data, uploaded_by=user.id)
     db.add(doc)
     db.commit()
 
     standards = _resolve_standards(db, benchmarks) if benchmarks else []
-    guide = generate_guide_from_pacing(
-        text, standards, grade_level, (subject or "MATH").upper(), name)
+    guide = generate_guide_from_pacing(text, standards, grade_level, subject, name)
+    # Save the generated lesson breakdown back onto the topic so the pacing
+    # calendar can lay the lessons out day-by-day.
+    if guide.get("lessons"):
+        topic.lessons = [
+            {"code": L.get("code", ""), "title": L.get("title", ""),
+             "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", "")}
+            for L in guide["lessons"]]
+        db.add(topic)
+        db.commit()
     guide_id = _save_guide(db, user, grade_level, code, subject, guide)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="upload_pacing_and_generate")
     return {
-        "topic": {"id": topic.id, "topic_code": code, "name": name},
+        "topic": {"id": topic.id, "topic_code": code, "name": name,
+                  "grade_level": grade_level},
         "guide": guide, "document_id": doc.id, "guide_id": guide_id,
         "benchmarks_detected": benchmarks,
     }
@@ -511,6 +531,7 @@ def generate_guide_from_document(
     # Benchmarks: any codes found in the document, plus the topic's benchmarks if
     # the document sits in a topic folder that exists.
     codes = list(dict.fromkeys(_re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text)))
+    topic = None
     if d.topic_code:
         topic = db.query(PacingTopic).filter(
             PacingTopic.tenant_id == user.tenant_id,
@@ -521,10 +542,18 @@ def generate_guide_from_document(
                 if c not in codes:
                     codes.append(c)
     standards = _resolve_standards(db, codes) if codes else []
-    topic_name = d.topic_code or d.name.rsplit(".", 1)[0]
+    topic_name = (topic.name if topic else None) or d.topic_code or d.name.rsplit(".", 1)[0]
 
     guide = generate_guide_from_pacing(
         text, standards, d.grade_level, d.subject or "MATH", topic_name)
+    # Save the lesson breakdown onto the topic so the pacing calendar has it.
+    if topic and guide.get("lessons"):
+        topic.lessons = [
+            {"code": L.get("code", ""), "title": L.get("title", ""),
+             "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", "")}
+            for L in guide["lessons"]]
+        db.add(topic)
+        db.commit()
     guide_id = _save_guide(db, user, d.grade_level, d.topic_code, d.subject, guide)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="guide_from_pacing_document")

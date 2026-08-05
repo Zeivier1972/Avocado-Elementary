@@ -100,7 +100,9 @@ export default function CoachPage() {
   ) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const suggested = file.name.replace(/\.[^.]+$/, "");
+    const base = file.name.replace(/\.[^.]+$/, "");
+    const tm = base.match(/(topic|chapter)\s*_?\s*(\d+)/i);
+    const suggested = tm ? `${tm[1][0].toUpperCase()}${tm[1].slice(1).toLowerCase()} ${tm[2]}` : base;
     const topicName = window.prompt(
       "Name this topic (e.g., Topic 1: Understand Multiplication):",
       suggested

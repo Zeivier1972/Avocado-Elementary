@@ -70,12 +70,20 @@ def generate_calendar(
     for t in topics:
         lessons = t.lessons or []
         if not lessons:
-            db.add(CalendarEntry(
-                tenant_id=user.tenant_id, grade_level=grade, subject=subject,
-                date=d.isoformat(), topic_code=t.topic_code,
-                title=f"{t.topic_code}: {t.name}", kind="lesson"))
-            n += 1
-            d = _next(d)
+            # No lesson breakdown yet — reserve the topic's instructional span so
+            # the calendar reflects real pacing. Estimate days from the time frame
+            # (e.g. "~10 instructional days") or from the number of benchmarks.
+            import re as _re
+            m = _re.search(r"(\d+)", getattr(t, "time_frame", "") or "")
+            days = int(m.group(1)) if m else max(4, len(t.benchmarks or []) * 3)
+            for i in range(1, min(days, 20) + 1):
+                db.add(CalendarEntry(
+                    tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+                    date=d.isoformat(), topic_code=t.topic_code,
+                    title=f"{t.topic_code} · Instructional Day {i}", kind="lesson",
+                    note="Generate the planning guide to fill in the lessons."))
+                n += 1
+                d = _next(d)
         for L in lessons:
             db.add(CalendarEntry(
                 tenant_id=user.tenant_id, grade_level=grade, subject=subject,
