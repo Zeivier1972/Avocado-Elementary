@@ -139,6 +139,11 @@ def guide_to_docx(guide: dict) -> bytes:
         _label(doc, "Benchmark Clarification", L.get("benchmark_clarification"))
         _label(doc, "Example", L.get("benchmark_example"))
         _label(doc, "Sentence Frame", L.get("sentence_frame"))
+        if L.get("vocabulary") or L.get("vocabulary_integration"):
+            _heading(doc, "Vocabulary (from the pacing guide)", 11)
+            _label(doc, "Terms", ", ".join(L.get("vocabulary", [])))
+            _label(doc, "How to integrate", L.get("vocabulary_integration"))
+        _label(doc, "CUBS Strategy (word problems)", L.get("cubs"))
         if L.get("misconceptions"):
             _heading(doc, "Common Misconceptions & Fixes", 11)
             _misconception_table(doc, L["misconceptions"])

@@ -987,6 +987,31 @@ function GuideView({ guide }: any) {
               <Line label="Benchmark Clarification" value={L.benchmark_clarification} />
               <Line label="Example" value={L.benchmark_example} />
               <Line label="Sentence Frame" value={L.sentence_frame} />
+              {(L.vocabulary?.length > 0 || L.vocabulary_integration) && (
+                <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-2">
+                  <div className="font-semibold text-gray-700 text-xs mb-0.5">
+                    📚 Vocabulary (from the pacing guide)
+                  </div>
+                  {L.vocabulary?.length > 0 && (
+                    <p className="text-xs text-gray-700">
+                      {L.vocabulary.join(" · ")}
+                    </p>
+                  )}
+                  {L.vocabulary_integration && (
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      {L.vocabulary_integration}
+                    </p>
+                  )}
+                </div>
+              )}
+              {L.cubs && (
+                <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-2">
+                  <div className="font-semibold text-gray-700 text-xs mb-0.5">
+                    🦸 CUBS Strategy (word problems)
+                  </div>
+                  <p className="text-xs text-gray-700">{L.cubs}</p>
+                </div>
+              )}
               {L.misconceptions?.length > 0 && (
                 <div>
                   <div className="font-semibold text-gray-700 text-xs mb-1">

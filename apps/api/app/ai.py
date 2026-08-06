@@ -37,6 +37,18 @@ ARTIFACTS = [
     "quick_check", "exit_ticket", "progress_monitoring", "reassessment",
 ]
 
+# Avocado Elementary's word-problem routine, integrated into each lesson.
+CUBS_ROUTINE = (
+    "CUBS Hero Routine (understand the story before choosing an operation): "
+    "C — CIRCLE the important numbers/quantities and say what each represents "
+    "(not label-only numbers); "
+    "U — UNDERLINE exactly what to find, restate the question, name the unknown; "
+    "B — BOX the words that show the relationship (joining, separating, comparing, "
+    "grouping, sharing) — keywords are clues, not automatic rules; "
+    "S — SOLVE & CHECK: choose a model/strategy/equation, solve and label, then "
+    "check that the answer is reasonable and answers the question."
+)
+
 
 def generate_di_plan(standard: dict, group_size: int,
                      student_profiles: list[dict]) -> dict:
@@ -466,6 +478,19 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             "A Level 3 student can independently "
             + (focus[:1].lower() + focus[1:] if focus else title.lower())
             + " and explain their reasoning using correct vocabulary.")
+        # Vocabulary FROM the pacing guide (lesson-specific if authored, else the
+        # topic's terms), plus how to teach it and how CUBS applies this lesson.
+        lesson_vocab = pick("vocabulary", vocab[:6])
+        vocab_integration = pick("vocabulary_integration",
+            "Add these terms to the math word wall with a student-friendly definition "
+            "and a picture/model. Introduce them during Assemble (I Do), use them in the "
+            "sentence frame during Connect/Explore, and require students to use them when "
+            "they explain their reasoning (MTR 4.1).")
+        cubs = pick("cubs",
+            "Apply the CUBS Hero Routine to the word-problem/You-Do work: Circle the "
+            "numbers and say what each represents, Underline the question and name the "
+            "unknown, Box the relationship words, then Solve & Check — understand the "
+            "story before choosing an operation.")
         misc = pick("misconceptions", _parse_misconceptions(s.get("misconceptions", "")))
         crit = pick("success_criteria", ([focus] if focus else []) + clar[:2])
         # Back-compat numbered strategy, assembled from the ACES phases.
@@ -492,6 +517,9 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             # "what a Level 3 (on-grade) looks like", plus 2/4/5 for the progression.
             "ald": s.get("alds", {}),
             "misconceptions": misc,
+            "vocabulary": lesson_vocab,
+            "vocabulary_integration": vocab_integration,
+            "cubs": cubs,
             "activate_prior_knowledge": activate,
             "i_do": i_do,
             "we_do": we_do,
@@ -568,6 +596,9 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             '"benchmark_example":"a specific worked numeric example",'
             '"sentence_frame":"The __ is in the __ place, so it means __.",'
             '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
+            '"vocabulary":["the pacing-guide vocabulary terms used in THIS lesson"],'
+            '"vocabulary_integration":"how to teach/integrate those terms in this lesson (word wall, definitions, sentence frames, math talk)",'
+            '"cubs":"how to apply the CUBS Hero Routine in this lesson, especially for the word-problem work",'
             '"activate_prior_knowledge":"how to activate prior knowledge for THIS lesson, with a specific warm-up",'
             '"i_do":"ASSEMBLE (I Do): teacher models with a specific worked example and think-aloud",'
             '"we_do":"CONNECT (We Do): guided practice with a specific example and how to engage students together",'
@@ -589,9 +620,11 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             f"{topic['topic_code']}: {topic['name']}\n"
             f"Topic learning goal: {topic.get('learning_target','')}\n"
             f"Success criteria: {topic.get('success_criteria', [])}\n"
-            f"Vocabulary: {topic.get('vocabulary', [])}\n"
+            f"Pacing-guide vocabulary (assign the relevant terms to each lesson): "
+            f"{topic.get('vocabulary', [])}\n"
             f"MTR practices: {topic.get('mtr_practices', [])}\n"
             f"Materials: {topic.get('materials', [])}\n\n"
+            f"{CUBS_ROUTINE}\n\n"
             f"Benchmarks (with B1G-M detail — use these clarifications & misconceptions):\n{std_ctx}\n\n"
             f"Lesson outline to expand:\n{outline_txt}\n"
             f"{pacing_block}\n\n"
@@ -608,6 +641,12 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "- a sentence_frame students use to explain their reasoning\n"
             "- a 3-column misconceptions table: each row has the misconception, a "
             "specific EXAMPLE ERROR a student makes (real numbers), and the correction strategy\n"
+            "- vocabulary: the pacing-guide terms this lesson uses, and "
+            "vocabulary_integration: how to teach them here (word wall, kid-friendly "
+            "definitions, sentence frames, math talk, using the terms in explanations)\n"
+            "- cubs: how to apply the CUBS Hero Routine in this lesson, especially on the "
+            "word-problem / You-Do work (Circle numbers, Underline the question, Box the "
+            "relationship words, Solve & Check)\n"
             "Structure the lesson using the school's ACES gradual-release model: "
             "Assemble (I Do) -> Connect (We Do) -> Explore (Y'all Do, collaborative "
             "teams) -> Share (You Do, independent). Provide all four phases:\n"

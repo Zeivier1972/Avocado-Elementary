@@ -105,7 +105,14 @@
       "problem": "Write a multiplication equation for 5 groups of 2 and find the product.",
       "answer": "5 × 2 = 10"
      },
-     "explore_yall_do": "In teams, each group draws a 'groups of' card (e.g., 3 groups of 4), builds it with counters, and writes the equation. Teams swap cards and check another team's model, using the sentence frame to explain."
+     "explore_yall_do": "In teams, each group draws a 'groups of' card (e.g., 3 groups of 4), builds it with counters, and writes the equation. Teams swap cards and check another team's model, using the sentence frame to explain.",
+     "vocabulary": [
+      "equal groups",
+      "factor",
+      "product",
+      "multiply",
+      "repeated addition"
+     ]
     },
     {
      "code": "1.2",
@@ -155,7 +162,14 @@
       "problem": "Write the multiplication equation for an array with 4 rows of 5.",
       "answer": "4 × 5 = 20"
      },
-     "explore_yall_do": "Teams build an assigned array on grid paper (e.g., 4 × 3), then rotate to another team's array, count the rows, and write its equation. Teams compare answers and justify."
+     "explore_yall_do": "Teams build an assigned array on grid paper (e.g., 4 × 3), then rotate to another team's array, count the rows, and write its equation. Teams compare answers and justify.",
+     "vocabulary": [
+      "array",
+      "row",
+      "column",
+      "factor",
+      "product"
+     ]
     },
     {
      "code": "1.3",
@@ -205,7 +219,14 @@
       "problem": "How many jumps of 3 land on 12? Write the equation.",
       "answer": "4 jumps; 4 × 3 = 12"
      },
-     "explore_yall_do": "In pairs, students take turns: one names a fact (e.g., 3 × 4), the partner shows the equal jumps on a number line, and they check the landing point together."
+     "explore_yall_do": "In pairs, students take turns: one names a fact (e.g., 3 × 4), the partner shows the equal jumps on a number line, and they check the landing point together.",
+     "vocabulary": [
+      "skip count",
+      "number line",
+      "multiple",
+      "factor",
+      "product"
+     ]
     },
     {
      "code": "1.4",
@@ -255,7 +276,13 @@
       "problem": "If 7 × 2 = 14, what is 2 × 7? Explain in one sentence.",
       "answer": "2 × 7 = 14 (commutative property — order doesn't change the product)"
      },
-     "explore_yall_do": "Teams get a fact (e.g., 2 × 6) and must prove its commutative partner (6 × 2) by rotating an array, then present their proof to a neighboring team."
+     "explore_yall_do": "Teams get a fact (e.g., 2 × 6) and must prove its commutative partner (6 × 2) by rotating an array, then present their proof to a neighboring team.",
+     "vocabulary": [
+      "commutative property",
+      "factor",
+      "product",
+      "array"
+     ]
     },
     {
      "code": "1.5",
@@ -305,7 +332,12 @@
       "problem": "Solve 2 × 2 × 4 by grouping. Show your grouping.",
       "answer": "(2 × 2) × 4 = 4 × 4 = 16"
      },
-     "explore_yall_do": "Teams solve 2 × 3 × 4 two different ways (grouping different pairs first) and compare with another team to confirm they reached the same product."
+     "explore_yall_do": "Teams solve 2 × 3 × 4 two different ways (grouping different pairs first) and compare with another team to confirm they reached the same product.",
+     "vocabulary": [
+      "associative property",
+      "factor",
+      "product"
+     ]
     },
     {
      "code": "1.6",
@@ -355,7 +387,13 @@
       "problem": "There are 5 plates with 3 cookies on each. How many cookies? Write the equation.",
       "answer": "5 × 3 = 15 cookies"
      },
-     "explore_yall_do": "Teams solve a shared story problem — draw the model, write the equation — then create their OWN multiplication story problem and trade it with another team to solve."
+     "explore_yall_do": "Teams solve a shared story problem — draw the model, write the equation — then create their OWN multiplication story problem and trade it with another team to solve.",
+     "vocabulary": [
+      "multiply",
+      "product",
+      "equal groups",
+      "factor"
+     ]
     }
    ]
   },
@@ -458,7 +496,16 @@
       "problem": "What is the value of the 8 in 8,145?",
       "answer": "8,000"
      },
-     "explore_yall_do": "In teams, each group builds an assigned 4-digit number with base-ten blocks, then quizzes another team on the value of each digit using the sentence frame."
+     "explore_yall_do": "In teams, each group builds an assigned 4-digit number with base-ten blocks, then quizzes another team on the value of each digit using the sentence frame.",
+     "vocabulary": [
+      "place value",
+      "digit",
+      "thousands",
+      "hundreds",
+      "tens",
+      "ones",
+      "base-ten"
+     ]
     },
     {
      "code": "7.2",
@@ -508,7 +555,14 @@
       "problem": "Write 3,560 in word form.",
       "answer": "three thousand five hundred sixty"
      },
-     "explore_yall_do": "Teams rotate through stations, converting a given number among standard, word, and expanded form; the next team checks the previous team's work."
+     "explore_yall_do": "Teams rotate through stations, converting a given number among standard, word, and expanded form; the next team checks the previous team's work.",
+     "vocabulary": [
+      "standard form",
+      "word form",
+      "expanded form",
+      "digit",
+      "place value"
+     ]
     },
     {
      "code": "7.3",
@@ -556,7 +610,13 @@
       "problem": "Which model shows 4,201? Circle the correct base-ten picture.",
       "answer": "4 thousand-cubes, 2 flats, 0 rods, 1 unit"
      },
-     "explore_yall_do": "Teams represent an assigned number three ways (blocks, chart, expanded form) and trade with another team to verify each representation matches."
+     "explore_yall_do": "Teams represent an assigned number three ways (blocks, chart, expanded form) and trade with another team to verify each representation matches.",
+     "vocabulary": [
+      "base-ten",
+      "place value",
+      "expanded form",
+      "model"
+     ]
     },
     {
      "code": "7.4",
@@ -605,7 +665,13 @@
       "problem": "Circle the greater number: 5,908 or 5,890",
       "answer": "5,908"
      },
-     "explore_yall_do": "Teams get a set of number pairs, compare each with >, <, or =, and justify to another team using place-value reasoning."
+     "explore_yall_do": "Teams get a set of number pairs, compare each with >, <, or =, and justify to another team using place-value reasoning.",
+     "vocabulary": [
+      "compare",
+      "place value",
+      "greater than",
+      "less than"
+     ]
     },
     {
      "code": "7.5",
@@ -654,7 +720,13 @@
       "problem": "Round 71 to the nearest ten.",
       "answer": "70"
      },
-     "explore_yall_do": "Teams place assigned numbers on a shared number line and decide, as a group, whether each rounds up or down to the nearest ten, explaining why."
+     "explore_yall_do": "Teams place assigned numbers on a shared number line and decide, as a group, whether each rounds up or down to the nearest ten, explaining why.",
+     "vocabulary": [
+      "round",
+      "tens",
+      "number line",
+      "place value"
+     ]
     },
     {
      "code": "7.6",
@@ -703,7 +775,13 @@
       "problem": "Round 729 to the nearest hundred.",
       "answer": "700"
      },
-     "explore_yall_do": "Teams round a set of numbers to the nearest hundred at stations, then compare answers with another team and resolve any disagreements using the tens digit."
+     "explore_yall_do": "Teams round a set of numbers to the nearest hundred at stations, then compare answers with another team and resolve any disagreements using the tens digit.",
+     "vocabulary": [
+      "round",
+      "hundreds",
+      "tens",
+      "number line"
+     ]
     },
     {
      "code": "7.7",
@@ -752,7 +830,13 @@
       "problem": "A store sold 1,564 stickers. About how many is that to the nearest hundred?",
       "answer": "1,600"
      },
-     "explore_yall_do": "Teams solve a real-world rounding problem together (estimate → calculate → check), then share their reasoning with the class."
+     "explore_yall_do": "Teams solve a real-world rounding problem together (estimate → calculate → check), then share their reasoning with the class.",
+     "vocabulary": [
+      "round",
+      "estimate",
+      "reasonable",
+      "place value"
+     ]
     }
    ]
   },
