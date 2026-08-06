@@ -1029,7 +1029,7 @@ function GuideView({ guide }: any) {
                   <Line label="🅰 ASSEMBLE · I Do (Teacher Models)" value={L.i_do} />
                   <Line label="🅲 CONNECT · We Do (Guided Practice)" value={L.we_do} />
                   <Line label="🅴 EXPLORE · Y'all Do (Collaborative Teams)" value={L.explore_yall_do} />
-                  <Line label="🆂 SHARE · You Do (Independent Practice)" value={L.you_do} />
+                  <Line label="🆂 SOLO · You Do (Independent Practice)" value={L.you_do} />
                 </div>
               ) : (
                 <List label="Teaching Strategy (step-by-step)" items={L.teaching_strategy} ordered />

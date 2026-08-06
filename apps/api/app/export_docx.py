@@ -156,7 +156,7 @@ def guide_to_docx(guide: dict) -> bytes:
             _label(doc, "ASSEMBLE · I Do (Teacher Models)", L.get("i_do"))
             _label(doc, "CONNECT · We Do (Guided Practice)", L.get("we_do"))
             _label(doc, "EXPLORE · Y'all Do (Collaborative Teams)", L.get("explore_yall_do"))
-            _label(doc, "SHARE · You Do (Independent Practice)", L.get("you_do"))
+            _label(doc, "SOLO · You Do (Independent Practice)", L.get("you_do"))
         elif L.get("teaching_strategy"):
             _heading(doc, "Teaching Strategy (Step-by-Step)", 11)
             _bullets(doc, L["teaching_strategy"], style="List Number")

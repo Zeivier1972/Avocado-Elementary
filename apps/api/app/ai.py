@@ -528,7 +528,7 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             f"Assemble (I Do) — {i_do}",
             f"Connect (We Do) — {we_do}",
             f"Explore (Y'all Do) — {explore}",
-            f"Share (You Do) — {you_do}",
+            f"Solo (You Do) — {you_do}",
         ])
 
         out.append({
@@ -678,7 +678,7 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "relationship words, Solve & Check)\n"
             "Structure the lesson using the school's ACES gradual-release model: "
             "Assemble (I Do) -> Connect (We Do) -> Explore (Y'all Do, collaborative "
-            "teams) -> Share (You Do, independent). Provide all four phases:\n"
+            "teams) -> Solo (You Do, independent). Provide all four phases:\n"
             "- activate_prior_knowledge: a specific warm-up that connects to THIS lesson\n"
             "- i_do (Assemble): the teacher models ONE specific worked example with a think-aloud\n"
             "- we_do (Connect): guided practice on a DIFFERENT specific example, plus how "
@@ -692,6 +692,10 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "- cfu: specific problems (real numbers), a 'You Do' task with specific "
             "numbers, and a single exit ticket with BOTH the problem and its answer, "
             "written so a correct answer demonstrates Level 3 mastery\n"
+            "WITHIN each lesson, every worked example and problem must use DIFFERENT "
+            "numbers — never reuse the same number(s) or the same problem across the "
+            "I Do, We Do, Y'all Do, CFU, You Do, and Exit Ticket. Each of those parts "
+            "gets its own fresh numbers.\n"
             "Do not invent standards or student data.\n\n"
             f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
         )

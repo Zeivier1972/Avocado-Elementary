@@ -216,8 +216,8 @@
      },
      "level3_example": "“I made 4 jumps of 5 and landed on 20, so 4 × 5 = 20.”",
      "exit_ticket": {
-      "problem": "How many jumps of 3 land on 12? Write the equation.",
-      "answer": "4 jumps; 4 × 3 = 12"
+      "problem": "How many jumps of 4 land on 24? Write the equation.",
+      "answer": "6 jumps; 6 × 4 = 24"
      },
      "explore_yall_do": "In pairs, students take turns: one names a fact (e.g., 3 × 4), the partner shows the equal jumps on a number line, and they check the landing point together.",
      "vocabulary": [
@@ -261,9 +261,9 @@
      "i_do": "Model 3 × 4 and 4 × 3 with the same array rotated. Think aloud: 'The array turned, but there are still 12 — so 3 × 4 = 4 × 3.'",
      "we_do": "Together prove 2 × 5 = 5 × 2 with counters. Students write both equations and explain with the sentence frame.",
      "cfu": [
-      "If 6 × 2 = 12, what is 2 × 6?",
-      "Write the commutative partner of 4 × 3",
-      "True or false: 5 × 3 = 3 × 5"
+      "If 8 × 2 = 16, what is 2 × 8?",
+      "Write the commutative partner of 9 × 3",
+      "True or false: 5 × 4 = 4 × 5"
      ],
      "you_do": "Build 3 × 6, then rotate it to show 6 × 3; write both equations and a sentence explaining why the product is equal.",
      "cpa": {
@@ -597,7 +597,7 @@
      "i_do": "Model 4,283: build with blocks, then draw a quick picture (squares = thousands, flats = hundreds, lines = tens, dots = ones), then connect to the chart and expanded form. Think aloud matching each piece to its value.",
      "we_do": "Together represent 3,709. Highlight the 0 hundreds — no flats drawn. Students build with a partner and label each group with its value (1,000, 100, 10, 1).",
      "cfu": [
-      "Build and represent 3,709 as a chart, a quick picture, and expanded form"
+      "Build and represent 2,406 as a chart, a quick picture, and expanded form"
      ],
      "you_do": "Represent 5,682 three ways: a drawn base-ten model, a place-value chart, and expanded form.",
      "cpa": {
@@ -650,7 +650,7 @@
      "i_do": "Model comparing 4,752 and 4,529. Line them up on a place-value chart. Think aloud: “Thousands are equal (4 = 4). Move to hundreds: 7 > 5, so 4,752 > 4,529.” Stress starting from the LEFT (largest place).",
      "we_do": "Together compare 6,201 and 6,128. Students find the first place where digits differ and justify with the frame. Use thumbs signals for >, <, =.",
      "cfu": [
-      "6,201 ___ 6,128",
+      "4,512 ___ 4,521",
       "9,045 ___ 8,999",
       "3,760 ___ 3,706"
      ],
@@ -705,9 +705,9 @@
      "i_do": "Model rounding 47. Place it on a 40–50 number line and mark the midpoint 45. Think aloud: “47 is past 45, so it's closer to 50 → 47 rounds to 50.” State the rule (ones ≥ 5 round up, < 5 round down). Then round 42 → 40.",
      "we_do": "Together round 63, 28, and 94 on a number line. Students place each number, find the midpoint, and decide up or down using the sentence frame.",
      "cfu": [
-      "Round 63 → ___",
-      "Round 28 → ___",
-      "Round 94 → ___"
+      "Round 38 → ___",
+      "Round 82 → ___",
+      "Round 55 → ___"
      ],
      "you_do": "Round 57 to the nearest ten and explain why, using the number line.",
      "cpa": {
@@ -761,7 +761,7 @@
      "we_do": "Together round 612 and 841. Students name the two hundreds each is between and use the tens digit to decide, using the sentence frame.",
      "cfu": [
       "Round 367 → ___",
-      "Round 841 → ___",
+      "Round 623 → ___",
       "Round 950 → ___"
      ],
      "you_do": "Round 729 to the nearest hundred and explain which two hundreds it is between.",
@@ -772,8 +772,8 @@
      },
      "level3_example": "“612 rounds to 600 because the tens digit is 1, which is less than 5, so I round down.”",
      "exit_ticket": {
-      "problem": "Round 729 to the nearest hundred.",
-      "answer": "700"
+      "problem": "Round 486 to the nearest hundred.",
+      "answer": "500"
      },
      "explore_yall_do": "Teams round a set of numbers to the nearest hundred at stations, then compare answers with another team and resolve any disagreements using the tens digit.",
      "vocabulary": [
@@ -816,8 +816,8 @@
      "i_do": "Model: “There are 3,287 people in the stadium. About how many is that to the nearest hundred?” Think aloud: tens digit 8 ≥ 5 → round up → 3,300. Then check: “Is 3,300 close to 3,287? Yes.”",
      "we_do": "Together solve: “A store sold 1,564 stickers. About how many to the nearest hundred?” Students estimate first, then justify using estimate → calculate → check reasonableness.",
      "cfu": [
-      "Round 3,287 to the nearest hundred",
-      "Is 3,300 a reasonable estimate for 3,287? Explain."
+      "Round 4,182 to the nearest hundred",
+      "Is 4,200 a reasonable estimate for 4,182? Explain."
      ],
      "you_do": "A library has 2,438 books. About how many to the nearest hundred? Show your rounding and explain why the estimate is reasonable.",
      "cpa": {
@@ -827,8 +827,8 @@
      },
      "level3_example": "“I rounded 3,287 to the nearest hundred because it makes the number easier to use, and 3,300 is close to the real number, so my estimate is reasonable.”",
      "exit_ticket": {
-      "problem": "A store sold 1,564 stickers. About how many is that to the nearest hundred?",
-      "answer": "1,600"
+      "problem": "A parking lot has 2,847 cars. About how many is that to the nearest hundred?",
+      "answer": "2,800"
      },
      "explore_yall_do": "Teams solve a real-world rounding problem together (estimate → calculate → check), then share their reasoning with the class.",
      "vocabulary": [
