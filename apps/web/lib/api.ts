@@ -45,6 +45,7 @@ export async function login(email: string, password: string) {
 }
 
 export const api = {
+  health: () => req("/health"),
   me: () => req("/auth/me"),
   teacherDashboard: () => req("/dashboard/teacher"),
   principalDashboard: () => req("/dashboard/principal"),

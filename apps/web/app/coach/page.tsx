@@ -16,6 +16,7 @@ export default function CoachPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
   const [dash, setDash] = useState<any>(null);
+  const [build, setBuild] = useState<any>(null);
   const [topic, setTopic] = useState<any>(null);
   const [guide, setGuide] = useState<any>(null);
   const [busy, setBusy] = useState(false);
@@ -249,6 +250,7 @@ export default function CoachPage() {
       router.push("/");
       return;
     }
+    api.health().then(setBuild).catch(() => setBuild(null));
     api
       .me()
       .then((u) => {
@@ -330,6 +332,14 @@ export default function CoachPage() {
           <span className="text-sm text-gray-600">
             {me.name} · <span className="capitalize">{me.role.replace("_", " ")}</span>
           </span>
+          {build?.build && (
+            <span
+              title={`API version ${build.version} · build ${build.build}`}
+              className="text-[10px] font-mono text-gray-400 border border-gray-200 rounded px-1.5 py-0.5"
+            >
+              build {build.build}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <a
