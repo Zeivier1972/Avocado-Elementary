@@ -294,6 +294,8 @@ export default function CoachPage() {
     setBusy(true);
     try {
       setTopic(await api.pacingTopic(id));
+    } catch (err) {
+      alert("Could not open this topic: " + (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -302,8 +304,15 @@ export default function CoachPage() {
   async function makeGuide(id: string) {
     setBusy(true);
     try {
-      setGuide((await api.generateGuide(id)).guide);
+      const r = await api.generateGuide(id);
+      setGuide(r.guide);
       await loadGuides(grade);
+    } catch (err) {
+      alert(
+        "Generate failed: " +
+          (err as Error).message +
+          "\n\n(If this mentions a timeout, the AI took too long — try again, or use the '✨ Generate guide' on the uploaded document instead.)"
+      );
     } finally {
       setBusy(false);
     }
