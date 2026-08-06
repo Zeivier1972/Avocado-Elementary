@@ -81,6 +81,8 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ grade_level: grade }),
     }),
+  assessmentSchedule: (grade: string) =>
+    req(`/coach/calendar/assessment-schedule?grade=${encodeURIComponent(grade)}`),
   calendarFromDocument: (id: string, yearStart?: number) =>
     req(`/coach/calendar/from-document/${id}`, {
       method: "POST",

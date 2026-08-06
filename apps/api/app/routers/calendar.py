@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.assessment_schedule import lookup as assessment_lookup
+from app.assessment_schedule import schedule_for_grade
 from app.db.session import get_db
 from app.deps import audit, get_current_user
 from app.models import CalendarEntry, District, PacingTopic, PlanningDocument, User
@@ -97,11 +99,24 @@ def generate_calendar(
             date=d.isoformat(), topic_code=t.topic_code,
             title=f"{t.topic_code} Review", kind="review"))
         d = _next(d)
+        # Anchor the Topic Assessment to the district's real "administer-by" date
+        # when the schedule has it; otherwise place it sequentially.
+        sched = assessment_lookup(grade, t.topic_code)
+        adate = (sched or {}).get("administer_by")
+        if adate:
+            try:
+                ad = date.fromisoformat(adate)
+                assess_day = ad if ad >= d else d
+            except ValueError:
+                assess_day = d
+        else:
+            assess_day = d
         db.add(CalendarEntry(
             tenant_id=user.tenant_id, grade_level=grade, subject=subject,
-            date=d.isoformat(), topic_code=t.topic_code,
-            title=f"{t.topic_code} Assessment", kind="assessment"))
-        d = _next(d)
+            date=assess_day.isoformat(), topic_code=t.topic_code,
+            title=f"{t.topic_code} Assessment", kind="assessment",
+            note="District administer-by date" if adate else ""))
+        d = _next(_weekday(assess_day))
 
     db.commit()
     audit(db, actor=user, action="generate", entity_type="calendar",
@@ -168,6 +183,15 @@ def calendar_from_document(
           purpose="calendar_from_pacing_document")
     return {"created": created, "grade_level": d.grade_level,
             "first": dates[0], "last": dates[-1]}
+
+
+@router.get("/assessment-schedule")
+def assessment_schedule(
+    grade: str = Query(...),
+    user: User = Depends(_require_coach),
+):
+    """The district Topic Assessment Administration Schedule for a grade."""
+    return {"grade": grade, "topics": schedule_for_grade(grade)}
 
 
 @router.get("")

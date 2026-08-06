@@ -49,6 +49,21 @@ def _require_coach(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def _assessment_note(grade_level: str, topic_code: str) -> str:
+    """A human 'administer by <date>' note from the district schedule, or ''."""
+    from datetime import date as _date
+    from app.assessment_schedule import lookup as _lookup
+    row = _lookup(grade_level, topic_code)
+    ab = (row or {}).get("administer_by")
+    if not ab:
+        return ""
+    try:
+        d = _date.fromisoformat(ab)
+        return f"{topic_code} Assessment — administer by {d.strftime('%b %d, %Y')}"
+    except ValueError:
+        return ""
+
+
 def _save_guide(db, user, grade_level, topic_code, subject, guide) -> str:
     """Persist a generated guide so it survives navigating away."""
     rec = SavedGuide(
@@ -144,6 +159,7 @@ def generate_guide(
         "time_frame": t.time_frame, "topic_focus": t.topic_focus,
         "ald_focus": t.ald_focus, "mtr_practices": t.mtr_practices,
         "materials": t.materials, "lessons": t.lessons,
+        "assessment_date": _assessment_note(t.grade_level, t.topic_code),
     }
     guide = generate_planning_guide(topic_ctx, standards)
     guide_id = _save_guide(db, user, t.grade_level, t.topic_code, t.subject, guide)
@@ -374,6 +390,9 @@ async def pacing_from_document(
 
     standards = _resolve_standards(db, benchmarks) if benchmarks else []
     guide = generate_guide_from_pacing(text, standards, grade_level, subject, name)
+    an = _assessment_note(grade_level, code)
+    if an:
+        guide.setdefault("quick_facts", {})["assessment_date"] = an
     # Save the generated lesson breakdown back onto the topic so the pacing
     # calendar can lay the lessons out day-by-day.
     if guide.get("lessons"):
@@ -584,6 +603,9 @@ def generate_guide_from_document(
 
     guide = generate_guide_from_pacing(
         text, standards, d.grade_level, d.subject or "MATH", topic_name)
+    an = _assessment_note(d.grade_level, d.topic_code)
+    if an:
+        guide.setdefault("quick_facts", {})["assessment_date"] = an
     # Save the lesson breakdown onto the topic so the pacing calendar has it.
     if topic and guide.get("lessons"):
         topic.lessons = [

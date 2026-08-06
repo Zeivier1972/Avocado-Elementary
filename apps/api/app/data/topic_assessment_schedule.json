@@ -1,0 +1,504 @@
+{
+ "source": "M-DCPS 2026-2027 Topic/Chapter Assessment Administration Schedule (Elementary Mathematics)",
+ "school_year": "2026-2027",
+ "by_grade": {
+  "K": [
+   {
+    "topic": "Topic 1",
+    "available": "2026-08-20",
+    "recommended": "2026-08-27",
+    "administer_by": "2026-08-31"
+   },
+   {
+    "topic": "Topic 2",
+    "available": "2026-09-01",
+    "recommended": "2026-09-09",
+    "administer_by": "2026-09-11"
+   },
+   {
+    "topic": "Topic 3",
+    "available": "2026-09-22",
+    "recommended": "2026-09-29",
+    "administer_by": "2026-10-01"
+   },
+   {
+    "topic": "Topic 4",
+    "available": "2026-10-01",
+    "recommended": "2026-10-08",
+    "administer_by": "2026-10-12"
+   },
+   {
+    "topic": "Topic 5",
+    "available": "2026-10-16",
+    "recommended": "2026-10-23",
+    "administer_by": "2026-10-27"
+   },
+   {
+    "topic": "Topic 6",
+    "available": "2026-11-06",
+    "recommended": "2026-11-16",
+    "administer_by": "2026-11-18"
+   },
+   {
+    "topic": "Topic 7",
+    "available": "2026-12-03",
+    "recommended": "2026-12-10",
+    "administer_by": "2026-12-14"
+   },
+   {
+    "topic": "Topic 8",
+    "available": "2027-01-07",
+    "recommended": "2027-01-14",
+    "administer_by": "2027-01-20"
+   },
+   {
+    "topic": "Topic 9",
+    "available": "2027-01-22",
+    "recommended": "2027-01-29",
+    "administer_by": "2027-02-02"
+   },
+   {
+    "topic": "Topic 10",
+    "available": "2027-02-03",
+    "recommended": "2027-02-10",
+    "administer_by": "2027-02-12"
+   },
+   {
+    "topic": "Topic 11",
+    "available": "2027-02-17",
+    "recommended": "2027-02-24",
+    "administer_by": "2027-02-26"
+   },
+   {
+    "topic": "Topic 12",
+    "available": "2027-03-01",
+    "recommended": "2027-03-08",
+    "administer_by": "2027-03-11"
+   },
+   {
+    "topic": "Topic 13",
+    "available": "2027-03-18",
+    "recommended": "2027-04-02",
+    "administer_by": "2027-04-06"
+   }
+  ],
+  "1": [
+   {
+    "topic": "Topic 1",
+    "available": "2026-08-21",
+    "recommended": "2026-08-28",
+    "administer_by": "2026-09-01"
+   },
+   {
+    "topic": "Topic 2",
+    "available": "2026-09-09",
+    "recommended": "2026-09-16",
+    "administer_by": "2026-09-18"
+   },
+   {
+    "topic": "Topic 3",
+    "available": "2026-09-24",
+    "recommended": "2026-10-01",
+    "administer_by": "2026-10-05"
+   },
+   {
+    "topic": "Topic 4",
+    "available": "2026-10-11",
+    "recommended": "2026-10-16",
+    "administer_by": "2026-10-20"
+   },
+   {
+    "topic": "Topic 5",
+    "available": "2026-10-23",
+    "recommended": "2026-10-30",
+    "administer_by": "2026-11-04"
+   },
+   {
+    "topic": "Topic 6",
+    "available": "2026-11-13",
+    "recommended": "2026-11-20",
+    "administer_by": "2026-12-01"
+   },
+   {
+    "topic": "Topic 7",
+    "available": "2026-12-02",
+    "recommended": "2026-12-09",
+    "administer_by": "2026-12-11"
+   },
+   {
+    "topic": "Topic 8",
+    "available": "2026-12-15",
+    "recommended": "2027-01-06",
+    "administer_by": "2027-01-08"
+   },
+   {
+    "topic": "Topic 9",
+    "available": "2027-01-12",
+    "recommended": "2027-01-21",
+    "administer_by": "2027-01-25"
+   },
+   {
+    "topic": "Topic 10",
+    "available": "2027-01-27",
+    "recommended": "2027-02-03",
+    "administer_by": "2027-02-05"
+   },
+   {
+    "topic": "Topic 11",
+    "available": "2027-02-05",
+    "recommended": "2027-02-12",
+    "administer_by": "2027-02-17"
+   },
+   {
+    "topic": "Topic 12",
+    "available": "2027-02-24",
+    "recommended": "2027-03-03",
+    "administer_by": "2027-03-05"
+   },
+   {
+    "topic": "Topic 13",
+    "available": "2027-03-03",
+    "recommended": "2027-03-11",
+    "administer_by": "2027-03-15"
+   },
+   {
+    "topic": "Topic 14",
+    "available": "2027-03-18",
+    "recommended": "2027-04-02",
+    "administer_by": "2027-04-06"
+   }
+  ],
+  "2": [
+   {
+    "topic": "Topic 1",
+    "available": "2026-08-14",
+    "recommended": "2026-08-21",
+    "administer_by": "2026-08-25"
+   },
+   {
+    "topic": "Topic 2",
+    "available": "2026-09-01",
+    "recommended": "2026-09-09",
+    "administer_by": "2026-09-11"
+   },
+   {
+    "topic": "Topic 3",
+    "available": "2026-09-15",
+    "recommended": "2026-09-23",
+    "administer_by": "2026-09-25"
+   },
+   {
+    "topic": "Topic 4",
+    "available": "2026-09-30",
+    "recommended": "2026-10-07",
+    "administer_by": "2026-10-09"
+   },
+   {
+    "topic": "Topic 5",
+    "available": "2026-10-13",
+    "recommended": "2026-10-20",
+    "administer_by": "2026-10-22"
+   },
+   {
+    "topic": "Topic 6",
+    "available": "2026-10-23",
+    "recommended": "2026-10-30",
+    "administer_by": "2026-11-04"
+   },
+   {
+    "topic": "Topic 7/8",
+    "available": "2026-11-19",
+    "recommended": "2026-12-03",
+    "administer_by": "2026-12-07"
+   },
+   {
+    "topic": "Topic 9",
+    "available": "2026-12-09",
+    "recommended": "2026-12-16",
+    "administer_by": "2027-01-04"
+   },
+   {
+    "topic": "Topic 10",
+    "available": "2027-01-07",
+    "recommended": "2027-01-14",
+    "administer_by": "2027-01-20"
+   },
+   {
+    "topic": "Topic 11",
+    "available": "2027-01-22",
+    "recommended": "2027-01-29",
+    "administer_by": "2027-02-02"
+   },
+   {
+    "topic": "Topic 12",
+    "available": "2027-02-04",
+    "recommended": "2027-02-11",
+    "administer_by": "2027-02-16"
+   },
+   {
+    "topic": "Topic 13",
+    "available": "2027-02-19",
+    "recommended": "2027-02-26",
+    "administer_by": "2027-03-02"
+   },
+   {
+    "topic": "Topic 14",
+    "available": "2027-03-04",
+    "recommended": "2027-03-12",
+    "administer_by": "2027-03-16"
+   },
+   {
+    "topic": "Topic 15",
+    "available": "2027-03-18",
+    "recommended": "2027-04-02",
+    "administer_by": "2027-04-06"
+   }
+  ],
+  "3": [
+   {
+    "topic": "Topic 1",
+    "available": "2026-08-19",
+    "recommended": "2026-08-26",
+    "administer_by": "2026-08-28"
+   },
+   {
+    "topic": "Topic 2/3",
+    "available": "2026-09-17",
+    "recommended": "2026-09-25",
+    "administer_by": "2026-09-29"
+   },
+   {
+    "topic": "Topic 4",
+    "available": "2026-10-09",
+    "recommended": "2026-10-16",
+    "administer_by": "2026-10-20"
+   },
+   {
+    "topic": "Topic 5",
+    "available": "2026-10-20",
+    "recommended": "2026-10-27",
+    "administer_by": "2026-10-29"
+   },
+   {
+    "topic": "Topic 6",
+    "available": "2026-11-05",
+    "recommended": "2026-11-13",
+    "administer_by": "2026-11-17"
+   },
+   {
+    "topic": "Topic 7",
+    "available": "2026-12-02",
+    "recommended": "2026-12-09",
+    "administer_by": "2026-12-11"
+   },
+   {
+    "topic": "Topic 8",
+    "available": "2026-12-17",
+    "recommended": "2027-01-08",
+    "administer_by": "2027-01-12"
+   },
+   {
+    "topic": "Topic 9",
+    "available": "2027-01-19",
+    "recommended": "2027-01-26",
+    "administer_by": "2027-01-28"
+   },
+   {
+    "topic": "Topic 10",
+    "available": "2027-02-02",
+    "recommended": "2027-02-09",
+    "administer_by": "2027-02-11"
+   },
+   {
+    "topic": "Topic 11",
+    "available": "2027-02-23",
+    "recommended": "2027-03-02",
+    "administer_by": "2027-03-04"
+   },
+   {
+    "topic": "Topic 12",
+    "available": "2027-03-08",
+    "recommended": "2027-03-16",
+    "administer_by": "2027-03-18"
+   },
+   {
+    "topic": "Topic 13",
+    "available": "2027-03-31",
+    "recommended": "2027-04-07",
+    "administer_by": "2027-04-09"
+   },
+   {
+    "topic": "Topic 14",
+    "available": "2027-04-09",
+    "recommended": "2027-04-16",
+    "administer_by": "2027-04-20"
+   }
+  ],
+  "4": [
+   {
+    "topic": "Topic 1",
+    "available": "2026-08-19",
+    "recommended": "2026-08-26",
+    "administer_by": "2026-08-28"
+   },
+   {
+    "topic": "Topic 2",
+    "available": "2026-09-09",
+    "recommended": "2026-09-16",
+    "administer_by": "2026-09-18"
+   },
+   {
+    "topic": "Topic 3",
+    "available": "2026-09-29",
+    "recommended": "2026-10-06",
+    "administer_by": "2026-10-08"
+   },
+   {
+    "topic": "Topic 4",
+    "available": "2026-10-21",
+    "recommended": "2026-10-28",
+    "administer_by": "2026-10-30"
+   },
+   {
+    "topic": "Topic 5",
+    "available": "2026-11-04",
+    "recommended": "2026-11-12",
+    "administer_by": "2026-11-16"
+   },
+   {
+    "topic": "Topic 6",
+    "available": "2026-11-19",
+    "recommended": "2026-12-03",
+    "administer_by": "2026-12-07"
+   },
+   {
+    "topic": "Topic 7",
+    "available": "2026-12-17",
+    "recommended": "2027-01-08",
+    "administer_by": "2027-01-12"
+   },
+   {
+    "topic": "Topic 8",
+    "available": "2027-01-12",
+    "recommended": "2027-01-21",
+    "administer_by": "2027-01-25"
+   },
+   {
+    "topic": "Topic 9",
+    "available": "2027-02-01",
+    "recommended": "2027-02-08",
+    "administer_by": "2027-02-10"
+   },
+   {
+    "topic": "Topic 10",
+    "available": "2027-02-19",
+    "recommended": "2027-02-26",
+    "administer_by": "2027-03-02"
+   },
+   {
+    "topic": "Topic 11",
+    "available": "2027-03-05",
+    "recommended": "2027-03-15",
+    "administer_by": "2027-03-17"
+   },
+   {
+    "topic": "Topic 12",
+    "available": "2027-03-19",
+    "recommended": "2027-04-05",
+    "administer_by": "2027-04-07"
+   },
+   {
+    "topic": "Topic 13",
+    "available": "2027-04-09",
+    "recommended": "2027-04-16",
+    "administer_by": "2027-04-20"
+   }
+  ],
+  "5": [
+   {
+    "topic": "Topic 1",
+    "available": "2026-08-20",
+    "recommended": "2026-08-27",
+    "administer_by": "2026-08-31"
+   },
+   {
+    "topic": "Topic 2",
+    "available": "2026-09-01",
+    "recommended": "2026-09-09",
+    "administer_by": "2026-09-11"
+   },
+   {
+    "topic": "Topic 3",
+    "available": "2026-09-16",
+    "recommended": "2026-09-24",
+    "administer_by": "2026-09-28"
+   },
+   {
+    "topic": "Topic 4",
+    "available": "2026-09-30",
+    "recommended": "2026-10-07",
+    "administer_by": "2026-10-09"
+   },
+   {
+    "topic": "Topic 5",
+    "available": "2026-10-16",
+    "recommended": "2026-10-23",
+    "administer_by": "2026-10-27"
+   },
+   {
+    "topic": "Topic 6",
+    "available": "2026-11-05",
+    "recommended": "2026-11-13",
+    "administer_by": "2026-11-17"
+   },
+   {
+    "topic": "Topic 7",
+    "available": "2026-12-02",
+    "recommended": "2026-12-09",
+    "administer_by": "2026-12-11"
+   },
+   {
+    "topic": "Topic 8",
+    "available": "2026-12-16",
+    "recommended": "2027-01-07",
+    "administer_by": "2027-01-11"
+   },
+   {
+    "topic": "Topic 9",
+    "available": "2027-01-13",
+    "recommended": "2027-01-22",
+    "administer_by": "2027-01-26"
+   },
+   {
+    "topic": "Topic 10",
+    "available": "2027-01-28",
+    "recommended": "2027-02-04",
+    "administer_by": "2027-02-08"
+   },
+   {
+    "topic": "Topic 11",
+    "available": "2027-02-12",
+    "recommended": "2027-02-22",
+    "administer_by": "2027-02-24"
+   },
+   {
+    "topic": "Topic 12",
+    "available": "2027-03-04",
+    "recommended": "2027-03-12",
+    "administer_by": "2027-03-16"
+   },
+   {
+    "topic": "Topic 13",
+    "available": "2027-03-18",
+    "recommended": "2027-04-02",
+    "administer_by": "2027-04-06"
+   },
+   {
+    "topic": "Topic 14",
+    "available": "2027-04-09",
+    "recommended": "2027-04-16",
+    "administer_by": "2027-04-20"
+   }
+  ]
+ }
+}

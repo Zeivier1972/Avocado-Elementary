@@ -26,6 +26,7 @@ export default function CalendarPage() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [entries, setEntries] = useState<any[]>([]);
+  const [schedule, setSchedule] = useState<any[]>([]);
   const [startDate, setStartDate] = useState(iso(new Date()));
   const [busy, setBusy] = useState(false);
 
@@ -53,6 +54,15 @@ export default function CalendarPage() {
     if (me) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, grade, cursor]);
+
+  useEffect(() => {
+    if (!me) return;
+    api
+      .assessmentSchedule(grade)
+      .then((r) => setSchedule(r.topics || []))
+      .catch(() => setSchedule([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me, grade]);
 
   async function generate() {
     if (
@@ -275,6 +285,30 @@ export default function CalendarPage() {
             </div>
           ))}
         </div>
+
+        {schedule.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
+            <div className="text-sm font-semibold text-gray-700 mb-2">
+              District Topic Assessment Schedule —{" "}
+              {grade === "K" ? "Kindergarten" : `Grade ${grade}`} (administer by)
+            </div>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+              {schedule.map((s) => (
+                <div key={s.topic} className="flex justify-between border-b border-gray-50 py-0.5">
+                  <span className="text-gray-600">{s.topic}</span>
+                  <span className="font-medium text-red-700">
+                    {s.administer_by
+                      ? new Date(s.administer_by + "T00:00:00").toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric" }
+                        )
+                      : "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {entries.length === 0 && (
           <p className="text-sm text-gray-400">
