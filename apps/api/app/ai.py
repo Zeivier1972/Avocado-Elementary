@@ -189,6 +189,7 @@ def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
             for L in lessons:
                 code = (L.get("benchmarks") or [""])[0]
                 L["ald"] = std_by_code.get(code, {}).get("alds", {})
+                _ensure_lesson_extras(L, [])
             base.update({"generated_by": settings.ai_model, "ai_generated": True,
                          "ai_status": "ok", "lessons": lessons,
                          "note": "AI-generated from your uploaded pacing guide — "
@@ -251,6 +252,7 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
             for L in lessons:
                 code = (L.get("benchmarks") or [""])[0]
                 L["ald"] = std_by_code.get(code, {}).get("alds", {})
+                _ensure_lesson_extras(L, topic.get("vocabulary", []))
             base.update({"generated_by": settings.ai_model, "ai_generated": True,
                          "ai_status": "ok", "lessons": lessons,
                          "note": "AI-generated draft — review with your team before teaching."})
@@ -424,6 +426,33 @@ def _parse_misconceptions(raw: str) -> list[dict]:
         statement, example = _split_example(raw.strip())
         rows.append({"misconception": statement, "example": example, "fix": ""})
     return rows
+
+
+_VOCAB_INTEGRATION_DEFAULT = (
+    "Add these terms to the math word wall with a student-friendly definition and a "
+    "picture/model. Introduce them during Assemble (I Do), use them in the sentence "
+    "frame during Connect/Explore, and require students to use them when they explain "
+    "their reasoning (MTR 4.1)."
+)
+_CUBS_DEFAULT = (
+    "Apply the CUBS Hero Routine to the word-problem / You-Do work: Circle the numbers "
+    "and say what each represents, Underline the question and name the unknown, Box the "
+    "relationship words, then Solve & Check — understand the story before choosing an "
+    "operation."
+)
+
+
+def _ensure_lesson_extras(lesson: dict, topic_vocab: list) -> dict:
+    """Guarantee vocabulary, its integration, and the CUBS strategy on a lesson —
+    used to backfill AI-generated lessons when the model omits them, so every
+    lesson always shows vocabulary + CUBS."""
+    if not lesson.get("vocabulary"):
+        lesson["vocabulary"] = (topic_vocab or [])[:6]
+    if not lesson.get("vocabulary_integration"):
+        lesson["vocabulary_integration"] = _VOCAB_INTEGRATION_DEFAULT
+    if not lesson.get("cubs"):
+        lesson["cubs"] = _CUBS_DEFAULT
+    return lesson
 
 
 def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
