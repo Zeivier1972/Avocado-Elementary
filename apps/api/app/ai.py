@@ -435,10 +435,10 @@ _VOCAB_INTEGRATION_DEFAULT = (
     "their reasoning (MTR 4.1)."
 )
 _CUBS_DEFAULT = (
-    "Apply the CUBS Hero Routine to the word-problem / You-Do work: Circle the numbers "
-    "and say what each represents, Underline the question and name the unknown, Box the "
-    "relationship words, then Solve & Check — understand the story before choosing an "
-    "operation."
+    "On today's Solo problem, use CUBS: Circle the numbers and say what each represents, "
+    "Underline the question and name the unknown, Box the relationship words (joining, "
+    "separating, comparing, grouping, sharing), then Solve & Check that the answer is "
+    "reasonable — understand the story before choosing an operation."
 )
 
 
@@ -487,8 +487,10 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
         # ACES: Explore = Y'all Do — collaborative team practice between We Do and
         # You Do (teacher observes and supports).
         explore = pick("explore_yall_do",
-            f"In teams, students apply {title.lower() or 'the skill'} on a shared task; "
-            "they problem-solve together and justify their thinking while the teacher observes and supports.")
+            f"In pairs (Rally Coach) or groups of 4 (Numbered Heads Together), students apply "
+            f"{title.lower() or 'the skill'} on a shared task: each takes a turn while a "
+            "partner coaches and checks, then the team compares and justifies. Teacher "
+            "observes and supports.")
         you_do = pick("you_do",
             f"Students practice {title.lower() or 'the skill'} independently "
             "(3–5 problems); pull a small group for reteach.")
@@ -515,11 +517,7 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             "and a picture/model. Introduce them during Assemble (I Do), use them in the "
             "sentence frame during Connect/Explore, and require students to use them when "
             "they explain their reasoning (MTR 4.1).")
-        cubs = pick("cubs",
-            "Apply the CUBS Hero Routine to the word-problem/You-Do work: Circle the "
-            "numbers and say what each represents, Underline the question and name the "
-            "unknown, Box the relationship words, then Solve & Check — understand the "
-            "story before choosing an operation.")
+        cubs = pick("cubs", _CUBS_DEFAULT)
         misc = pick("misconceptions", _parse_misconceptions(s.get("misconceptions", "")))
         crit = pick("success_criteria", ([focus] if focus else []) + clar[:2])
         # Back-compat numbered strategy, assembled from the ACES phases.
@@ -626,8 +624,8 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             '"sentence_frame":"The __ is in the __ place, so it means __.",'
             '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
             '"vocabulary":["the pacing-guide vocabulary terms used in THIS lesson"],'
-            '"vocabulary_integration":"how to teach/integrate those terms in this lesson (word wall, definitions, sentence frames, math talk)",'
-            '"cubs":"how to apply the CUBS Hero Routine in this lesson, especially for the word-problem work",'
+            '"vocabulary_integration":"specifically how to teach these exact terms in THIS lesson (kid-friendly definition, where in the lesson they are introduced/used, the sentence frame)",'
+            '"cubs":"walk THIS lesson\'s Solo/You-Do problem through CUBS with the actual numbers: what to Circle, Underline, Box, and how to Solve & Check",'
             '"activate_prior_knowledge":"how to activate prior knowledge for THIS lesson, with a specific warm-up",'
             '"i_do":"ASSEMBLE (I Do): teacher models with a specific worked example and think-aloud",'
             '"we_do":"CONNECT (We Do): guided practice with a specific example and how to engage students together",'
@@ -671,11 +669,11 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "- a 3-column misconceptions table: each row has the misconception, a "
             "specific EXAMPLE ERROR a student makes (real numbers), and the correction strategy\n"
             "- vocabulary: the pacing-guide terms this lesson uses, and "
-            "vocabulary_integration: how to teach them here (word wall, kid-friendly "
-            "definitions, sentence frames, math talk, using the terms in explanations)\n"
-            "- cubs: how to apply the CUBS Hero Routine in this lesson, especially on the "
-            "word-problem / You-Do work (Circle numbers, Underline the question, Box the "
-            "relationship words, Solve & Check)\n"
+            "vocabulary_integration: SPECIFICALLY how to teach those exact terms in this "
+            "lesson (kid-friendly definition, where they're introduced/used, the sentence frame)\n"
+            "- cubs: walk THIS lesson's Solo/You-Do problem through the CUBS routine using the "
+            "ACTUAL numbers — say what to Circle, what to Underline, what to Box, and how to "
+            "Solve & Check. Be specific to this problem, not generic.\n"
             "Structure the lesson using the school's ACES gradual-release model: "
             "Assemble (I Do) -> Connect (We Do) -> Explore (Y'all Do, collaborative "
             "teams) -> Solo (You Do, independent). Provide all four phases:\n"
@@ -683,8 +681,11 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "- i_do (Assemble): the teacher models ONE specific worked example with a think-aloud\n"
             "- we_do (Connect): guided practice on a DIFFERENT specific example, plus how "
             "students engage together (turn-and-talk, whiteboards, the sentence frame)\n"
-            "- explore_yall_do (Explore): a collaborative TEAM task where students apply the "
-            "skill together and problem-solve while the teacher observes and supports\n"
+            "- explore_yall_do (Explore): a collaborative task done in PAIRS or GROUPS OF 4. "
+            "NAME a specific collaborative structure that fits the activity (e.g., Rally Coach "
+            "in pairs, Pairs Check, Numbered Heads Together in groups of 4, Team Huddle, "
+            "Round Robin) and describe exactly what each partner/team member does with the "
+            "task while the teacher observes and supports\n"
             "- a CPA model where Concrete INCLUDES base-ten emoji block visuals "
             "(🟦 thousands, 🟩 hundreds, 🟨 tens, ⬜ ones), Pictorial is a place-value "
             "chart or number line, and Abstract shows the expanded-form/equation\n"

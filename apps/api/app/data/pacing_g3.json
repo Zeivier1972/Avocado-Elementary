@@ -105,14 +105,15 @@
       "problem": "Write a multiplication equation for 5 groups of 2 and find the product.",
       "answer": "5 × 2 = 10"
      },
-     "explore_yall_do": "In teams, each group draws a 'groups of' card (e.g., 3 groups of 4), builds it with counters, and writes the equation. Teams swap cards and check another team's model, using the sentence frame to explain.",
+     "explore_yall_do": "Rally Coach (pairs): Partner A draws a 'groups of' card, builds it with counters and writes the equation; Partner B coaches with the sentence frame and checks — then switch. Groups of 4 (Numbered Heads Together): each builds it, the team agrees on the equation, and the teacher calls a number to explain.",
      "vocabulary": [
       "equal groups",
       "factor",
       "product",
       "multiply",
       "repeated addition"
-     ]
+     ],
+     "cubs": "Story: 'There are 8 boxes with 3 crayons in each.' Circle 8 and 3 (8 boxes, 3 in each); Underline 'how many crayons in all' (unknown = total); Box 'each' (equal groups → multiply); Solve & Check 8 × 3 = 24 crayons — reasonable for 8 small boxes."
     },
     {
      "code": "1.2",
@@ -162,14 +163,15 @@
       "problem": "Write the multiplication equation for an array with 4 rows of 5.",
       "answer": "4 × 5 = 20"
      },
-     "explore_yall_do": "Teams build an assigned array on grid paper (e.g., 4 × 3), then rotate to another team's array, count the rows, and write its equation. Teams compare answers and justify.",
+     "explore_yall_do": "Pairs Check: Partner A builds an assigned array and writes rows × columns; Partner B checks and initials, then they swap. Groups of 4: teams rotate to another team's array, count the rows, and agree on the equation.",
      "vocabulary": [
       "array",
       "row",
       "column",
       "factor",
       "product"
-     ]
+     ],
+     "cubs": "Story: 'A garden has 4 rows with 7 plants in each row.' Circle 4 and 7; Underline 'how many plants'; Box 'rows … in each' (array → multiply); Solve & Check 4 × 7 = 28 plants."
     },
     {
      "code": "1.3",
@@ -219,14 +221,15 @@
       "problem": "How many jumps of 4 land on 24? Write the equation.",
       "answer": "6 jumps; 6 × 4 = 24"
      },
-     "explore_yall_do": "In pairs, students take turns: one names a fact (e.g., 3 × 4), the partner shows the equal jumps on a number line, and they check the landing point together.",
+     "explore_yall_do": "Rally Coach (pairs): one partner names a fact, the other shows the equal jumps on a number line, and they check the landing point together — then switch. Groups of 4 (Round Robin): each student adds one jump and says the running total.",
      "vocabulary": [
       "skip count",
       "number line",
       "multiple",
       "factor",
       "product"
-     ]
+     ],
+     "cubs": "Story: 'A frog takes 5 jumps of 4 on a number line.' Circle 5 and 4; Underline 'where does it land'; Box 'jumps of' (equal jumps → multiply); Solve & Check 5 × 4 = 20."
     },
     {
      "code": "1.4",
@@ -276,13 +279,14 @@
       "problem": "If 7 × 2 = 14, what is 2 × 7? Explain in one sentence.",
       "answer": "2 × 7 = 14 (commutative property — order doesn't change the product)"
      },
-     "explore_yall_do": "Teams get a fact (e.g., 2 × 6) and must prove its commutative partner (6 × 2) by rotating an array, then present their proof to a neighboring team.",
+     "explore_yall_do": "Pairs Check: Partner A proves a fact's commutative partner by rotating an array; Partner B verifies the product matches; switch with a new fact. Groups of 4 (Team Huddle): the team builds one array and shows both equations to another team.",
      "vocabulary": [
       "commutative property",
       "factor",
       "product",
       "array"
-     ]
+     ],
+     "cubs": "Story: 'One shelf holds 2 rows of 9 books; another holds 9 rows of 2.' Circle 2 and 9; Underline 'do both hold the same number'; Box 'rows of' (array); Solve & Check 2 × 9 = 9 × 2 = 18 — same total (commutative)."
     },
     {
      "code": "1.5",
@@ -332,12 +336,13 @@
       "problem": "Solve 2 × 2 × 4 by grouping. Show your grouping.",
       "answer": "(2 × 2) × 4 = 4 × 4 = 16"
      },
-     "explore_yall_do": "Teams solve 2 × 3 × 4 two different ways (grouping different pairs first) and compare with another team to confirm they reached the same product.",
+     "explore_yall_do": "Numbered Heads Together (groups of 4): the team solves 2 × 3 × 5 two ways (grouping different pairs first); each member records one grouping, then they compare and the teacher calls a number to explain. Pairs option: partners each pick a grouping and confirm they match.",
      "vocabulary": [
       "associative property",
       "factor",
       "product"
-     ]
+     ],
+     "cubs": "Story: '3 bags each hold 2 packs of 4 pencils.' Circle 3, 2, and 4; Underline 'how many pencils in all'; Box 'each … of' (grouping); Solve & Check (2 × 4) × 3 = 8 × 3 = 24 pencils."
     },
     {
      "code": "1.6",
@@ -387,13 +392,14 @@
       "problem": "There are 5 plates with 3 cookies on each. How many cookies? Write the equation.",
       "answer": "5 × 3 = 15 cookies"
      },
-     "explore_yall_do": "Teams solve a shared story problem — draw the model, write the equation — then create their OWN multiplication story problem and trade it with another team to solve.",
+     "explore_yall_do": "Rally Coach (pairs): partners take turns solving a story problem aloud with CUBS while the other coaches; then each team writes its OWN story problem and trades it with another team (groups of 4) to solve.",
      "vocabulary": [
       "multiply",
       "product",
       "equal groups",
       "factor"
-     ]
+     ],
+     "cubs": "Story: 'There are 7 tables with 6 markers on each.' Circle 7 and 6; Underline 'how many markers in all'; Box 'each' (equal groups → multiply); Solve & Check 7 × 6 = 42 markers — reasonable."
     }
    ]
   },
@@ -496,7 +502,7 @@
       "problem": "What is the value of the 8 in 8,145?",
       "answer": "8,000"
      },
-     "explore_yall_do": "In teams, each group builds an assigned 4-digit number with base-ten blocks, then quizzes another team on the value of each digit using the sentence frame.",
+     "explore_yall_do": "Pairs Check: Partner A builds an assigned 4-digit number with base-ten blocks; Partner B asks 'what is the value of the __?' and checks — then swap. Groups of 4 (Numbered Heads Together): each states one digit's value and the team confirms.",
      "vocabulary": [
       "place value",
       "digit",
@@ -505,7 +511,8 @@
       "tens",
       "ones",
       "base-ten"
-     ]
+     ],
+     "cubs": "Story: 'A seat number is 3,608. What is the value of the 6?' Circle 3,608; Underline 'value of the 6'; Box 'value … place'; Solve & Check: the 6 is in the hundreds place → 600."
     },
     {
      "code": "7.2",
@@ -555,14 +562,15 @@
       "problem": "Write 3,560 in word form.",
       "answer": "three thousand five hundred sixty"
      },
-     "explore_yall_do": "Teams rotate through stations, converting a given number among standard, word, and expanded form; the next team checks the previous team's work.",
+     "explore_yall_do": "Rally Coach (pairs): Partner A writes a number in all three forms; Partner B coaches on the zero placeholder and checks; switch. Groups of 4 (Round Robin): rotate through stations converting a number among standard, word, and expanded form.",
      "vocabulary": [
       "standard form",
       "word form",
       "expanded form",
       "digit",
       "place value"
-     ]
+     ],
+     "cubs": "Story: 'Write two thousand fifty in standard and expanded form.' Circle the words; Underline 'standard and expanded form'; Box 'thousand … fifty' (place value); Solve & Check 2,050 = 2,000 + 50."
     },
     {
      "code": "7.3",
@@ -610,13 +618,14 @@
       "problem": "Which model shows 4,201? Circle the correct base-ten picture.",
       "answer": "4 thousand-cubes, 2 flats, 0 rods, 1 unit"
      },
-     "explore_yall_do": "Teams represent an assigned number three ways (blocks, chart, expanded form) and trade with another team to verify each representation matches.",
+     "explore_yall_do": "Pairs Check: partners each represent an assigned number (blocks, chart, expanded form) and verify the other's models match. Groups of 4: rotate and check another team's representation.",
      "vocabulary": [
       "base-ten",
       "place value",
       "expanded form",
       "model"
-     ]
+     ],
+     "cubs": "Story: 'Draw base-ten models for 1,275.' Circle 1,275; Underline 'draw the models'; Box the place values; Solve & Check 1 thousand, 2 hundreds, 7 tens, 5 ones = 1,000 + 200 + 70 + 5."
     },
     {
      "code": "7.4",
@@ -665,13 +674,14 @@
       "problem": "Circle the greater number: 5,908 or 5,890",
       "answer": "5,908"
      },
-     "explore_yall_do": "Teams get a set of number pairs, compare each with >, <, or =, and justify to another team using place-value reasoning.",
+     "explore_yall_do": "Rally Coach (pairs): Partner A compares a number pair with >, <, = and justifies by place value; Partner B checks; switch. Groups of 4 (Team Huddle): the team orders a set of four numbers and defends the order.",
      "vocabulary": [
       "compare",
       "place value",
       "greater than",
       "less than"
-     ]
+     ],
+     "cubs": "Story: 'Which is greater, 5,463 or 5,472?' Circle both numbers; Underline 'which is greater'; Box 'greater' (compare); Solve & Check: thousands & hundreds equal, tens 7 > 6 → 5,472 > 5,463."
     },
     {
      "code": "7.5",
@@ -720,13 +730,14 @@
       "problem": "Round 71 to the nearest ten.",
       "answer": "70"
      },
-     "explore_yall_do": "Teams place assigned numbers on a shared number line and decide, as a group, whether each rounds up or down to the nearest ten, explaining why.",
+     "explore_yall_do": "Pairs Check: partners place assigned numbers on a shared number line and agree on round up/down using the ones digit. Groups of 4 (Numbered Heads Together): each rounds one number and the team confirms.",
      "vocabulary": [
       "round",
       "tens",
       "number line",
       "place value"
-     ]
+     ],
+     "cubs": "Story: 'About how many is 76 to the nearest ten?' Circle 76; Underline 'nearest ten'; Box 'about / nearest' (estimate); Solve & Check: ones digit 6 ≥ 5 → 80."
     },
     {
      "code": "7.6",
@@ -775,13 +786,14 @@
       "problem": "Round 486 to the nearest hundred.",
       "answer": "500"
      },
-     "explore_yall_do": "Teams round a set of numbers to the nearest hundred at stations, then compare answers with another team and resolve any disagreements using the tens digit.",
+     "explore_yall_do": "Round Robin (groups of 4): each student rounds one number to the nearest hundred and explains the tens digit while the team checks. Pairs option (Rally Coach): partners alternate rounding a set of numbers.",
      "vocabulary": [
       "round",
       "hundreds",
       "tens",
       "number line"
-     ]
+     ],
+     "cubs": "Story: 'About how many is 651 to the nearest hundred?' Circle 651; Underline 'nearest hundred'; Box 'about / nearest'; Solve & Check: tens digit 5 ≥ 5 → 700."
     },
     {
      "code": "7.7",
@@ -830,13 +842,14 @@
       "problem": "A parking lot has 2,847 cars. About how many is that to the nearest hundred?",
       "answer": "2,800"
      },
-     "explore_yall_do": "Teams solve a real-world rounding problem together (estimate → calculate → check), then share their reasoning with the class.",
+     "explore_yall_do": "Rally Coach (pairs): partners take turns solving a real-world rounding problem with CUBS while the other coaches. Groups of 4: teams create their own real-world estimation problem and trade it.",
      "vocabulary": [
       "round",
       "estimate",
       "reasonable",
       "place value"
-     ]
+     ],
+     "cubs": "Story: 'A theater has 2,913 seats. About how many to the nearest hundred?' Circle 2,913; Underline 'about how many … nearest hundred'; Box 'about / nearest' (estimate); Solve & Check: tens digit 1 < 5 → 2,900 — close to 2,913, reasonable."
     }
    ]
   },

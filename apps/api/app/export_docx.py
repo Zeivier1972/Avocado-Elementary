@@ -143,20 +143,21 @@ def guide_to_docx(guide: dict) -> bytes:
             _heading(doc, "Vocabulary (from the pacing guide)", 11)
             _label(doc, "Terms", ", ".join(L.get("vocabulary", [])))
             _label(doc, "How to integrate", L.get("vocabulary_integration"))
-        _label(doc, "CUBS Strategy (word problems)", L.get("cubs"))
         if L.get("misconceptions"):
             _heading(doc, "Common Misconceptions & Fixes", 11)
             _misconception_table(doc, L["misconceptions"])
         # ACES gradual release: Assemble (I Do) -> Connect (We Do) -> Explore
-        # (Y'all Do, teams) -> Share (You Do, independent).
+        # (Y'all Do, collaborative pairs/groups of 4) -> Solo (You Do + CUBS).
         if any(L.get(k) for k in ("activate_prior_knowledge", "i_do", "we_do",
                                   "explore_yall_do", "you_do")):
             _heading(doc, "Teaching Strategy — ACES Gradual Release", 11)
             _label(doc, "Activate Prior Knowledge", L.get("activate_prior_knowledge"))
             _label(doc, "ASSEMBLE · I Do (Teacher Models)", L.get("i_do"))
             _label(doc, "CONNECT · We Do (Guided Practice)", L.get("we_do"))
-            _label(doc, "EXPLORE · Y'all Do (Collaborative Teams)", L.get("explore_yall_do"))
+            _label(doc, "EXPLORE · Y'all Do (Collaborative — pairs or groups of 4)",
+                   L.get("explore_yall_do"))
             _label(doc, "SOLO · You Do (Independent Practice)", L.get("you_do"))
+            _label(doc, "SOLO · Apply CUBS to the problem", L.get("cubs"))
         elif L.get("teaching_strategy"):
             _heading(doc, "Teaching Strategy (Step-by-Step)", 11)
             _bullets(doc, L["teaching_strategy"], style="List Number")

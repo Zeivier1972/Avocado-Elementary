@@ -1013,14 +1013,6 @@ function GuideView({ guide }: any) {
                   )}
                 </div>
               )}
-              {L.cubs && (
-                <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-2">
-                  <div className="font-semibold text-gray-700 text-xs mb-0.5">
-                    🦸 CUBS Strategy (word problems)
-                  </div>
-                  <p className="text-xs text-gray-700">{L.cubs}</p>
-                </div>
-              )}
               {L.misconceptions?.length > 0 && (
                 <div>
                   <div className="font-semibold text-gray-700 text-xs mb-1">
@@ -1037,8 +1029,16 @@ function GuideView({ guide }: any) {
                   <Line label="Activate Prior Knowledge" value={L.activate_prior_knowledge} />
                   <Line label="🅰 ASSEMBLE · I Do (Teacher Models)" value={L.i_do} />
                   <Line label="🅲 CONNECT · We Do (Guided Practice)" value={L.we_do} />
-                  <Line label="🅴 EXPLORE · Y'all Do (Collaborative Teams)" value={L.explore_yall_do} />
+                  <Line label="🅴 EXPLORE · Y'all Do (Collaborative — pairs or groups of 4)" value={L.explore_yall_do} />
                   <Line label="🆂 SOLO · You Do (Independent Practice)" value={L.you_do} />
+                  {L.cubs && (
+                    <div className="rounded border border-amber-100 bg-amber-50/60 px-2 py-1 ml-4">
+                      <span className="font-semibold text-gray-700 text-xs">
+                        🦸 SOLO · Apply CUBS to the problem:{" "}
+                      </span>
+                      <span className="text-xs text-gray-700">{L.cubs}</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <List label="Teaching Strategy (step-by-step)" items={L.teaching_strategy} ordered />
