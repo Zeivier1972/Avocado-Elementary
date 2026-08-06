@@ -699,10 +699,12 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "Do not invent standards or student data.\n\n"
             f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
         )
-        # Stream a large budget — a full ACES guide with many lessons is big, and
-        # a truncated response is the usual cause of missing lessons / parse fails.
+        # Stream a solid budget — enough for a full many-lesson ACES guide while
+        # staying well under model limits and avoiding request timeouts. The
+        # "extract every lesson" instruction (not the token ceiling) is what
+        # ensures completeness; the salvage parser recovers any truncation.
         with client.messages.stream(
-            model=settings.ai_model, max_tokens=32000,
+            model=settings.ai_model, max_tokens=20000,
             system=("You output ONLY a single valid JSON array. No prose, no "
                     "markdown fences, no explanation before or after. Include "
                     "every lesson requested — do not stop early."),
