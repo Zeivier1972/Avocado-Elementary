@@ -561,165 +561,180 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
     return out
 
 
+def _std_context(standards: list[dict]) -> str:
+    def _ald_line(s):
+        a = s.get("alds") or {}
+        if not a:
+            return ""
+        parts = []
+        for lvl, lbl in (("level2", "L2 below"), ("level3", "L3 ON-GRADE"),
+                         ("level4", "L4 above"), ("level5", "L5 mastery")):
+            if a.get(lvl):
+                parts.append(f"{lbl}: {a[lvl]}")
+        return "\n    Achievement Level Descriptors — " + " | ".join(parts) if parts else ""
+    return "\n".join(
+        f"- {s['code']}: {s.get('description','')}"
+        + (f"\n    Clarifications: {' | '.join(s.get('clarifications', []))}" if s.get('clarifications') else "")
+        + (f"\n    Common misconceptions: {s['misconceptions']}" if s.get('misconceptions') else "")
+        + (f"\n    Instructional strategies (B1G-M): {s['strategies']}" if s.get('strategies') else "")
+        + _ald_line(s)
+        for s in standards
+    )
+
+
+_LESSON_SCHEMA = (
+    '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
+    '"learning_goal":"I can ... (student-friendly)",'
+    '"success_criteria":["observable behavior 1","observable behavior 2"],'
+    '"success_example":"a worked example that shows mastery (e.g. In 4,582: 4=4,000 ...)",'
+    '"benchmark_clarification":"what students must understand",'
+    '"benchmark_example":"a specific worked numeric example",'
+    '"sentence_frame":"The __ is in the __ place, so it means __.",'
+    '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
+    '"vocabulary":["the pacing-guide vocabulary terms used in THIS lesson"],'
+    '"vocabulary_integration":"specifically how to teach these exact terms in THIS lesson (kid-friendly definition, where in the lesson they are introduced/used, the sentence frame)",'
+    '"cubs":"walk THIS lesson\'s Solo/You-Do problem through CUBS with the actual numbers: what to Circle, Underline, Box, and how to Solve & Check",'
+    '"activate_prior_knowledge":"a specific warm-up that connects to THIS lesson",'
+    '"i_do":"ASSEMBLE (I Do): teacher models ONE specific worked example with a think-aloud (exact numbers)",'
+    '"we_do":"CONNECT (We Do): guided practice on a DIFFERENT specific example + how students engage together",'
+    '"explore_yall_do":"EXPLORE (Y\'all Do): a NAMED collaborative structure (e.g. Rally Coach in pairs, Numbered Heads Together in groups of 4) with exactly what each partner/member does",'
+    '"cpa":{"concrete":"exact hands-on steps with the named materials and numbers (base-ten emoji like 🟦🟩🟨⬜ when place value)","pictorial":"the exact drawing to make (labeled place-value chart / number line with the numbers)","abstract":"the exact equation/symbols, e.g. 3,476 = 3,000 + 400 + 70 + 6"},'
+    '"level3_example":"a first-person student quote explaining the reasoning at ALD Level 3",'
+    '"cfu":["specific problem 1","specific problem 2"],'
+    '"you_do":"independent practice task with specific numbers",'
+    '"exit_ticket":{"problem":"one problem","answer":"the answer"}}]'
+)
+
+_LESSON_RULES = (
+    "Write for a BRAND-NEW teacher who needs step-by-step support: every field must "
+    "be specific and classroom-ready — exact numbers, exact steps, exact questions "
+    "— never generic filler.\n"
+    "- CPA must be specific: Concrete = the exact manipulative steps and numbers "
+    "(include base-ten emoji 🟦🟩🟨⬜ for place value); Pictorial = the exact drawing "
+    "to make (labeled chart/number line with the numbers); Abstract = the exact "
+    "equation.\n"
+    "- Explore (Y'all Do): NAME a collaborative structure (Rally Coach / Pairs Check "
+    "in pairs; Numbered Heads Together / Round Robin / Team Huddle in groups of 4) "
+    "and say exactly what each partner/member does.\n"
+    "- cubs: walk THIS lesson's Solo/You-Do problem through CUBS with the ACTUAL "
+    "numbers (Circle / Underline / Box / Solve & Check).\n"
+    "- vocabulary from the pacing guide + specifically how to teach those exact terms "
+    "here; a 3-column misconceptions table (misconception, a real example error, the "
+    "fix); the official ALD Level-3 language for the benchmark.\n"
+    "WITHIN each lesson every part (I Do, We Do, Y'all Do, CFU, You Do, Exit) uses "
+    "DIFFERENT numbers — never reuse a number or a problem. Across lessons, never "
+    "reuse wording. Do not invent standards or student data."
+)
+
+
+def _llm_json(client, prompt: str, system: str, max_tokens: int):
+    """One streamed call returning (parsed_json_array | None, reason)."""
+    with client.messages.stream(
+        model=settings.ai_model, max_tokens=max_tokens, system=system,
+        messages=[{"role": "user", "content": prompt}],
+    ) as stream:
+        msg = stream.get_final_message()
+    text = "".join(b.text for b in msg.content if b.type == "text").strip()
+    stop = getattr(msg, "stop_reason", "")
+    arr = _parse_json_array(text)
+    if arr is not None:
+        return arr, None
+    tail = text[-140:].replace("\n", " ") if text else "(empty response)"
+    note = " (hit token limit)" if stop == "max_tokens" else ""
+    return None, f"unparseable JSON{note}. Ends with: …{tail}"
+
+
+def _lesson_skeleton(client, topic, std_ctx, pacing_text):
+    """Small call: the lesson list only (code/title/benchmarks/focus)."""
+    if pacing_text and pacing_text.strip():
+        source = ("From the UPLOADED PACING GUIDE below, list EVERY lesson/day in "
+                  "order — however many there are.\n\nPACING GUIDE:\n"
+                  + pacing_text.strip()[:30000])
+    else:
+        source = "Design a logical sequence of 5-7 lessons covering the benchmarks below."
+    prompt = (
+        f"Grade {topic.get('grade_level')} {topic.get('subject')} — "
+        f"{topic.get('topic_code','')}: {topic.get('name','')}\n"
+        f"Benchmarks:\n{std_ctx}\n\n{source}\n\n"
+        "Return ONLY a JSON array of lesson stubs: "
+        '[{"code":"1.1","title":"...","benchmarks":["MA.3..."],"focus":"one line"}]'
+    )
+    arr, _ = _llm_json(client, prompt,
+                       "You output ONLY a JSON array, no prose or fences.", 3000)
+    if not arr:
+        return []
+    out = []
+    for L in arr:
+        if isinstance(L, dict) and (L.get("title") or L.get("code")):
+            out.append({"code": str(L.get("code", "")), "title": str(L.get("title", "")),
+                        "benchmarks": L.get("benchmarks", []), "focus": str(L.get("focus", ""))})
+    return out
+
+
+def _lesson_detail(client, topic, std_ctx, batch, pacing_text):
+    """Expand a small batch of lesson stubs into full ACES detail (bounded call)."""
+    stub_txt = "\n".join(
+        f"- Lesson {L.get('code')}: {L.get('title')} "
+        f"(benchmarks {', '.join(L.get('benchmarks', []))}; focus: {L.get('focus','')})"
+        for L in batch
+    )
+    pacing_block = ("\n\nUse this pacing-guide content for these lessons:\n"
+                    + pacing_text.strip()[:20000]) if pacing_text else ""
+    prompt = (
+        "You are an elementary math instructional coach writing a Collaborative "
+        "Planning Guide. Expand EXACTLY these lessons (in order) into full detail.\n\n"
+        f"Grade {topic.get('grade_level')} {topic.get('subject')} — "
+        f"{topic.get('topic_code','')}: {topic.get('name','')}\n"
+        f"Pacing-guide vocabulary: {topic.get('vocabulary', [])}\n"
+        f"Materials: {topic.get('materials', [])}\n\n"
+        f"{CUBS_ROUTINE}\n\n"
+        f"Benchmarks (B1G-M detail + ALDs — use these):\n{std_ctx}\n\n"
+        f"Lessons to expand:\n{stub_txt}{pacing_block}\n\n"
+        f"{_LESSON_RULES}\n\n"
+        f"Return ONLY a JSON array (one object per lesson above) matching:\n{_LESSON_SCHEMA}"
+    )
+    return _llm_json(
+        client, prompt,
+        "You output ONLY a valid JSON array, no prose or fences. Finish every "
+        "object completely.", 8000)
+
+
 def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = None):
-    """Ask the LLM for the per-lesson breakdown as strict JSON, grounded in the
-    benchmarks (and the coach's uploaded pacing-guide text when provided).
+    """Generate the per-lesson breakdown in two stages — a small skeleton call to
+    get the lesson list, then bounded batches for full detail — so a long guide is
+    never truncated. Any batch that fails is template-filled so no lesson is lost.
     Returns (lessons | None, error_reason | None)."""
     try:
         import anthropic
     except ImportError:
         return None, "anthropic SDK not installed"
     try:
-        import json as _json
         client = anthropic.Anthropic(api_key=settings.ai_api_key)
-        def _ald_line(s):
-            a = s.get("alds") or {}
-            if not a:
-                return ""
-            parts = []
-            for lvl, lbl in (("level2", "L2 below"), ("level3", "L3 ON-GRADE"),
-                             ("level4", "L4 above"), ("level5", "L5 mastery")):
-                if a.get(lvl):
-                    parts.append(f"{lbl}: {a[lvl]}")
-            return "\n    Achievement Level Descriptors — " + " | ".join(parts) if parts else ""
-        std_ctx = "\n".join(
-            f"- {s['code']}: {s.get('description','')}"
-            + (f"\n    Clarifications: {' | '.join(s.get('clarifications', []))}" if s.get('clarifications') else "")
-            + (f"\n    Common misconceptions: {s['misconceptions']}" if s.get('misconceptions') else "")
-            + (f"\n    Instructional strategies (B1G-M): {s['strategies']}" if s.get('strategies') else "")
-            + _ald_line(s)
-            for s in standards
-        )
-        outline = topic.get("lessons") or []
-        outline_txt = "\n".join(
-            f"- Lesson {L.get('code')}: {L.get('title')} "
-            f"(benchmarks {', '.join(L.get('benchmarks', []))}; focus: {L.get('focus','')})"
-            for L in outline
-        )
-        # When the coach uploaded a pacing guide, use its text as the PRIMARY
-        # source and expand EVERY lesson it lists (however many).
-        pacing_block = ""
-        if pacing_text and pacing_text.strip():
-            outline_txt = (
-                "Extract EVERY lesson/day listed in the UPLOADED PACING GUIDE below "
-                "and expand each one — include ALL of them in order, however many "
-                "there are (do NOT stop at 5-7). If the guide lists 12 lessons, "
-                "return 12 lesson objects."
-            )
-            pacing_block = (
-                "\n\nUPLOADED PACING GUIDE (primary source — this is the exact "
-                "lesson sequence to expand; use its learning goals, days, and "
-                "content, and align each lesson to the benchmarks above):\n"
-                + pacing_text.strip()[:45000]
-            )
-        elif not outline_txt:
-            outline_txt = "Design a logical sequence of 5-7 lessons covering the benchmarks."
-        schema = (
-            '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
-            '"learning_goal":"I can ... (student-friendly)",'
-            '"success_criteria":["observable behavior 1","observable behavior 2"],'
-            '"success_example":"a worked example that shows mastery (e.g. In 4,582: 4=4,000 ...)",'
-            '"benchmark_clarification":"what students must understand",'
-            '"benchmark_example":"a specific worked numeric example",'
-            '"sentence_frame":"The __ is in the __ place, so it means __.",'
-            '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
-            '"vocabulary":["the pacing-guide vocabulary terms used in THIS lesson"],'
-            '"vocabulary_integration":"specifically how to teach these exact terms in THIS lesson (kid-friendly definition, where in the lesson they are introduced/used, the sentence frame)",'
-            '"cubs":"walk THIS lesson\'s Solo/You-Do problem through CUBS with the actual numbers: what to Circle, Underline, Box, and how to Solve & Check",'
-            '"activate_prior_knowledge":"how to activate prior knowledge for THIS lesson, with a specific warm-up",'
-            '"i_do":"ASSEMBLE (I Do): teacher models with a specific worked example and think-aloud",'
-            '"we_do":"CONNECT (We Do): guided practice with a specific example and how to engage students together",'
-            '"explore_yall_do":"EXPLORE (Y\'all Do): collaborative TEAM practice on a specific task; students work in teams, apply the skill, and problem-solve while the teacher observes",'
-            '"cpa":{"concrete":"hands-on with materials; INCLUDE base-ten emoji visuals like 🟦 thousands 🟩 hundreds 🟨 tens ⬜ ones","pictorial":"place-value chart / number line drawing","abstract":"the numbers and symbols, e.g. 3,476 = 3,000 + 400 + 70 + 6"},'
-            '"level3_example":"a first-person student quote explaining the reasoning at ALD Level 3",'
-            '"cfu":["specific problem 1","specific problem 2"],'
-            '"you_do":"independent practice task with specific numbers",'
-            '"exit_ticket":{"problem":"one problem","answer":"the answer"}}]'
-        )
-        prompt = (
-            "You are an elementary math instructional coach writing a lesson-by-lesson "
-            "Collaborative Planning Guide for teachers. Match the M-DCPS format EXACTLY "
-            "and at high specificity. Ground everything ONLY in the Florida B.E.S.T. "
-            "(B1G-M) benchmark detail and pacing content below — use their real "
-            "clarifications and misconceptions, and write concrete WORKED numeric "
-            "examples (actual numbers, not placeholders).\n\n"
-            f"Grade {topic.get('grade_level')} {topic.get('subject')} — "
-            f"{topic['topic_code']}: {topic['name']}\n"
-            f"Topic learning goal: {topic.get('learning_target','')}\n"
-            f"Success criteria: {topic.get('success_criteria', [])}\n"
-            f"Pacing-guide vocabulary (assign the relevant terms to each lesson): "
-            f"{topic.get('vocabulary', [])}\n"
-            f"MTR practices: {topic.get('mtr_practices', [])}\n"
-            f"Materials: {topic.get('materials', [])}\n\n"
-            f"{CUBS_ROUTINE}\n\n"
-            f"Benchmarks (with B1G-M detail — use these clarifications & misconceptions):\n{std_ctx}\n\n"
-            f"Lesson outline to expand:\n{outline_txt}\n"
-            f"{pacing_block}\n\n"
-            "CRITICAL: every lesson must be DIFFERENT and specific to its own "
-            "benchmark and skill — never reuse the same activate/I Do/We Do/CFU/"
-            "You Do/exit wording across lessons. Each field must use worked "
-            "numbers appropriate to THAT lesson (e.g. a 'round to nearest ten' "
-            "lesson uses ones-digit examples like 47→50; a 'compare' lesson uses "
-            "two 4-digit numbers).\n\n"
-            "For EACH lesson produce, at the depth of a real teacher-ready plan:\n"
-            "- a student-friendly 'I can' learning goal\n"
-            "- observable success criteria PLUS a worked success_example with real numbers\n"
-            "- a benchmark clarification and a specific benchmark_example (real numbers)\n"
-            "- a sentence_frame students use to explain their reasoning\n"
-            "- a 3-column misconceptions table: each row has the misconception, a "
-            "specific EXAMPLE ERROR a student makes (real numbers), and the correction strategy\n"
-            "- vocabulary: the pacing-guide terms this lesson uses, and "
-            "vocabulary_integration: SPECIFICALLY how to teach those exact terms in this "
-            "lesson (kid-friendly definition, where they're introduced/used, the sentence frame)\n"
-            "- cubs: walk THIS lesson's Solo/You-Do problem through the CUBS routine using the "
-            "ACTUAL numbers — say what to Circle, what to Underline, what to Box, and how to "
-            "Solve & Check. Be specific to this problem, not generic.\n"
-            "Structure the lesson using the school's ACES gradual-release model: "
-            "Assemble (I Do) -> Connect (We Do) -> Explore (Y'all Do, collaborative "
-            "teams) -> Solo (You Do, independent). Provide all four phases:\n"
-            "- activate_prior_knowledge: a specific warm-up that connects to THIS lesson\n"
-            "- i_do (Assemble): the teacher models ONE specific worked example with a think-aloud\n"
-            "- we_do (Connect): guided practice on a DIFFERENT specific example, plus how "
-            "students engage together (turn-and-talk, whiteboards, the sentence frame)\n"
-            "- explore_yall_do (Explore): a collaborative task done in PAIRS or GROUPS OF 4. "
-            "NAME a specific collaborative structure that fits the activity (e.g., Rally Coach "
-            "in pairs, Pairs Check, Numbered Heads Together in groups of 4, Team Huddle, "
-            "Round Robin) and describe exactly what each partner/team member does with the "
-            "task while the teacher observes and supports\n"
-            "- a CPA model where Concrete INCLUDES base-ten emoji block visuals "
-            "(🟦 thousands, 🟩 hundreds, 🟨 tens, ⬜ ones), Pictorial is a place-value "
-            "chart or number line, and Abstract shows the expanded-form/equation\n"
-            "- a Level 3 proficiency example written as a first-person student quote\n"
-            "- cfu: specific problems (real numbers), a 'You Do' task with specific "
-            "numbers, and a single exit ticket with BOTH the problem and its answer, "
-            "written so a correct answer demonstrates Level 3 mastery\n"
-            "WITHIN each lesson, every worked example and problem must use DIFFERENT "
-            "numbers — never reuse the same number(s) or the same problem across the "
-            "I Do, We Do, Y'all Do, CFU, You Do, and Exit Ticket. Each of those parts "
-            "gets its own fresh numbers.\n"
-            "Do not invent standards or student data.\n\n"
-            f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
-        )
-        # Stream a solid budget — enough for a full many-lesson ACES guide while
-        # staying well under model limits and avoiding request timeouts. The
-        # "extract every lesson" instruction (not the token ceiling) is what
-        # ensures completeness; the salvage parser recovers any truncation.
-        with client.messages.stream(
-            model=settings.ai_model, max_tokens=20000,
-            system=("You output ONLY a single valid JSON array. No prose, no "
-                    "markdown fences, no explanation before or after. Include "
-                    "every lesson requested — do not stop early."),
-            messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            msg = stream.get_final_message()
-        text = "".join(b.text for b in msg.content if b.type == "text").strip()
-        stop = getattr(msg, "stop_reason", "")
-        lessons = _parse_json_array(text)
-        if lessons:
-            return lessons, None
-        tail = text[-160:].replace("\n", " ") if text else "(empty response)"
-        note = " (response was truncated — hit the token limit)" if stop == "max_tokens" else ""
-        return None, f"model reply was not parseable JSON{note}. Ends with: …{tail}"
+        std_ctx = _std_context(standards)
+        std_by_code = {s["code"]: s for s in standards}
+
+        skeleton = _lesson_skeleton(client, topic, std_ctx, pacing_text)
+        if not skeleton:
+            skeleton = [
+                {"code": L.get("code", ""), "title": L.get("title", ""),
+                 "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", "")}
+                for L in (topic.get("lessons") or [])
+            ]
+        if not skeleton:
+            return None, "could not determine the lesson list from the pacing guide"
+
+        out, errs = [], []
+        for i in range(0, len(skeleton), 3):
+            batch = skeleton[i:i + 3]
+            detail, err = _lesson_detail(client, topic, std_ctx, batch, pacing_text)
+            if detail:
+                out.extend(detail)
+            else:
+                errs.append(err or "batch failed")
+                mini = dict(topic)
+                mini["lessons"] = batch
+                out.extend(_template_lessons(mini, std_by_code))
+        return (out, None) if out else (None, "; ".join(errs) or "no lessons generated")
     except Exception as e:
         return None, f"{type(e).__name__}: {str(e)[:200]}"
 
