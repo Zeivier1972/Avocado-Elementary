@@ -540,17 +540,25 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             f"- Lesson {L.get('code')}: {L.get('title')} "
             f"(benchmarks {', '.join(L.get('benchmarks', []))}; focus: {L.get('focus','')})"
             for L in outline
-        ) or "Design a logical sequence of 5-7 lessons covering the benchmarks."
+        )
         # When the coach uploaded a pacing guide, use its text as the PRIMARY
-        # source for the lesson sequence and content (truncated to stay in budget).
+        # source and expand EVERY lesson it lists (however many).
         pacing_block = ""
         if pacing_text and pacing_text.strip():
-            pacing_block = (
-                "\n\nUPLOADED PACING GUIDE (primary source — extract the topic's "
-                "lesson sequence, learning goals, and content from this; align each "
-                "lesson to the benchmarks above):\n"
-                + pacing_text.strip()[:12000]
+            outline_txt = (
+                "Extract EVERY lesson/day listed in the UPLOADED PACING GUIDE below "
+                "and expand each one — include ALL of them in order, however many "
+                "there are (do NOT stop at 5-7). If the guide lists 12 lessons, "
+                "return 12 lesson objects."
             )
+            pacing_block = (
+                "\n\nUPLOADED PACING GUIDE (primary source — this is the exact "
+                "lesson sequence to expand; use its learning goals, days, and "
+                "content, and align each lesson to the benchmarks above):\n"
+                + pacing_text.strip()[:45000]
+            )
+        elif not outline_txt:
+            outline_txt = "Design a logical sequence of 5-7 lessons covering the benchmarks."
         schema = (
             '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
             '"learning_goal":"I can ... (student-friendly)",'
@@ -619,12 +627,13 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             "Do not invent standards or student data.\n\n"
             f"Return ONLY valid JSON, an array matching this schema:\n{schema}"
         )
-        # Stream a generous budget — a full 7-lesson ACES guide is large, and a
-        # truncated response is the usual cause of "did not return JSON array".
+        # Stream a large budget — a full ACES guide with many lessons is big, and
+        # a truncated response is the usual cause of missing lessons / parse fails.
         with client.messages.stream(
-            model=settings.ai_model, max_tokens=16000,
+            model=settings.ai_model, max_tokens=32000,
             system=("You output ONLY a single valid JSON array. No prose, no "
-                    "markdown fences, no explanation before or after."),
+                    "markdown fences, no explanation before or after. Include "
+                    "every lesson requested — do not stop early."),
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
             msg = stream.get_final_message()
