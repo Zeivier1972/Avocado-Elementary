@@ -24,6 +24,15 @@ async function req(path: string, opts: RequestInit = {}) {
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_URL}${path}`, { ...opts, headers });
+  // Session expired / invalid token: clear it and send the user to sign in
+  // again instead of surfacing a raw "401 Invalid token" on every action.
+  if (res.status === 401 && token) {
+    clearToken();
+    if (typeof window !== "undefined") {
+      window.location.href = "/?expired=1";
+    }
+    throw new Error("Your session expired — please sign in again.");
+  }
   if (!res.ok) {
     const msg = await res.text();
     throw new Error(`${res.status}: ${msg}`);

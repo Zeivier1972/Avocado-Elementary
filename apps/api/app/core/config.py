@@ -18,9 +18,12 @@ class Settings(BaseSettings):
     # Falls back to a local SQLite file so the app runs anywhere.
     database_url: str = "sqlite:///./avocado.db"
 
-    # Auth. MUST be overridden in production via env.
+    # Auth. Set SECRET_KEY in the environment so a redeploy/restart never
+    # invalidates existing logins (a changed signing key = everyone gets
+    # "Invalid token"). The default is stable but shared, so override it.
     secret_key: str = "dev-insecure-change-me"
-    access_token_expire_minutes: int = 60 * 8
+    # Keep a login valid across a full working day (and across deploys): 7 days.
+    access_token_expire_minutes: int = 60 * 24 * 7
 
     # CORS: comma-separated list of allowed origins for the web app.
     cors_origins: str = "*"

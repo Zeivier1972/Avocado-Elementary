@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, homeForRole, login } from "@/lib/api";
 
@@ -9,7 +9,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState("teacher@avocado.edu");
   const [password, setPassword] = useState("demo1234");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("expired")) {
+      setNotice("Your session expired. Please sign in again.");
+    }
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +70,11 @@ export default function LoginPage() {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-avocado"
             />
           </div>
+          {notice && (
+            <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+              {notice}
+            </p>
+          )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             disabled={loading}
