@@ -313,6 +313,10 @@ class SavedGuide(Base, TimestampMixin):
     content: Mapped[dict] = mapped_column(JSON, default=dict)
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     created_by: Mapped[str] = mapped_column(String, default="")
+    # Generation runs in the background so the request returns immediately;
+    # the page polls this guide until status is "ready" (or "error").
+    status: Mapped[str] = mapped_column(String, default="ready")  # generating|ready|error
+    error: Mapped[str] = mapped_column(Text, default="")
 
 
 class PlanningDocument(Base, TimestampMixin):

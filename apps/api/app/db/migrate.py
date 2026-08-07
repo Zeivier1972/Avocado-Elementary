@@ -18,6 +18,11 @@ _ADDED_COLUMNS = {
         "materials": "JSON",
         "lessons": "JSON",
     },
+    "saved_guides": {
+        # Background generation status; existing rows are already-finished guides.
+        "status": "VARCHAR DEFAULT 'ready'",
+        "error": "TEXT DEFAULT ''",
+    },
 }
 # student_assessments is a new table (create_all builds it) — no ALTERs needed.
 

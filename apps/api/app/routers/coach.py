@@ -1,6 +1,7 @@
 """Coach section — collaborative planning: pacing calendar + PLC agendas."""
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -64,16 +65,71 @@ def _assessment_note(grade_level: str, topic_code: str) -> str:
         return ""
 
 
-def _save_guide(db, user, grade_level, topic_code, subject, guide) -> str:
+def _save_guide(db, user, grade_level, topic_code, subject, guide,
+                status="ready") -> str:
     """Persist a generated guide so it survives navigating away."""
     rec = SavedGuide(
         tenant_id=user.tenant_id, grade_level=grade_level or "",
         topic_code=topic_code or "", subject=(subject or "MATH"),
         title=guide.get("title", "Planning Guide"), content=guide,
-        ai_generated=bool(guide.get("ai_generated")), created_by=user.id)
+        ai_generated=bool(guide.get("ai_generated")), created_by=user.id,
+        status=status)
     db.add(rec)
     db.commit()
     return rec.id
+
+
+def _lesson_stubs(guide) -> list[dict]:
+    """The lesson outline saved back onto a topic for the pacing calendar."""
+    return [
+        {"code": L.get("code", ""), "title": L.get("title", ""),
+         "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", "")}
+        for L in (guide.get("lessons") or [])
+    ]
+
+
+def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
+                          grade_level: str, subject: str, topic_name: str,
+                          assessment_code: str, topic_id: str | None):
+    """Generate a planning guide from pacing-guide text OUT OF BAND (several model
+    calls, up to a couple of minutes) and write the result onto the pre-created
+    SavedGuide, so the HTTP request that triggered it returns immediately. Runs in
+    a threadpool with its own DB session."""
+    from app.ai import generate_guide_from_pacing
+    from app.db.session import SessionLocal
+
+    db = SessionLocal()
+    try:
+        standards = _resolve_standards(db, benchmark_codes) if benchmark_codes else []
+        guide = generate_guide_from_pacing(
+            text, standards, grade_level, subject or "MATH", topic_name)
+        an = _assessment_note(grade_level, assessment_code)
+        if an:
+            guide.setdefault("quick_facts", {})["assessment_date"] = an
+        if topic_id and guide.get("lessons"):
+            topic = db.get(PacingTopic, topic_id)
+            if topic:
+                topic.lessons = _lesson_stubs(guide)
+                db.add(topic)
+        rec = db.get(SavedGuide, guide_id)
+        if rec:
+            rec.content = guide
+            rec.title = guide.get("title", rec.title)
+            rec.ai_generated = bool(guide.get("ai_generated"))
+            rec.status = "ready"
+            rec.error = ""
+            db.add(rec)
+        db.commit()
+    except Exception as e:  # never let a background failure go silent
+        db.rollback()
+        rec = db.get(SavedGuide, guide_id)
+        if rec:
+            rec.status = "error"
+            rec.error = f"{type(e).__name__}: {str(e)[:400]}"
+            db.add(rec)
+            db.commit()
+    finally:
+        db.close()
 
 
 @router.get("/dashboard")
@@ -139,33 +195,73 @@ def generate_agenda(
     return {"topic": t.name, "agenda": agenda}
 
 
+def _run_topic_guide_job(guide_id: str, topic_id: str):
+    """Background generation for the topic-based guide (own DB session)."""
+    from app.db.session import SessionLocal
+
+    db = SessionLocal()
+    try:
+        t = db.get(PacingTopic, topic_id)
+        if not t:
+            raise ValueError("Pacing topic not found")
+        standards = _resolve_standards(db, t.benchmarks)
+        topic_ctx = {
+            "topic_code": t.topic_code, "chapter": t.chapter, "name": t.name,
+            "grade_level": t.grade_level, "subject": t.subject, "quarter": t.quarter,
+            "learning_target": t.learning_target,
+            "success_criteria": t.success_criteria, "vocabulary": t.vocabulary,
+            "time_frame": t.time_frame, "topic_focus": t.topic_focus,
+            "ald_focus": t.ald_focus, "mtr_practices": t.mtr_practices,
+            "materials": t.materials, "lessons": t.lessons,
+            "assessment_date": _assessment_note(t.grade_level, t.topic_code),
+        }
+        guide = generate_planning_guide(topic_ctx, standards)
+        rec = db.get(SavedGuide, guide_id)
+        if rec:
+            rec.content = guide
+            rec.title = guide.get("title", rec.title)
+            rec.ai_generated = bool(guide.get("ai_generated"))
+            rec.status = "ready"
+            rec.error = ""
+            db.add(rec)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        rec = db.get(SavedGuide, guide_id)
+        if rec:
+            rec.status = "error"
+            rec.error = f"{type(e).__name__}: {str(e)[:400]}"
+            db.add(rec)
+            db.commit()
+    finally:
+        db.close()
+
+
 @router.post("/guide/{topic_id}")
 def generate_guide(
     topic_id: str,
+    background: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
     """Generate a full lesson-by-lesson Collaborative Planning Guide for a topic,
-    grounded in the pacing guide + B1G-M benchmark content."""
+    grounded in the pacing guide + B1G-M benchmark content. Runs in the
+    BACKGROUND — returns a guide_id with status "generating"; poll the guide."""
     t = db.get(PacingTopic, topic_id)
     if not t:
         raise HTTPException(404, "Pacing topic not found")
-    standards = _resolve_standards(db, t.benchmarks)
-    topic_ctx = {
-        "topic_code": t.topic_code, "chapter": t.chapter, "name": t.name,
-        "grade_level": t.grade_level, "subject": t.subject, "quarter": t.quarter,
-        "learning_target": t.learning_target,
-        "success_criteria": t.success_criteria, "vocabulary": t.vocabulary,
-        "time_frame": t.time_frame, "topic_focus": t.topic_focus,
-        "ald_focus": t.ald_focus, "mtr_practices": t.mtr_practices,
-        "materials": t.materials, "lessons": t.lessons,
-        "assessment_date": _assessment_note(t.grade_level, t.topic_code),
+    placeholder = {
+        "title": f"Grade {t.grade_level} Collaborative Planning Guide — "
+                 f"{t.topic_code}: {t.name}",
+        "grade_level": t.grade_level, "subject": t.subject, "lessons": [],
+        "ai_generated": False,
     }
-    guide = generate_planning_guide(topic_ctx, standards)
-    guide_id = _save_guide(db, user, t.grade_level, t.topic_code, t.subject, guide)
+    guide_id = _save_guide(db, user, t.grade_level, t.topic_code, t.subject,
+                           placeholder, status="generating")
+    background.add_task(_run_topic_guide_job, guide_id, t.id)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="collaborative_planning")
-    return {"topic": t.name, "guide": guide, "guide_id": guide_id}
+    return {"topic": t.name, "guide_id": guide_id, "status": "generating"}
 
 
 @router.get("/ai-check")
@@ -321,6 +417,7 @@ def list_grade_standards(
 
 @router.post("/pacing/from-document")
 async def pacing_from_document(
+    background: BackgroundTasks,
     file: UploadFile = File(...),
     grade_level: str = Form(...),
     subject: str = Form("MATH"),
@@ -330,9 +427,12 @@ async def pacing_from_document(
 ):
     """One step: upload a topic's pacing guide -> create the topic (folder),
     store the file in it, and generate the Collaborative Planning Guide from the
-    document's content. This is the primary 'upload a new topic' flow."""
+    document's content. This is the primary 'upload a new topic' flow.
+
+    The guide is written by several model calls, so generation runs in the
+    BACKGROUND: this returns a guide_id with status "generating" right away and
+    the page polls GET /coach/guides/{id} until it's ready."""
     import re as _re
-    from app.ai import generate_guide_from_pacing
     from app.doc_text import extract_document_text
 
     data = await file.read()
@@ -388,27 +488,24 @@ async def pacing_from_document(
     db.add(doc)
     db.commit()
 
-    standards = _resolve_standards(db, benchmarks) if benchmarks else []
-    guide = generate_guide_from_pacing(text, standards, grade_level, subject, name)
-    an = _assessment_note(grade_level, code)
-    if an:
-        guide.setdefault("quick_facts", {})["assessment_date"] = an
-    # Save the generated lesson breakdown back onto the topic so the pacing
-    # calendar can lay the lessons out day-by-day.
-    if guide.get("lessons"):
-        topic.lessons = [
-            {"code": L.get("code", ""), "title": L.get("title", ""),
-             "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", "")}
-            for L in guide["lessons"]]
-        db.add(topic)
-        db.commit()
-    guide_id = _save_guide(db, user, grade_level, code, subject, guide)
+    # Pre-create the guide record in "generating" state and hand the heavy work
+    # to a background task — the request returns now instead of holding the
+    # connection open through several model calls.
+    placeholder = {
+        "title": f"Grade {grade_level} Collaborative Planning Guide — {name}",
+        "grade_level": grade_level, "subject": subject, "lessons": [],
+        "ai_generated": False, "from_document": True,
+    }
+    guide_id = _save_guide(db, user, grade_level, code, subject, placeholder,
+                           status="generating")
+    background.add_task(_run_pacing_guide_job, guide_id, text, benchmarks,
+                        grade_level, subject, name, code, topic.id)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="upload_pacing_and_generate")
     return {
         "topic": {"id": topic.id, "topic_code": code, "name": name,
                   "grade_level": grade_level},
-        "guide": guide, "document_id": doc.id, "guide_id": guide_id,
+        "guide_id": guide_id, "status": "generating", "document_id": doc.id,
         "benchmarks_detected": benchmarks,
     }
 
@@ -566,14 +663,15 @@ def download_document(
 @router.post("/documents/{doc_id}/generate-guide")
 def generate_guide_from_document(
     doc_id: str,
+    background: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
     """Read an uploaded pacing-guide document and generate the Collaborative
     Planning Guide from its content (grounded in the referenced B1G-M benchmarks
-    + ALDs)."""
+    + ALDs). Generation runs in the BACKGROUND — returns a guide_id with status
+    "generating"; the page polls GET /coach/guides/{id}."""
     import re as _re
-    from app.ai import generate_guide_from_pacing
     from app.doc_text import extract_document_text
 
     d = db.get(PlanningDocument, doc_id)
@@ -598,26 +696,21 @@ def generate_guide_from_document(
             for c in topic.benchmarks:
                 if c not in codes:
                     codes.append(c)
-    standards = _resolve_standards(db, codes) if codes else []
     topic_name = (topic.name if topic else None) or d.topic_code or d.name.rsplit(".", 1)[0]
 
-    guide = generate_guide_from_pacing(
-        text, standards, d.grade_level, d.subject or "MATH", topic_name)
-    an = _assessment_note(d.grade_level, d.topic_code)
-    if an:
-        guide.setdefault("quick_facts", {})["assessment_date"] = an
-    # Save the lesson breakdown onto the topic so the pacing calendar has it.
-    if topic and guide.get("lessons"):
-        topic.lessons = [
-            {"code": L.get("code", ""), "title": L.get("title", ""),
-             "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", "")}
-            for L in guide["lessons"]]
-        db.add(topic)
-        db.commit()
-    guide_id = _save_guide(db, user, d.grade_level, d.topic_code, d.subject, guide)
+    placeholder = {
+        "title": f"Grade {d.grade_level} Collaborative Planning Guide — {topic_name}",
+        "grade_level": d.grade_level, "subject": d.subject or "MATH",
+        "lessons": [], "ai_generated": False, "from_document": True,
+    }
+    guide_id = _save_guide(db, user, d.grade_level, d.topic_code, d.subject,
+                           placeholder, status="generating")
+    background.add_task(_run_pacing_guide_job, guide_id, text, codes,
+                        d.grade_level, d.subject or "MATH", topic_name,
+                        d.topic_code, topic.id if topic else None)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="guide_from_pacing_document")
-    return {"topic": topic_name, "guide": guide, "guide_id": guide_id,
+    return {"topic": topic_name, "guide_id": guide_id, "status": "generating",
             "benchmarks_detected": codes, "chars_read": len(text)}
 
 
@@ -670,7 +763,8 @@ def get_guide(
     g = db.get(SavedGuide, guide_id)
     if not g or g.tenant_id != user.tenant_id:
         raise HTTPException(404, "Saved guide not found")
-    return {"id": g.id, "title": g.title, "guide": g.content}
+    return {"id": g.id, "title": g.title, "guide": g.content,
+            "status": g.status or "ready", "error": g.error or ""}
 
 
 @router.delete("/guides/{guide_id}")

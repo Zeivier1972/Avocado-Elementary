@@ -3,5 +3,5 @@
 # Bump BUILD whenever behavior changes so the running deploy is identifiable
 # from the UI (Coach header) and /health. This lets us confirm at a glance
 # whether the latest code is actually live before regenerating guides.
-__version__ = "0.3.0"
-__build__ = "2026-08-07-scripted-aces"
+__version__ = "0.4.0"
+__build__ = "2026-08-07-async-generation"

@@ -19,6 +19,7 @@ export default function CoachPage() {
   const [build, setBuild] = useState<any>(null);
   const [topic, setTopic] = useState<any>(null);
   const [guide, setGuide] = useState<any>(null);
+  const [genStatus, setGenStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [grade, setGrade] = useState("3");
   const [summary, setSummary] = useState<any>(null);
@@ -96,6 +97,38 @@ export default function CoachPage() {
     }
   }
 
+  // Generation runs in the background on the server; poll the saved guide until
+  // it's ready (or errors). Keeps the request short so it never "Failed to fetch".
+  async function pollGuide(id: string) {
+    setGenStatus("Writing the scripted lessons… this can take a minute.");
+    for (let i = 0; i < 150; i++) {
+      await new Promise((res) => setTimeout(res, 3000));
+      let r: any;
+      try {
+        r = await api.getGuide(id);
+      } catch {
+        continue; // transient; keep polling
+      }
+      if (r.status === "ready") {
+        setGuide(r.guide);
+        setGenStatus("");
+        await loadGuides(grade);
+        return;
+      }
+      if (r.status === "error") {
+        setGenStatus("");
+        alert("Generation failed: " + (r.error || "unknown error"));
+        await loadGuides(grade);
+        return;
+      }
+    }
+    setGenStatus("");
+    alert(
+      "Still generating after a few minutes. It will keep running — open it from Saved Guides in a moment."
+    );
+    await loadGuides(grade);
+  }
+
   async function uploadPacingAndGenerate(
     e: React.ChangeEvent<HTMLInputElement>
   ) {
@@ -126,9 +159,10 @@ export default function CoachPage() {
       setDash(d);
       await loadDocs(grade);
       await loadGuides(grade);
-      setGuide(r.guide);
+      if (r.guide_id) await pollGuide(r.guide_id);
+      else if (r.guide) setGuide(r.guide);
     } catch (err) {
-      alert("Upload/generate failed: " + (err as Error).message);
+      alert("Upload failed: " + (err as Error).message);
     } finally {
       setBusy(false);
       e.target.value = "";
@@ -141,8 +175,8 @@ export default function CoachPage() {
     setTopic(null);
     try {
       const r = await api.generateGuideFromDoc(id);
-      setGuide(r.guide);
-      await loadGuides(grade);
+      if (r.guide_id) await pollGuide(r.guide_id);
+      else if (r.guide) setGuide(r.guide);
     } catch (err) {
       alert("Generate failed: " + (err as Error).message);
     } finally {
@@ -305,16 +339,13 @@ export default function CoachPage() {
 
   async function makeGuide(id: string) {
     setBusy(true);
+    setGuide(null);
     try {
       const r = await api.generateGuide(id);
-      setGuide(r.guide);
-      await loadGuides(grade);
+      if (r.guide_id) await pollGuide(r.guide_id);
+      else if (r.guide) setGuide(r.guide);
     } catch (err) {
-      alert(
-        "Generate failed: " +
-          (err as Error).message +
-          "\n\n(If this mentions a timeout, the AI took too long — try again, or use the '✨ Generate guide' on the uploaded document instead.)"
-      );
+      alert("Generate failed: " + (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -661,6 +692,12 @@ export default function CoachPage() {
             )}
 
             {topic && <TopicPanel topic={topic} busy={busy} onGuide={() => makeGuide(topic.id)} />}
+            {genStatus && (
+              <div className="bg-white rounded-xl border border-avocado/30 p-6 flex items-center gap-3">
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-avocado border-t-transparent animate-spin" />
+                <span className="text-sm text-gray-700">{genStatus}</span>
+              </div>
+            )}
             {guide && <GuideView guide={guide} />}
           </div>
         </div>
