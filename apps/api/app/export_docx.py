@@ -76,6 +76,34 @@ def _exit_ticket_text(et) -> str:
     return str(et or "")
 
 
+def _phase(doc, header, phase):
+    """Render one fully-scripted ACES phase: the problem, the teacher's spoken
+    script, what the teacher does, the Concrete/Pictorial/Abstract for that
+    problem, CUBS (Solo), and the look-fors. Tolerates the legacy string shape."""
+    if not phase:
+        return
+    _heading(doc, header, 11)
+    if isinstance(phase, str):
+        doc.add_paragraph(phase)
+        return
+    if phase.get("structure"):
+        _label(doc, "Collaborative structure", phase.get("structure"))
+        _label(doc, "Each partner/group role", phase.get("roles"))
+    _label(doc, "Problem worked", phase.get("problem"))
+    say = phase.get("say")
+    if say:
+        p = doc.add_paragraph()
+        p.add_run("Teacher says:").bold = True
+        for line in (say if isinstance(say, list) else [say]):
+            doc.add_paragraph(f"“{line}”", style="List Bullet")
+    _label(doc, "Teacher does", phase.get("do"))
+    _label(doc, "Concrete (manipulative)", phase.get("concrete"))
+    _label(doc, "Pictorial (drawing)", phase.get("pictorial"))
+    _label(doc, "Abstract (equation)", phase.get("abstract"))
+    _label(doc, "CUBS on this problem", phase.get("cubs"))
+    _label(doc, "Look for", phase.get("look_for"))
+
+
 def guide_to_docx(guide: dict) -> bytes:
     doc = Document()
     _add_logo(doc)
@@ -150,19 +178,24 @@ def guide_to_docx(guide: dict) -> bytes:
         # (Y'all Do, collaborative pairs/groups of 4) -> Solo (You Do + CUBS).
         if any(L.get(k) for k in ("activate_prior_knowledge", "i_do", "we_do",
                                   "explore_yall_do", "you_do")):
-            _heading(doc, "Teaching Strategy — ACES Gradual Release", 11)
+            _heading(doc, "Teaching Strategy — ACES Gradual Release (Scripted)", 12)
             _label(doc, "Activate Prior Knowledge", L.get("activate_prior_knowledge"))
-            _label(doc, "ASSEMBLE · I Do (Teacher Models)", L.get("i_do"))
-            _label(doc, "CONNECT · We Do (Guided Practice)", L.get("we_do"))
-            _label(doc, "EXPLORE · Y'all Do (Collaborative — pairs or groups of 4)",
+            _phase(doc, "ASSEMBLE · I Do (Teacher Models)", L.get("i_do"))
+            _phase(doc, "CONNECT · We Do (Guided Practice)", L.get("we_do"))
+            _phase(doc, "EXPLORE · Y'all Do (Collaborative — pairs or groups of 4)",
                    L.get("explore_yall_do"))
-            _label(doc, "SOLO · You Do (Independent Practice)", L.get("you_do"))
-            _label(doc, "SOLO · Apply CUBS to the problem", L.get("cubs"))
+            _phase(doc, "SOLO · You Do (Independent Practice + CUBS)", L.get("you_do"))
+            # Legacy top-level CUBS string only when You Do isn't a scripted phase.
+            if not isinstance(L.get("you_do"), dict):
+                _label(doc, "SOLO · Apply CUBS to the problem", L.get("cubs"))
         elif L.get("teaching_strategy"):
             _heading(doc, "Teaching Strategy (Step-by-Step)", 11)
             _bullets(doc, L["teaching_strategy"], style="List Number")
+        # Lesson-level CPA only when phases aren't already scripted with their own
+        # Concrete/Pictorial/Abstract (avoids duplicating it four times over).
         cpa = L.get("cpa", {})
-        if any(cpa.get(k) for k in ("concrete", "pictorial", "abstract")):
+        if not isinstance(L.get("i_do"), dict) and any(
+                cpa.get(k) for k in ("concrete", "pictorial", "abstract")):
             _heading(doc, "CPA Model", 11)
             _label(doc, "Concrete", cpa.get("concrete"))
             _label(doc, "Pictorial", cpa.get("pictorial"))
@@ -185,7 +218,15 @@ def guide_to_docx(guide: dict) -> bytes:
                 if "ON GRADE" in lbl:
                     r.font.color.rgb = RGBColor(0x1F, 0x7A, 0x1F)
                 p.add_run(str(val))
-        _label(doc, "Level 3 Proficiency Example (student voice)", L.get("level3_example"))
+        l3 = L.get("level3_look_like") or {}
+        if l3.get("problem"):
+            _heading(doc, "What a Level 3 (On-Grade) Looks Like — This Lesson", 11)
+            _label(doc, "Problem", l3.get("problem"))
+            _label(doc, "Worked solution", l3.get("solution"))
+            _label(doc, "Student explanation", l3.get("student_explanation"))
+        else:
+            _label(doc, "Level 3 Proficiency Example (student voice)",
+                   L.get("level3_example"))
         if L.get("cfu"):
             _heading(doc, "Checks for Understanding (CFU)", 11)
             _bullets(doc, L["cfu"])

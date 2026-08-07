@@ -1034,14 +1034,14 @@ function GuideView({ guide }: any) {
               {(L.activate_prior_knowledge || L.i_do || L.we_do || L.explore_yall_do || L.you_do) ? (
                 <div className="space-y-1">
                   <div className="font-semibold text-gray-700 text-xs">
-                    Teaching Strategy — ACES Gradual Release
+                    Teaching Strategy — ACES Gradual Release (Scripted)
                   </div>
                   <Line label="Activate Prior Knowledge" value={L.activate_prior_knowledge} />
-                  <Line label="🅰 ASSEMBLE · I Do (Teacher Models)" value={L.i_do} />
-                  <Line label="🅲 CONNECT · We Do (Guided Practice)" value={L.we_do} />
-                  <Line label="🅴 EXPLORE · Y'all Do (Collaborative — pairs or groups of 4)" value={L.explore_yall_do} />
-                  <Line label="🆂 SOLO · You Do (Independent Practice)" value={L.you_do} />
-                  {L.cubs && (
+                  <Phase label="🅰 ASSEMBLE · I Do (Teacher Models)" phase={L.i_do} />
+                  <Phase label="🅲 CONNECT · We Do (Guided Practice)" phase={L.we_do} />
+                  <Phase label="🅴 EXPLORE · Y'all Do (Collaborative — pairs or groups of 4)" phase={L.explore_yall_do} />
+                  <Phase label="🆂 SOLO · You Do (Independent Practice + CUBS)" phase={L.you_do} />
+                  {L.cubs && typeof L.you_do !== "object" && (
                     <div className="rounded border border-amber-100 bg-amber-50/60 px-2 py-1 ml-4">
                       <span className="font-semibold text-gray-700 text-xs">
                         🦸 SOLO · Apply CUBS to the problem:{" "}
@@ -1053,7 +1053,8 @@ function GuideView({ guide }: any) {
               ) : (
                 <List label="Teaching Strategy (step-by-step)" items={L.teaching_strategy} ordered />
               )}
-              {L.cpa && (L.cpa.concrete || L.cpa.pictorial || L.cpa.abstract) && (
+              {typeof L.i_do !== "object" &&
+                L.cpa && (L.cpa.concrete || L.cpa.pictorial || L.cpa.abstract) && (
                 <div className="grid sm:grid-cols-3 gap-2">
                   <CPA label="Concrete" value={L.cpa.concrete} />
                   <CPA label="Pictorial" value={L.cpa.pictorial} />
@@ -1087,7 +1088,24 @@ function GuideView({ guide }: any) {
                   )}
                 </div>
               )}
-              <Line label="⭐ Level 3 Proficiency Example (student voice)" value={L.level3_example} />
+              {L.level3_look_like?.problem ? (
+                <div className="rounded-lg border border-green-200 bg-green-50/60 p-2">
+                  <div className="font-semibold text-green-800 text-xs mb-1">
+                    ⭐ What a Level 3 (On-Grade) Looks Like — This Lesson
+                  </div>
+                  <Line label="Problem" value={L.level3_look_like.problem} />
+                  <Line label="Worked solution" value={L.level3_look_like.solution} />
+                  <Line
+                    label="Student explanation"
+                    value={L.level3_look_like.student_explanation}
+                  />
+                </div>
+              ) : (
+                <Line
+                  label="⭐ Level 3 Proficiency Example (student voice)"
+                  value={L.level3_example}
+                />
+              )}
               <List label="Checks for Understanding" items={L.cfu} />
               <Line
                 label="🎫 Exit Ticket"
@@ -1151,6 +1169,51 @@ function CPA({ label, value }: { label: string; value: string }) {
     <div className="bg-gray-50 rounded p-2">
       <div className="text-xs font-semibold text-avocado-dark">{label}</div>
       <p className="text-xs text-gray-600 whitespace-pre-wrap">{value || "—"}</p>
+    </div>
+  );
+}
+
+// One fully-scripted ACES phase: problem, teacher script, teacher moves,
+// Concrete/Pictorial/Abstract, CUBS (Solo), look-fors. Tolerates legacy strings.
+function Phase({ label, phase }: { label: string; phase: any }) {
+  if (!phase) return null;
+  if (typeof phase === "string") return <Line label={label} value={phase} />;
+  const say = phase.say ? (Array.isArray(phase.say) ? phase.say : [phase.say]) : [];
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-2 ml-1">
+      <div className="font-semibold text-avocado-dark text-xs mb-1">{label}</div>
+      {phase.structure && <Line label="Collaborative structure" value={phase.structure} />}
+      {phase.roles && <Line label="Each partner/group role" value={phase.roles} />}
+      {phase.problem && <Line label="Problem worked" value={phase.problem} />}
+      {say.length > 0 && (
+        <div className="my-1">
+          <div className="text-xs font-semibold text-gray-700">Teacher says:</div>
+          <ul className="list-disc ml-5 text-sm text-gray-700 space-y-0.5">
+            {say.map((s: string, i: number) => (
+              <li key={i} className="italic">
+                “{s}”
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {phase.do && <Line label="Teacher does" value={phase.do} />}
+      {(phase.concrete || phase.pictorial || phase.abstract) && (
+        <div className="grid sm:grid-cols-3 gap-2 my-1">
+          <CPA label="Concrete (manipulative)" value={phase.concrete} />
+          <CPA label="Pictorial (drawing)" value={phase.pictorial} />
+          <CPA label="Abstract (equation)" value={phase.abstract} />
+        </div>
+      )}
+      {phase.cubs && (
+        <div className="rounded border border-amber-100 bg-amber-50/60 px-2 py-1">
+          <span className="font-semibold text-gray-700 text-xs">
+            🦸 CUBS on this problem:{" "}
+          </span>
+          <span className="text-xs text-gray-700">{phase.cubs}</span>
+        </div>
+      )}
+      {phase.look_for && <Line label="Look for" value={phase.look_for} />}
     </div>
   );
 }

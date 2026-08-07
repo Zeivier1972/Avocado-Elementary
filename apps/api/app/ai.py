@@ -450,9 +450,42 @@ def _ensure_lesson_extras(lesson: dict, topic_vocab: list) -> dict:
         lesson["vocabulary"] = (topic_vocab or [])[:6]
     if not lesson.get("vocabulary_integration"):
         lesson["vocabulary_integration"] = _VOCAB_INTEGRATION_DEFAULT
+    # CUBS now lives inside the Solo (You Do) phase; keep a top-level copy for
+    # older saved-guide renderers and backfill the phase if the model omitted it.
+    yd = lesson.get("you_do")
+    if isinstance(yd, dict) and not yd.get("cubs"):
+        yd["cubs"] = lesson.get("cubs") or _CUBS_DEFAULT
     if not lesson.get("cubs"):
-        lesson["cubs"] = _CUBS_DEFAULT
+        lesson["cubs"] = (yd.get("cubs") if isinstance(yd, dict) else None) or _CUBS_DEFAULT
+    # Guarantee a specific "what Level 3 looks like" block on every lesson.
+    l3 = lesson.get("level3_look_like")
+    if not (isinstance(l3, dict) and l3.get("problem")):
+        lesson["level3_look_like"] = {
+            "problem": "an on-grade problem for this benchmark",
+            "solution": "the fully worked solution with the answer",
+            "student_explanation": lesson.get("level3_example")
+            or "A Level 3 student solves it independently and explains the reasoning "
+               "using the lesson vocabulary.",
+        }
     return lesson
+
+
+def _as_phase(val, *, problem, say, do, concrete, pictorial, abstract, **extra):
+    """Coerce an authored ACES-phase value into the scripted phase object shape.
+    Accepts a ready-made dict, a legacy string (kept as the teacher script), or
+    nothing (falls back to the provided scaffold)."""
+    base = {"problem": problem, "say": say if isinstance(say, list) else [say],
+            "do": do, "concrete": concrete, "pictorial": pictorial,
+            "abstract": abstract, **extra}
+    if isinstance(val, dict):
+        for k, v in val.items():
+            if v not in (None, "", [], {}):
+                base[k] = v
+        return base
+    if isinstance(val, str) and val.strip():
+        base["say"] = [val.strip()]
+        return base
+    return base
 
 
 def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
@@ -477,38 +510,65 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             v = L.get(key)
             return v if v not in (None, "", [], {}) else default
 
+        skill = title.lower() or "the skill"
+        c_conc = f"Use {conc} to build/represent {skill}."
+        c_pict = "Draw a place-value chart, number line, array, or bar model to represent it."
+        c_abst = "Record the matching equation with numbers and symbols."
         activate = pick("activate_prior_knowledge",
             f"Review prerequisite skills ({', '.join(pre) if pre else 'earlier-grade foundations'}) "
             "and introduce vocabulary: " + (", ".join(vocab[:4]) if vocab else "key terms") + ".")
-        i_do = pick("i_do",
-            f"Model {title.lower() or 'the skill'} with {conc}; think aloud step by step.")
-        we_do = pick("we_do",
-            "Guided practice with immediate feedback; students explain their reasoning (MTR 4.1).")
-        # ACES: Explore = Y'all Do — collaborative team practice between We Do and
-        # You Do (teacher observes and supports).
-        explore = pick("explore_yall_do",
-            f"In pairs (Rally Coach) or groups of 4 (Numbered Heads Together), students apply "
-            f"{title.lower() or 'the skill'} on a shared task: each takes a turn while a "
-            "partner coaches and checks, then the team compares and justifies. Teacher "
-            "observes and supports.")
-        you_do = pick("you_do",
-            f"Students practice {title.lower() or 'the skill'} independently "
-            "(3–5 problems); pull a small group for reteach.")
+        # ACES phases as scripted objects (Assemble → Connect → Explore → Solo).
+        i_do = _as_phase(L.get("i_do"),
+            problem=f"a worked example of {skill}",
+            say=[f"Watch how I {skill}. First I…", "I'll think out loud so you hear my reasoning."],
+            do=f"Model {skill} step by step with {conc}; write each step where students can see it.",
+            concrete=c_conc, pictorial=c_pict, abstract=c_abst,
+            look_for="Students track the steps and can name what I did first.")
+        we_do = _as_phase(L.get("we_do"),
+            problem=f"a second example of {skill} (different numbers)",
+            say=["Let's do this one together — what should we do first?",
+                 "Tell your partner the next step, then we'll check."],
+            do="Guided practice on mini-whiteboards with immediate feedback; students explain their reasoning (MTR 4.1).",
+            concrete=c_conc, pictorial=c_pict, abstract=c_abst,
+            look_for="Most students hold up a correct step and can justify it.")
+        # Explore = Y'all Do — collaborative team practice (teacher observes/supports).
+        explore = _as_phase(L.get("explore_yall_do"),
+            structure="Rally Coach (pairs) or Numbered Heads Together (groups of 4)",
+            roles="Partner A solves and explains aloud while Partner B coaches and checks; then swap. "
+                  "In groups of 4, each member solves one, then the team compares and agrees on the answer.",
+            problem=f"a shared {skill} task (different numbers again)",
+            say=[f"With your team, apply {skill} to this task.",
+                 "Use the sentence frame when you explain your thinking."],
+            do="Circulate, listen for reasoning, and support teams that are stuck.",
+            concrete=c_conc, pictorial=c_pict, abstract=c_abst,
+            look_for="Every student takes a turn and explains using the vocabulary.")
+        you_do = _as_phase(L.get("you_do"),
+            problem=f"an independent {skill} word problem (different numbers again)",
+            say=["Now you'll try one on your own.", "Use CUBS to understand the story before you solve."],
+            cubs=pick("cubs", _CUBS_DEFAULT),
+            do="Students work independently (3–5 problems); pull a small group for reteach.",
+            concrete=c_conc, pictorial=c_pict, abstract=c_abst,
+            look_for="Correct answer, labeled, with a Level-3 explanation.")
         cfu = pick("cfu", [
             "Quick check on mini-whiteboards.",
             "Ask a 'why' question to surface reasoning, not just the answer.",
         ])
         exit_ticket = pick("exit_ticket",
             "One problem targeting today's benchmark — score ≥69% = green.")
-        cpa = pick("cpa", {
-            "concrete": f"Use {conc} to build/represent the concept.",
-            "pictorial": "Draw place-value charts, number lines, or models to represent it.",
-            "abstract": "Record with numbers and symbols; explain the reasoning in writing.",
-        })
-        level3 = pick("level3_example",
-            "A Level 3 student can independently "
-            + (focus[:1].lower() + focus[1:] if focus else title.lower())
-            + " and explain their reasoning using correct vocabulary.")
+        cpa = pick("cpa", {"concrete": c_conc, "pictorial": c_pict, "abstract": c_abst})
+        # "What a Level 3 looks like" for THIS lesson — a specific worked problem.
+        _l3 = L.get("level3_look_like")
+        if isinstance(_l3, dict) and _l3.get("problem"):
+            level3_look = _l3
+        else:
+            level3_look = {
+                "problem": f"an on-grade {skill} problem",
+                "solution": "the fully worked solution with the answer",
+                "student_explanation":
+                    "A Level 3 student solves it independently and explains the reasoning "
+                    "using the lesson vocabulary.",
+            }
+        level3 = pick("level3_example", level3_look.get("student_explanation", ""))
         # Vocabulary FROM the pacing guide (lesson-specific if authored, else the
         # topic's terms), plus how to teach it and how CUBS applies this lesson.
         lesson_vocab = pick("vocabulary", vocab[:6])
@@ -521,12 +581,17 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
         misc = pick("misconceptions", _parse_misconceptions(s.get("misconceptions", "")))
         crit = pick("success_criteria", ([focus] if focus else []) + clar[:2])
         # Back-compat numbered strategy, assembled from the ACES phases.
+        def _phase_line(p):
+            if isinstance(p, dict):
+                say = " ".join(p.get("say", [])) if isinstance(p.get("say"), list) else str(p.get("say", ""))
+                return (p.get("problem", "") + " — " + say).strip(" —") or p.get("do", "")
+            return str(p)
         strategy = pick("teaching_strategy", [
             f"Activate Prior Knowledge — {activate}",
-            f"Assemble (I Do) — {i_do}",
-            f"Connect (We Do) — {we_do}",
-            f"Explore (Y'all Do) — {explore}",
-            f"Solo (You Do) — {you_do}",
+            f"Assemble (I Do) — {_phase_line(i_do)}",
+            f"Connect (We Do) — {_phase_line(we_do)}",
+            f"Explore (Y'all Do) — {_phase_line(explore)}",
+            f"Solo (You Do) — {_phase_line(you_do)}",
         ])
 
         out.append({
@@ -554,6 +619,7 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             "teaching_strategy": strategy,
             "cpa": cpa,
             "level3_example": level3,
+            "level3_look_like": level3_look,
             "cfu": cfu,
             "you_do": you_do,
             "exit_ticket": exit_ticket,
@@ -582,6 +648,26 @@ def _std_context(standards: list[dict]) -> str:
     )
 
 
+# Each ACES phase is a fully-scripted object: the exact problem worked, the words
+# the teacher SAYS (verbatim think-aloud / questions), what the teacher DOES, and
+# the Concrete→Pictorial→Abstract for THAT phase's problem. A brand-new teacher
+# can read it and deliver it. All fields must be grade-appropriate for the header.
+_PHASE_SHAPE = (
+    '{"problem":"the exact problem worked in THIS phase (real numbers) — a DIFFERENT '
+    'problem from every other phase",'
+    '"say":["the actual words the teacher speaks, line 1 (a real think-aloud or real '
+    'question at an elementary reading level)","line 2","line 3"],'
+    '"do":"what the teacher physically does while saying it (where to write, what to '
+    'point to, how students respond — whiteboards, turn-and-talk, choral)",'
+    '"concrete":"the NAMED manipulative and the exact hands-on steps for THIS problem '
+    '(base-ten blocks 🟦🟩🟨⬜ / two-color counters / connecting cubes / fraction tiles / '
+    'array tiles / number line — pick what fits the grade & benchmark)",'
+    '"pictorial":"the exact labeled drawing to make (place-value chart / number line / '
+    'array / bar model with the numbers filled in)",'
+    '"abstract":"the exact equation or notation, e.g. 3,476 = 3,000 + 400 + 70 + 6",'
+    '"look_for":"what a correct student response sounds/looks like in this phase"}'
+)
+
 _LESSON_SCHEMA = (
     '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
     '"learning_goal":"I can ... (student-friendly)",'
@@ -593,37 +679,52 @@ _LESSON_SCHEMA = (
     '"misconceptions":[{"misconception":"...","example":"specific wrong answer a student gives","fix":"correction strategy"}],'
     '"vocabulary":["the pacing-guide vocabulary terms used in THIS lesson"],'
     '"vocabulary_integration":"specifically how to teach these exact terms in THIS lesson (kid-friendly definition, where in the lesson they are introduced/used, the sentence frame)",'
-    '"cubs":"walk THIS lesson\'s Solo/You-Do problem through CUBS with the actual numbers: what to Circle, Underline, Box, and how to Solve & Check",'
-    '"activate_prior_knowledge":"a specific warm-up that connects to THIS lesson",'
-    '"i_do":"ASSEMBLE (I Do): teacher models ONE specific worked example with a think-aloud (exact numbers)",'
-    '"we_do":"CONNECT (We Do): guided practice on a DIFFERENT specific example + how students engage together",'
-    '"explore_yall_do":"EXPLORE (Y\'all Do): a NAMED collaborative structure (e.g. Rally Coach in pairs, Numbered Heads Together in groups of 4) with exactly what each partner/member does",'
-    '"cpa":{"concrete":"exact hands-on steps with the named materials and numbers (base-ten emoji like 🟦🟩🟨⬜ when place value)","pictorial":"the exact drawing to make (labeled place-value chart / number line with the numbers)","abstract":"the exact equation/symbols, e.g. 3,476 = 3,000 + 400 + 70 + 6"},'
-    '"level3_example":"a first-person student quote explaining the reasoning at ALD Level 3",'
-    '"cfu":["specific problem 1","specific problem 2"],'
-    '"you_do":"independent practice task with specific numbers",'
+    '"activate_prior_knowledge":"a specific warm-up (with its actual review problem) that connects to THIS lesson",'
+    f'"i_do":{_PHASE_SHAPE},'
+    f'"we_do":{_PHASE_SHAPE},'
+    '"explore_yall_do":{"structure":"the NAMED collaborative structure (e.g. Rally Coach in pairs, Numbered Heads Together in groups of 4)",'
+    '"roles":"exactly what each partner/member does, step by step",'
+    '"problem":"the shared task with real numbers (DIFFERENT from every other phase)",'
+    '"say":["the exact launch directions the teacher gives","the sentence frame students must use"],'
+    '"do":"what the teacher watches for and how to support while circulating",'
+    '"concrete":"named manipulative + steps","pictorial":"the labeled drawing","abstract":"the equation","look_for":"what mastery looks like here"},'
+    '"you_do":{"problem":"the independent word problem with real numbers (DIFFERENT from every other phase)",'
+    '"say":["how the teacher sets up independent work","the CUBS reminder in kid words"],'
+    '"cubs":"walk THIS problem through CUBS with the ACTUAL numbers: what to Circle, Underline, Box, and how to Solve & Check",'
+    '"do":"what the teacher does (e.g. pull a small group to reteach ...)",'
+    '"concrete":"named manipulative + steps","pictorial":"the labeled drawing","abstract":"the equation","look_for":"the correct answer + what a Level-3 explanation sounds like"},'
+    '"level3_look_like":{"problem":"the SPECIFIC on-grade problem a Level 3 (proficient) student solves for THIS lesson — real numbers, not vague","solution":"the fully worked solution with the answer","student_explanation":"the first-person reasoning a Level-3 student gives, using the lesson vocabulary"},'
+    '"cfu":["specific check problem 1","specific check problem 2"],'
     '"exit_ticket":{"problem":"one problem","answer":"the answer"}}]'
 )
 
 _LESSON_RULES = (
-    "Write for a BRAND-NEW teacher who needs step-by-step support: every field must "
-    "be specific and classroom-ready — exact numbers, exact steps, exact questions "
-    "— never generic filler.\n"
-    "- CPA must be specific: Concrete = the exact manipulative steps and numbers "
-    "(include base-ten emoji 🟦🟩🟨⬜ for place value); Pictorial = the exact drawing "
-    "to make (labeled chart/number line with the numbers); Abstract = the exact "
-    "equation.\n"
-    "- Explore (Y'all Do): NAME a collaborative structure (Rally Coach / Pairs Check "
-    "in pairs; Numbered Heads Together / Round Robin / Team Huddle in groups of 4) "
-    "and say exactly what each partner/member does.\n"
-    "- cubs: walk THIS lesson's Solo/You-Do problem through CUBS with the ACTUAL "
-    "numbers (Circle / Underline / Box / Solve & Check).\n"
-    "- vocabulary from the pacing guide + specifically how to teach those exact terms "
-    "here; a 3-column misconceptions table (misconception, a real example error, the "
-    "fix); the official ALD Level-3 language for the benchmark.\n"
-    "WITHIN each lesson every part (I Do, We Do, Y'all Do, CFU, You Do, Exit) uses "
-    "DIFFERENT numbers — never reuse a number or a problem. Across lessons, never "
-    "reuse wording. Do not invent standards or student data."
+    "You are SCRIPTING a lesson that a BRAND-NEW elementary teacher will read and "
+    "deliver word-for-word. NO SHORTCUTS, no vague or generic filler.\n"
+    "Every ACES phase — i_do (ASSEMBLE/model), we_do (CONNECT/guided), explore_yall_do "
+    "(EXPLORE/collaborative), you_do (SOLO/independent) — MUST contain:\n"
+    "  1) 'problem' — the exact problem worked in that phase, and a DIFFERENT problem "
+    "in every phase (never reuse a number or problem within the lesson);\n"
+    "  2) 'say' — the ACTUAL words the teacher speaks (a real think-aloud and real "
+    "questions), 2–4 short lines at an elementary reading level;\n"
+    "  3) 'do' — what the teacher physically does;\n"
+    "  4) 'concrete' / 'pictorial' / 'abstract' for THAT phase's problem: Concrete = "
+    "the NAMED manipulative (base-ten blocks 🟦🟩🟨⬜, two-color counters, connecting "
+    "cubes, fraction tiles, arrays, number line — choose what fits the grade & "
+    "benchmark) with exact steps; Pictorial = the exact labeled drawing; Abstract = "
+    "the exact equation.\n"
+    "Use REAL, grade-appropriate examples like a math textbook would: small whole "
+    "numbers for K–1, larger/multi-step for 2–3, fractions where the benchmark calls "
+    "for it. Keep every number and word appropriate for the grade in the header.\n"
+    "- explore_yall_do: NAME the collaborative structure (Rally Coach / Pairs Check in "
+    "pairs; Numbered Heads Together / Round Robin / Team Huddle in groups of 4) and give "
+    "each partner/member's exact role.\n"
+    "- you_do: include CUBS walked through THIS problem's actual numbers.\n"
+    "- level3_look_like: a SPECIFIC worked problem (real numbers) showing exactly what "
+    "a Level 3 (proficient) student does for THIS lesson — never vague.\n"
+    "- vocabulary from the pacing guide + how to teach those exact terms here; a "
+    "3-column misconceptions table (misconception, a real example error, the fix).\n"
+    "Do not invent standards or student data. Output ONLY the JSON array."
 )
 
 
@@ -696,7 +797,7 @@ def _lesson_detail(client, topic, std_ctx, batch, pacing_text):
     return _llm_json(
         client, prompt,
         "You output ONLY a valid JSON array, no prose or fences. Finish every "
-        "object completely.", 8000)
+        "object completely — never stop mid-object.", 16000)
 
 
 def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = None):
@@ -723,9 +824,11 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
         if not skeleton:
             return None, "could not determine the lesson list from the pacing guide"
 
+        # Two fully-scripted lessons per call: small enough that a richly-scripted
+        # batch never truncates, few enough calls to keep generation responsive.
         out, errs = [], []
-        for i in range(0, len(skeleton), 3):
-            batch = skeleton[i:i + 3]
+        for i in range(0, len(skeleton), 2):
+            batch = skeleton[i:i + 2]
             detail, err = _lesson_detail(client, topic, std_ctx, batch, pacing_text)
             if detail:
                 out.extend(detail)
