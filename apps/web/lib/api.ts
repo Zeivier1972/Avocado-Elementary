@@ -81,6 +81,16 @@ export const api = {
     req(`/reports/fast/${grade}?subject=${subject}&period=${period}`),
   teachers: () => req("/reports/teachers"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
+  coachHome: () => req("/coach/home"),
+  teacherNotes: (id: string) => req(`/coach/teacher/${id}/notes`),
+  addTeacherNote: (id: string, body: any) =>
+    req(`/coach/teacher/${id}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  toggleNote: (id: string) => req(`/coach/notes/${id}`, { method: "PATCH" }),
+  deleteNote: (id: string) => req(`/coach/notes/${id}`, { method: "DELETE" }),
   resetRoster: () => req("/admin/roster/reset", { method: "POST" }),
   deletePacingTopic: (id: string) =>
     req(`/coach/pacing/${id}`, { method: "DELETE" }),
@@ -202,5 +212,5 @@ const COACH_ROLES = [
 ];
 
 export function homeForRole(role: string): string {
-  return COACH_ROLES.includes(role) ? "/coach" : "/dashboard";
+  return COACH_ROLES.includes(role) ? "/home" : "/dashboard";
 }

@@ -336,3 +336,20 @@ class PlanningDocument(Base, TimestampMixin):
     size: Mapped[int] = mapped_column(Integer, default=0)
     data: Mapped[bytes] = mapped_column(LargeBinary)
     uploaded_by: Mapped[str] = mapped_column(String, default="")
+
+
+class CoachNote(Base, TimestampMixin):
+    """A coach's note about a teacher — the on-ramp to coaching cycles. Captures
+    focus areas, observations, and next steps tied to a teacher (the CRM
+    "account"). kind lets the UI separate a running note from a focus area or a
+    follow-up next step."""
+    __tablename__ = "coach_notes"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    teacher_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    author_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    kind: Mapped[str] = mapped_column(String, default="note")  # note|focus|next_step
+    body: Mapped[str] = mapped_column(Text, default="")
+    # Optional due date for next_step items (ISO yyyy-mm-dd); "" if none.
+    due_date: Mapped[str] = mapped_column(String, default="")
+    done: Mapped[bool] = mapped_column(Boolean, default=False)

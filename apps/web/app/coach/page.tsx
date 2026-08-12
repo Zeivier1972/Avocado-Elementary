@@ -374,6 +374,18 @@ export default function CoachPage() {
         </div>
         <div className="flex items-center gap-4">
           <a
+            href="/home"
+            className="text-sm font-semibold text-avocado-dark hover:underline"
+          >
+            🏠 Home
+          </a>
+          <a
+            href="/teachers"
+            className="text-sm font-semibold text-avocado-dark hover:underline"
+          >
+            👩‍🏫 Teachers
+          </a>
+          <a
             href="/calendar"
             className="text-sm font-semibold text-avocado-dark hover:underline"
           >

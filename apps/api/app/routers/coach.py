@@ -26,6 +26,7 @@ from app.deps import audit, get_current_user
 from app.models import (
     CalendarEntry,
     ClassRoom,
+    CoachNote,
     District,
     PacingTopic,
     PlanningDocument,
@@ -782,3 +783,131 @@ def delete_guide(
     audit(db, actor=user, action="delete", entity_type="saved_guide",
           entity_id=guide_id, purpose="planning_management")
     return {"deleted": True, "title": title}
+
+
+# --- Coach Home (command center) + Teachers hub -------------------------------
+
+@router.get("/home")
+def coach_home(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The command-center landing: school-goal snapshot, teachers to watch
+    (lowest % at Level 3+), open follow-ups (next-step notes), and quick counts.
+    Composed from the existing reports so there is a single source of truth."""
+    from datetime import date as _date
+    from app.routers.reports import school_goal as _school_goal
+    from app.routers.reports import teachers as _teachers_report
+
+    goal = _school_goal(db=db, user=user)
+    tr = _teachers_report(db=db, user=user)
+    teachers = tr.get("teachers", [])
+    # "Teachers to watch": those with data, lowest % Level 3+ first.
+    with_data = [t for t in teachers if t.get("pct_level_3_plus") is not None]
+    watch = sorted(with_data, key=lambda t: t["pct_level_3_plus"])[:6]
+
+    # Open follow-ups (next steps not done), soonest due first.
+    notes = db.query(CoachNote).filter(
+        CoachNote.tenant_id == user.tenant_id,
+        CoachNote.kind == "next_step",
+        CoachNote.done == False).all()  # noqa: E712
+    tname = {u.id: u.name for u in db.query(User).filter(
+        User.tenant_id == user.tenant_id).all()}
+    today = _date.today().isoformat()
+    followups = sorted(
+        [{"id": n.id, "teacher_id": n.teacher_id,
+          "teacher": tname.get(n.teacher_id, ""), "body": n.body,
+          "due_date": n.due_date, "overdue": bool(n.due_date and n.due_date < today)}
+         for n in notes],
+        key=lambda x: (x["due_date"] == "", x["due_date"]))
+
+    return {
+        "coach": {"name": user.name, "role": user.role},
+        "today": today,
+        "goal": goal,
+        "teachers_to_watch": watch,
+        "followups": followups,
+        "counts": {
+            "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
+            "students": db.query(Student).filter(
+                Student.tenant_id == user.tenant_id).count(),
+            "classes": tr.get("diagnostics", {}).get("total_classes", 0),
+        },
+    }
+
+
+@router.get("/teacher/{teacher_id}/notes")
+def list_teacher_notes(
+    teacher_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Coach notes / focus areas / next steps for one teacher, newest first."""
+    rows = db.query(CoachNote).filter(
+        CoachNote.tenant_id == user.tenant_id,
+        CoachNote.teacher_id == teacher_id).order_by(
+        CoachNote.created_at.desc()).all()
+    return {"notes": [
+        {"id": n.id, "kind": n.kind, "body": n.body, "due_date": n.due_date,
+         "done": n.done,
+         "created_at": n.created_at.isoformat() if n.created_at else ""}
+        for n in rows]}
+
+
+class NoteIn(BaseModel):
+    kind: str = "note"          # note | focus | next_step
+    body: str
+    due_date: str = ""
+
+
+@router.post("/teacher/{teacher_id}/notes")
+def add_teacher_note(
+    teacher_id: str,
+    payload: NoteIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    if not payload.body.strip():
+        raise HTTPException(400, "Note text is required.")
+    teacher = db.get(User, teacher_id)
+    if not teacher or teacher.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Teacher not found")
+    kind = payload.kind if payload.kind in ("note", "focus", "next_step") else "note"
+    n = CoachNote(tenant_id=user.tenant_id, teacher_id=teacher_id,
+                  author_id=user.id, kind=kind, body=payload.body.strip(),
+                  due_date=payload.due_date or "")
+    db.add(n)
+    db.commit()
+    return {"id": n.id, "kind": n.kind, "body": n.body, "due_date": n.due_date,
+            "done": n.done,
+            "created_at": n.created_at.isoformat() if n.created_at else ""}
+
+
+@router.patch("/notes/{note_id}")
+def toggle_note(
+    note_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Mark a next-step follow-up done / not-done."""
+    n = db.get(CoachNote, note_id)
+    if not n or n.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Note not found")
+    n.done = not n.done
+    db.add(n)
+    db.commit()
+    return {"id": n.id, "done": n.done}
+
+
+@router.delete("/notes/{note_id}")
+def delete_note(
+    note_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    n = db.get(CoachNote, note_id)
+    if not n or n.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Note not found")
+    db.delete(n)
+    db.commit()
+    return {"deleted": True}
