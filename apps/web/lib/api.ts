@@ -91,6 +91,16 @@ export const api = {
     }),
   toggleNote: (id: string) => req(`/coach/notes/${id}`, { method: "PATCH" }),
   deleteNote: (id: string) => req(`/coach/notes/${id}`, { method: "DELETE" }),
+  keyDates: (category?: string) =>
+    req(`/coach/dates${category ? `?category=${encodeURIComponent(category)}` : ""}`),
+  addKeyDate: (body: any) =>
+    req("/coach/dates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  deleteKeyDate: (id: string) =>
+    req(`/coach/dates/${id}`, { method: "DELETE" }),
   resetRoster: () => req("/admin/roster/reset", { method: "POST" }),
   deletePacingTopic: (id: string) =>
     req(`/coach/pacing/${id}`, { method: "DELETE" }),

@@ -7,6 +7,27 @@ import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
 
+const CAT_META: Record<string, { label: string; cls: string }> = {
+  assessment: { label: "Assessment", cls: "bg-red-50 text-red-700 border-red-200" },
+  progress_report: { label: "Progress report", cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  report_card: { label: "Report card", cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  planning_day: { label: "Planning day", cls: "bg-avocado/10 text-avocado-dark border-avocado/30" },
+  vertical_planning: { label: "Vertical planning", cls: "bg-avocado/10 text-avocado-dark border-avocado/30" },
+  faculty_meeting: { label: "Faculty mtg", cls: "bg-purple-50 text-purple-700 border-purple-200" },
+  eesac_meeting: { label: "EESAC", cls: "bg-purple-50 text-purple-700 border-purple-200" },
+  drill: { label: "Drill", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  emergency_drill: { label: "Emergency drill", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  custom: { label: "Date", cls: "bg-gray-100 text-gray-600 border-gray-200" },
+};
+
+function whenLabel(d: any) {
+  if (d.active) return "now open";
+  if (d.days_until === 0) return "today";
+  if (d.days_until === 1) return "tomorrow";
+  if (d.days_until > 0) return `in ${d.days_until} days`;
+  return "";
+}
+
 function pctColor(pct: number | null) {
   if (pct === null || pct === undefined) return "text-gray-400";
   if (pct >= 60) return "text-green-700";
@@ -51,6 +72,7 @@ export default function CoachHomePage() {
   const byGrade = home?.goal?.by_grade || {};
   const watch = home?.teachers_to_watch || [];
   const followups = home?.followups || [];
+  const upcoming = home?.upcoming_dates || [];
   const counts = home?.counts || {};
   const dateLabel = home?.today
     ? new Date(home.today + "T00:00:00").toLocaleDateString(undefined, {
@@ -255,6 +277,83 @@ export default function CoachHomePage() {
               </ul>
             )}
           </div>
+        </div>
+
+        {/* Upcoming key dates */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="font-semibold text-gray-800">Upcoming dates</div>
+            <a href="/dates" className="text-sm text-avocado-dark hover:underline">
+              All key dates →
+            </a>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            From the school calendar — assessment windows, report cards, planning
+            days, meetings, and drills. Stay ahead.
+          </p>
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              No upcoming dates in the next several weeks.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-50">
+              {upcoming.map((d: any) => {
+                const meta = CAT_META[d.category] || CAT_META.custom;
+                const soon = d.active || (d.days_until !== null && d.days_until <= 7);
+                return (
+                  <li
+                    key={d.id}
+                    className="flex items-center gap-3 py-2"
+                  >
+                    <div className="w-14 shrink-0 text-center">
+                      <div className="text-xs text-gray-400 uppercase">
+                        {new Date(d.date + "T00:00:00").toLocaleDateString(
+                          undefined,
+                          { month: "short" }
+                        )}
+                      </div>
+                      <div className="text-lg font-bold text-gray-800 leading-none tabular-nums">
+                        {new Date(d.date + "T00:00:00").getDate()}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-gray-700 truncate">
+                        {d.title}
+                        {d.grade && (
+                          <span className="text-gray-400"> · {d.grade}</span>
+                        )}
+                      </div>
+                      <div className="mt-0.5">
+                        <span
+                          className={`text-[10px] font-mono uppercase border rounded px-1.5 py-0.5 ${meta.cls}`}
+                        >
+                          {meta.label}
+                        </span>
+                        {d.end_date && (
+                          <span className="text-[11px] text-gray-400 ml-2">
+                            through{" "}
+                            {new Date(
+                              d.end_date + "T00:00:00"
+                            ).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-xs font-semibold shrink-0 ${
+                        soon ? "text-red-600" : "text-gray-400"
+                      }`}
+                    >
+                      {whenLabel(d)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
     </main>

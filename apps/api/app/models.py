@@ -338,6 +338,27 @@ class PlanningDocument(Base, TimestampMixin):
     uploaded_by: Mapped[str] = mapped_column(String, default="")
 
 
+class KeyDate(Base, TimestampMixin):
+    """A district/school date the coach needs to stay ahead of: assessment
+    windows, report-card/progress-report dates, planning days, faculty & EESAC
+    meetings, drills. Single-day events set date only; windows set date +
+    end_date. Seeded from the school calendar, and editable by the coach."""
+    __tablename__ = "key_dates"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    title: Mapped[str] = mapped_column(String)
+    # assessment | progress_report | report_card | planning_day |
+    # vertical_planning | faculty_meeting | eesac_meeting | drill |
+    # emergency_drill | custom
+    category: Mapped[str] = mapped_column(String, default="custom", index=True)
+    date: Mapped[str] = mapped_column(String, index=True)      # ISO yyyy-mm-dd
+    end_date: Mapped[str] = mapped_column(String, default="")  # ISO, "" if single-day
+    grade: Mapped[str] = mapped_column(String, default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String, default="custom")
+    created_by: Mapped[str] = mapped_column(String, default="")
+
+
 class CoachNote(Base, TimestampMixin):
     """A coach's note about a teacher — the on-ramp to coaching cycles. Captures
     focus areas, observations, and next steps tied to a teacher (the CRM

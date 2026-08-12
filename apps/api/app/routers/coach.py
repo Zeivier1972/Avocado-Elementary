@@ -28,6 +28,7 @@ from app.models import (
     ClassRoom,
     CoachNote,
     District,
+    KeyDate,
     PacingTopic,
     PlanningDocument,
     PlcAgenda,
@@ -827,6 +828,7 @@ def coach_home(
         "goal": goal,
         "teachers_to_watch": watch,
         "followups": followups,
+        "upcoming_dates": _upcoming_dates(db, user.tenant_id, within_days=45, limit=8),
         "counts": {
             "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
             "students": db.query(Student).filter(
@@ -909,5 +911,100 @@ def delete_note(
     if not n or n.tenant_id != user.tenant_id:
         raise HTTPException(404, "Note not found")
     db.delete(n)
+    db.commit()
+    return {"deleted": True}
+
+
+# --- Key dates (school calendar the coach must stay ahead of) ------------------
+
+def _date_row(d, today):
+    """Serialize a KeyDate with a computed days-until for the active end of the
+    event (a window is 'active/soon' until its end_date passes)."""
+    from datetime import date as _date
+    ref = d.end_date or d.date
+    try:
+        days = (_date.fromisoformat(d.date) - _date.fromisoformat(today)).days
+        days_to_end = (_date.fromisoformat(ref) - _date.fromisoformat(today)).days
+    except ValueError:
+        days = days_to_end = None
+    return {
+        "id": d.id, "title": d.title, "category": d.category, "date": d.date,
+        "end_date": d.end_date, "grade": d.grade, "note": d.note,
+        "source": d.source, "days_until": days,
+        "active": days_to_end is not None and days is not None
+        and days <= 0 < days_to_end + 1,
+    }
+
+
+def _upcoming_dates(db, tenant_id, within_days=45, limit=8):
+    """Dates whose window hasn't ended yet, soonest first, within a horizon."""
+    from datetime import date as _date, timedelta
+    today = _date.today()
+    horizon = (today + timedelta(days=within_days)).isoformat()
+    today_iso = today.isoformat()
+    rows = db.query(KeyDate).filter(KeyDate.tenant_id == tenant_id).all()
+    upcoming = []
+    for d in rows:
+        end = d.end_date or d.date
+        if end >= today_iso and d.date <= horizon:
+            upcoming.append(d)
+    upcoming.sort(key=lambda d: d.date)
+    return [_date_row(d, today_iso) for d in upcoming[:limit]]
+
+
+@router.get("/dates")
+def list_key_dates(
+    category: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """All key dates, chronological, with computed days-until."""
+    from datetime import date as _date
+    q = db.query(KeyDate).filter(KeyDate.tenant_id == user.tenant_id)
+    if category:
+        q = q.filter(KeyDate.category == category)
+    rows = q.order_by(KeyDate.date).all()
+    today = _date.today().isoformat()
+    return {"dates": [_date_row(d, today) for d in rows]}
+
+
+class KeyDateIn(BaseModel):
+    title: str
+    category: str = "custom"
+    date: str
+    end_date: str = ""
+    grade: str = ""
+    note: str = ""
+
+
+@router.post("/dates")
+def add_key_date(
+    payload: KeyDateIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    if not payload.title.strip() or not payload.date:
+        raise HTTPException(400, "A title and a date are required.")
+    d = KeyDate(
+        tenant_id=user.tenant_id, title=payload.title.strip(),
+        category=payload.category or "custom", date=payload.date,
+        end_date=payload.end_date or "", grade=payload.grade or "",
+        note=payload.note or "", source="custom", created_by=user.id)
+    db.add(d)
+    db.commit()
+    from datetime import date as _date
+    return _date_row(d, _date.today().isoformat())
+
+
+@router.delete("/dates/{date_id}")
+def delete_key_date(
+    date_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    d = db.get(KeyDate, date_id)
+    if not d or d.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Date not found")
+    db.delete(d)
     db.commit()
     return {"deleted": True}

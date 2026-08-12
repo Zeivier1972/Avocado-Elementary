@@ -19,6 +19,7 @@ from app.models import (
     ClassRoom,
     District,
     Enrollment,
+    KeyDate,
     PacingTopic,
     School,
     Standard,
@@ -120,6 +121,28 @@ def _load_pacing(db, tenant_id):
     return n
 
 
+def _load_key_dates(db, tenant_id) -> int:
+    """Seed the school-calendar key dates once. Guarded by the seed source so a
+    coach's later edits/deletes are never overwritten on a redeploy."""
+    seeded = db.query(KeyDate).filter(
+        KeyDate.tenant_id == tenant_id,
+        KeyDate.source == "seed_2026_2027").first()
+    if seeded:
+        return 0
+    path = DATA / "school_dates_2026_2027.json"
+    if not path.exists():
+        return 0
+    payload = json.loads(path.read_text())
+    n = 0
+    for d in payload.get("dates", []):
+        db.add(KeyDate(
+            tenant_id=tenant_id, title=d["title"], category=d.get("category", "custom"),
+            date=d["date"], end_date=d.get("end_date", ""), grade=d.get("grade", ""),
+            note=d.get("note", ""), source="seed_2026_2027"))
+        n += 1
+    return n
+
+
 def _get_or_create_user(db, *, tenant_id, school_id, name, email, role, scope):
     u = db.query(User).filter(User.email == email).first()
     if u:
@@ -182,6 +205,7 @@ def run():
         codes.add(code)
     n_math = _load_math_standards(db, codes)
     n_pacing = _load_pacing(db, district.id)  # idempotent per topic
+    n_dates = _load_key_dates(db, district.id)  # school calendar, seeded once
     db.flush()
 
     # Student demo (ELA) — only build once, guarded by class existence.
