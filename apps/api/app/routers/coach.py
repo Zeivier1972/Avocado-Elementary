@@ -277,52 +277,73 @@ class AssistantIn(BaseModel):
     history: list[dict] = []
 
 
-def _school_context(db: Session, tenant_id: str) -> dict:
+def _school_context(db: Session, user: User) -> dict:
+    """A comprehensive, live snapshot of the whole system for the AI Coach —
+    goal progress, per-teacher standing, pacing, saved guides, coaching notes,
+    and upcoming key dates — so it can answer questions about what's actually
+    happening. Student data stays aggregate/teacher-level (no student names)."""
+    from datetime import date as _date
+    from app.routers.reports import school_goal as _school_goal
+    from app.routers.reports import teachers as _teachers_report
+
+    tenant_id = user.tenant_id
     school = db.query(School).filter(School.tenant_id == tenant_id).first()
     students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
     by_grade: dict[str, int] = {}
-    fast_levels: dict[str, int] = {}
     for s in students:
         by_grade[s.grade_level] = by_grade.get(s.grade_level, 0) + 1
-        lvl = (s.flags or {}).get("fast_math_level")
-        if lvl:
-            fast_levels[str(lvl)] = fast_levels.get(str(lvl), 0) + 1
-    teachers = (db.query(User)
-                .filter(User.tenant_id == tenant_id, User.role == "teacher").all())
-    topics = db.query(PacingTopic).filter(
-        PacingTopic.tenant_id == tenant_id).all()
-    # FAST Math proficiency by grade (level 3+) for the assistant to reason on.
-    fast_by_grade: dict[str, dict] = {}
-    grade_of = {s.id: s.grade_level for s in students}
-    from app.models import StudentAssessment
-    for a in db.query(StudentAssessment).filter(
-            StudentAssessment.source == "FAST",
-            StudentAssessment.subject == "MATH",
-            StudentAssessment.tenant_id == tenant_id).all():
-        if a.level is None or not (1 <= a.level <= 5):
-            continue
-        g = grade_of.get(a.student_id, "?")
-        d = fast_by_grade.setdefault(g, {}).setdefault(a.period, {"n": 0, "prof": 0})
-        d["n"] += 1
-        if a.level >= 3:
-            d["prof"] += 1
-    fast_summary = {
-        g: {p: f"{round(100*v['prof']/v['n'])}% (n={v['n']})"
-            for p, v in sorted(pd.items())}
-        for g, pd in sorted(fast_by_grade.items()) if g in ("K", "1", "2", "3")
-    }
+    topics = db.query(PacingTopic).filter(PacingTopic.tenant_id == tenant_id).all()
+
+    goal = _school_goal(db=db, user=user)
+    tr = _teachers_report(db=db, user=user)
+    teachers_detail = [
+        {"name": t["name"], "grades": t.get("grades", []),
+         "students": t.get("students", 0), "pct_level_3_plus": t.get("pct_level_3_plus")}
+        for t in tr.get("teachers", [])
+    ]
+
+    # Coaching notes / open follow-ups.
+    notes = db.query(CoachNote).filter(CoachNote.tenant_id == tenant_id).all()
+    tname = {u.id: u.name for u in db.query(User).filter(
+        User.tenant_id == tenant_id).all()}
+    today = _date.today().isoformat()
+    open_followups = [
+        {"teacher": tname.get(n.teacher_id, ""), "task": n.body,
+         "due": n.due_date, "overdue": bool(n.due_date and n.due_date < today)}
+        for n in notes if n.kind == "next_step" and not n.done]
+    focus_areas = [
+        {"teacher": tname.get(n.teacher_id, ""), "focus": n.body}
+        for n in notes if n.kind == "focus"]
+
+    # Saved planning guides by grade/topic.
+    guides = db.query(SavedGuide).filter(SavedGuide.tenant_id == tenant_id).all()
+    guides_by_grade: dict[str, int] = {}
+    for g in guides:
+        guides_by_grade[g.grade_level or "?"] = guides_by_grade.get(g.grade_level or "?", 0) + 1
+
     return {
         "school": school.name if school else "",
+        "coach": user.name,
+        "today": today,
         "students": len(students),
-        "teachers": len(teachers),
-        "classes": db.query(ClassRoom).filter(
-            ClassRoom.tenant_id == tenant_id).count(),
+        "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
+        "classes": tr.get("diagnostics", {}).get("total_classes", 0),
         "by_grade": dict(sorted(by_grade.items())),
-        "fast_levels": dict(sorted(fast_levels.items())),
-        "teachers_sample": [t.name for t in teachers[:15]],
-        "pacing_topics": [f"G{t.grade_level} {t.topic_code} {t.name}" for t in topics],
+        "goal_statement": goal.get("goal", ""),
+        "goal_school_pct": goal.get("school", {}).get("goal_both_pct"),
+        "goal_by_grade": {g: b.get("goal_both_pct") for g, b in goal.get("by_grade", {}).items()},
+        "fast_math_by_grade": {
+            g: b.get("fast_math", {}) for g, b in goal.get("by_grade", {}).items()},
+        "iready_math_by_grade": {
+            g: b.get("iready_math", {}) for g, b in goal.get("by_grade", {}).items()},
+        "teachers_detail": teachers_detail,
+        "open_followups": open_followups,
+        "focus_areas": focus_areas,
+        "pacing_topics": [f"G{t.grade_level} {t.topic_code} {t.name} "
+                          f"({len(t.lessons or [])} lessons)" for t in topics],
+        "saved_guides_by_grade": guides_by_grade,
         "standards_count": db.query(Standard).count(),
-        "fast_math_proficiency_by_grade": fast_summary,
+        "upcoming_dates": _upcoming_dates(db, tenant_id, within_days=60, limit=12),
     }
 
 
@@ -332,8 +353,8 @@ def assistant(
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
-    """The in-system Expert AI Coach — grounded in live school aggregates."""
-    ctx = _school_context(db, user.tenant_id)
+    """The in-system Expert AI Coach — grounded in the live system snapshot."""
+    ctx = _school_context(db, user)
     result = ask_assistant(body.message, body.history, ctx)
     audit(db, actor=user, action="chat", entity_type="ai_assistant",
           purpose="coach_assistant")

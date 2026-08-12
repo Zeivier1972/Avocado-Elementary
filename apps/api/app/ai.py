@@ -278,15 +278,20 @@ def ask_assistant(message: str, history: list[dict], context: dict) -> dict:
     system = (
         "You are the Avocado AI Coach — an expert instructional coach, data "
         "analyst, and assistant for a K-3 elementary school (Miami-Dade / Florida "
-        "B.E.S.T.). You help the coach and school leaders manage teachers, "
-        "students, standards, pacing, collaborative planning, differentiated "
-        "instruction, and progress toward the school grade. You can draft emails "
-        "and messages to teachers when asked. Be concise, practical, and "
-        "action-oriented. Ground answers in the SCHOOL CONTEXT provided. Never "
-        "fabricate individual student data or scores; speak about students in "
-        "aggregate. When drafting a teacher email, return a clear subject line "
-        "and body the coach can review and send.\n\n"
-        f"SCHOOL CONTEXT (live aggregates):\n{_context_text(context)}"
+        "B.E.S.T.). You have a LIVE SNAPSHOT of this coach's whole system below: "
+        "the school goal and progress, every teacher's standing, pacing, saved "
+        "planning guides, the coach's own notes and follow-ups, and upcoming "
+        "calendar dates. Answer the coach's questions directly FROM this snapshot "
+        "— name specific teachers, grades, percentages, and dates when they are "
+        "in the data. If something isn't in the snapshot, say so plainly and "
+        "point to where in the app it lives (Reports, a teacher's page, Key "
+        "Dates, Planning) rather than guessing. Be concise, practical, and "
+        "action-oriented. Never invent individual student names or scores — "
+        "student data here is aggregate/teacher-level by design; for a single "
+        "student, direct the coach to that teacher's tracker. When asked, draft "
+        "teacher emails with a clear subject line and a body ready to send.\n\n"
+        f"TODAY: {context.get('today','')}   COACH: {context.get('coach','')}\n\n"
+        f"LIVE SYSTEM SNAPSHOT:\n{_context_text(context)}"
     )
     if settings.ai_provider == "anthropic" and settings.ai_api_key:
         reply, err = _llm_chat(system, history, message)
@@ -299,21 +304,58 @@ def ask_assistant(message: str, history: list[dict], context: dict) -> dict:
 def _context_text(ctx: dict) -> str:
     lines = [
         f"School: {ctx.get('school','')}",
-        f"Students: {ctx.get('students',0)} | Teachers: {ctx.get('teachers',0)} "
-        f"| Classes: {ctx.get('classes',0)}",
+        f"Students: {ctx.get('students',0)} | Teachers (with students): "
+        f"{ctx.get('teachers',0)} | Classes: {ctx.get('classes',0)}",
         f"Students by grade: {ctx.get('by_grade', {})}",
     ]
-    if ctx.get("fast_math_proficiency_by_grade"):
-        lines.append("FAST Math % proficient (Level 3+) by grade & period: "
-                     f"{ctx['fast_math_proficiency_by_grade']}")
-    if ctx.get("fast_levels"):
-        lines.append(f"FAST Math achievement-level counts: {ctx['fast_levels']}")
-    if ctx.get("teachers_sample"):
-        lines.append(f"Teachers (sample): {', '.join(ctx['teachers_sample'])}")
+    # School goal.
+    if ctx.get("goal_statement"):
+        lines.append(f"\nSCHOOL GOAL: {ctx['goal_statement']}")
+        lines.append(f"School-wide meeting goal: {ctx.get('goal_school_pct')}%")
+        if ctx.get("goal_by_grade"):
+            lines.append(f"Meeting goal by grade: {ctx['goal_by_grade']}")
+        if ctx.get("fast_math_by_grade"):
+            lines.append(f"FAST Math % Level 3+ by grade/period: {ctx['fast_math_by_grade']}")
+        if ctx.get("iready_math_by_grade"):
+            lines.append(f"i-Ready Math % Level 3+ by grade/period: {ctx['iready_math_by_grade']}")
+    # Teachers.
+    td = ctx.get("teachers_detail") or []
+    if td:
+        lines.append("\nTEACHERS (name · grades · #students · % at Level 3+ FAST Math):")
+        for t in td:
+            grades = ",".join(t.get("grades", []))
+            pct = t.get("pct_level_3_plus")
+            pct_s = f"{pct}%" if pct is not None else "no data"
+            lines.append(f"  - {t['name']} · G{grades} · {t.get('students',0)} · {pct_s}")
+    # Coaching notes / follow-ups.
+    fu = ctx.get("open_followups") or []
+    if fu:
+        lines.append("\nOPEN FOLLOW-UPS (coach's next steps):")
+        for f in fu:
+            due = f" (due {f['due']}{', OVERDUE' if f.get('overdue') else ''})" if f.get("due") else ""
+            lines.append(f"  - {f['teacher']}: {f['task']}{due}")
+    fa = ctx.get("focus_areas") or []
+    if fa:
+        lines.append("\nFOCUS AREAS logged per teacher:")
+        for f in fa:
+            lines.append(f"  - {f['teacher']}: {f['focus']}")
+    # Pacing & guides.
     if ctx.get("pacing_topics"):
-        lines.append("Pacing topics: " + "; ".join(ctx["pacing_topics"]))
+        lines.append("\nPACING TOPICS: " + "; ".join(ctx["pacing_topics"]))
+    if ctx.get("saved_guides_by_grade"):
+        lines.append(f"Saved planning guides by grade: {ctx['saved_guides_by_grade']}")
     if ctx.get("standards_count"):
         lines.append(f"Standards loaded: {ctx['standards_count']}")
+    # Upcoming dates.
+    ud = ctx.get("upcoming_dates") or []
+    if ud:
+        lines.append("\nUPCOMING KEY DATES:")
+        for d in ud:
+            window = f"–{d['end_date']}" if d.get("end_date") else ""
+            when = "now open" if d.get("active") else (
+                f"in {d['days_until']}d" if d.get("days_until") is not None else "")
+            grade = f" [{d['grade']}]" if d.get("grade") else ""
+            lines.append(f"  - {d['date']}{window} {d['title']}{grade} ({when})")
     return "\n".join(lines)
 
 

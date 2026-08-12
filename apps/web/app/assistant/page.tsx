@@ -7,10 +7,11 @@ import { api, clearToken, getToken } from "@/lib/api";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const SUGGESTIONS = [
-  "Which grade needs the most support based on FAST Math levels?",
-  "Draft an email to teachers about this week's collaborative planning.",
-  "What should we focus on to reach our school goal this year?",
-  "Summarize our school roster and any red flags.",
+  "Which teacher needs the most support right now, and why?",
+  "How are we tracking toward the school goal by grade?",
+  "What key dates are coming up in the next month?",
+  "What are my open follow-ups, and which are overdue?",
+  "Draft an email to my Grade 3 team about the next data chat.",
 ];
 
 export default function AssistantPage() {
@@ -93,8 +94,9 @@ export default function AssistantPage() {
       <div className="flex-1 max-w-3xl w-full mx-auto p-6 flex flex-col">
         <h1 className="text-xl font-bold text-gray-800">Expert AI Coach</h1>
         <p className="text-sm text-gray-500 mb-2">
-          Ask about teachers, students, standards, pacing, or have it draft
-          communications. Grounded in your school's data.
+          It knows your live system — goal progress, every teacher&apos;s data,
+          pacing, your notes and follow-ups, and upcoming key dates. Ask a
+          question, or have it draft a teacher email.
         </p>
         {aiInfo && !aiReady && (
           <div className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg px-3 py-2 mb-3">
