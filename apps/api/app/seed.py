@@ -157,8 +157,13 @@ def run():
         db, tenant_id=district.id, school_id=school.id, name="Tomas Teacher",
         email="teacher@avocado.edu", role="teacher", scope={"subjects": ["ELA"]})
     coach, coach_new = _get_or_create_user(
-        db, tenant_id=district.id, school_id=school.id, name="Maria Math Coach",
+        db, tenant_id=district.id, school_id=school.id, name="Zeivier",
         email="coach@avocado.edu", role="math_coach", scope={"subjects": ["MATH"]})
+    # Reconcile the display name on databases seeded before this (was a
+    # placeholder) so the coach account shows the real name after any deploy.
+    if coach.name != "Zeivier":
+        coach.name = "Zeivier"
+        db.add(coach)
 
     # Standards: ELA demo set + REAL math library (idempotent by code).
     codes = {c for (c,) in db.query(Standard.code).all()}
