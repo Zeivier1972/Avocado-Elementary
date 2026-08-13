@@ -419,6 +419,16 @@ def _context_text(ctx: dict) -> str:
         lines.append(f"Saved planning guides by grade: {ctx['saved_guides_by_grade']}")
     if ctx.get("standards_count"):
         lines.append(f"Standards loaded: {ctx['standards_count']}")
+    # Math + Math-DI schedule.
+    ms = ctx.get("math_schedule") or []
+    if ms:
+        lines.append("\nMATH & MATH-DI SCHEDULE (Math-DI runs during Science/Social "
+                     "Studies time):")
+        for s in ms:
+            lines.append(
+                f"  - G{s['grade']} Rm {s['room']} {s['teacher']}: "
+                f"Math {', '.join(s['math_times']) or '—'}; "
+                f"DI window {', '.join(s['di_windows']) or '—'}")
     # Upcoming dates.
     ud = ctx.get("upcoming_dates") or []
     if ud:

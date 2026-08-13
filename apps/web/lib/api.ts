@@ -82,6 +82,9 @@ export const api = {
   teachers: () => req("/reports/teachers"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
+  getSchedule: () => req("/coach/schedule"),
+  importSchedule: (form: FormData) =>
+    req("/coach/schedule/import", { method: "POST", body: form }),
   coachHome: () => req("/coach/home"),
   teacherNotes: (id: string) => req(`/coach/teacher/${id}/notes`),
   addTeacherNote: (id: string, body: any) =>

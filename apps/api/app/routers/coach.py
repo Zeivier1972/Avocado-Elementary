@@ -33,6 +33,7 @@ from app.models import (
     PlanningDocument,
     PlcAgenda,
     SavedGuide,
+    ScheduleBlock,
     School,
     Standard,
     Student,
@@ -321,6 +322,21 @@ def _school_context(db: Session, user: User) -> dict:
     for g in guides:
         guides_by_grade[g.grade_level or "?"] = guides_by_grade.get(g.grade_level or "?", 0) + 1
 
+    # Math + Math-DI schedule (from the master schedule), summarized per teacher.
+    sched = _schedule_grouped(db, tenant_id)
+    schedule_summary = []
+    for grade, ts in sched.items():
+        for t in ts:
+            if not t.get("teaches_math"):
+                continue
+            math_times = sorted({f"{m['start']}-{m['end']}"
+                                 for d in t["days"].values() for m in d["math"]})
+            di_times = sorted({f"{x['start']}-{x['end']}"
+                               for d in t["days"].values() for x in d["di"]})
+            schedule_summary.append({
+                "grade": grade, "room": t["room"], "teacher": t["teacher"],
+                "math_times": math_times, "di_windows": di_times})
+
     return {
         "school": school.name if school else "",
         "coach": user.name,
@@ -344,6 +360,7 @@ def _school_context(db: Session, user: User) -> dict:
         "saved_guides_by_grade": guides_by_grade,
         "standards_count": db.query(Standard).count(),
         "upcoming_dates": _upcoming_dates(db, tenant_id, within_days=60, limit=12),
+        "math_schedule": schedule_summary,
     }
 
 
@@ -1074,3 +1091,77 @@ def guide_coach_summary_docx(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+# --- Master schedule: math times & Math-DI windows ---------------------------
+
+def _schedule_grouped(db, tenant_id) -> dict:
+    """Rebuild the per-grade / per-teacher / per-day view from stored blocks."""
+    from app.schedule_import import DAY_ORDER
+    rows = db.query(ScheduleBlock).filter(
+        ScheduleBlock.tenant_id == tenant_id).all()
+    teachers: dict = {}
+    for b in rows:
+        key = (b.grade, b.room, b.teacher_name)
+        t = teachers.setdefault(key, {
+            "grade": b.grade, "room": b.room, "teacher": b.teacher_name,
+            "days": {d: {"math": [], "di": []} for d in DAY_ORDER}})
+        day = t["days"].setdefault(b.day, {"math": [], "di": []})
+        if b.kind == "math":
+            day["math"].append({"start": b.start_time, "end": b.end_time})
+        else:
+            day["di"].append({"subject": b.subject, "start": b.start_time, "end": b.end_time})
+    for t in teachers.values():
+        for d in t["days"].values():
+            d["math"].sort(key=lambda x: x["start"])
+            d["di"].sort(key=lambda x: x["start"])
+        t["teaches_math"] = any(t["days"][d]["math"] for d in t["days"])
+    by_grade: dict = {}
+    for t in sorted(teachers.values(), key=lambda x: (x["grade"], x["room"], x["teacher"])):
+        by_grade.setdefault(t["grade"], []).append(t)
+    return by_grade
+
+
+@router.post("/schedule/import")
+async def import_schedule(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Upload the school master schedule (.xlsx). Parses each K-3 teacher's math
+    times and their Science/Social-Studies (Math-DI) windows, replacing any
+    previously imported schedule for this school."""
+    from app.schedule_import import parse_master_schedule, to_blocks
+
+    data = await file.read()
+    if len(data) > _MAX_DOC_BYTES:
+        raise HTTPException(400, "File is larger than the 25 MB limit.")
+    res = parse_master_schedule(data)
+    if not res["teachers"]:
+        raise HTTPException(
+            400, f"Could not read the schedule: {res.get('reason')}. Upload the "
+                 "Avocado Master Schedule .xlsx (with the K-3 grade sheets).")
+    db.query(ScheduleBlock).filter(
+        ScheduleBlock.tenant_id == user.tenant_id).delete()
+    n = 0
+    for row in to_blocks(res["teachers"]):
+        db.add(ScheduleBlock(
+            tenant_id=user.tenant_id, grade=row["grade"], room=row["room"],
+            teacher_name=row["teacher"], day=row["day"], kind=row["kind"],
+            subject=row["subject"], start_time=row["start"], end_time=row["end"]))
+        n += 1
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="schedule",
+          purpose="master_schedule_import")
+    math_teachers = sum(1 for t in res["teachers"] if t["teaches_math"])
+    return {"teachers": len(res["teachers"]), "math_teachers": math_teachers,
+            "blocks": n, "sheets": res["sheets_used"]}
+
+
+@router.get("/schedule")
+def get_schedule(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The parsed math + Math-DI schedule, grouped by grade and teacher."""
+    return {"by_grade": _schedule_grouped(db, user.tenant_id)}

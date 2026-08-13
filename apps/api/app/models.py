@@ -359,6 +359,23 @@ class KeyDate(Base, TimestampMixin):
     created_by: Mapped[str] = mapped_column(String, default="")
 
 
+class ScheduleBlock(Base, TimestampMixin):
+    """A time block from the school master schedule, parsed per teacher/day.
+    kind='math' = when the teacher teaches math (visit window); kind='di' =
+    their Science/Social-Studies block, which is when they can run Math DI."""
+    __tablename__ = "schedule_blocks"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    grade: Mapped[str] = mapped_column(String, default="", index=True)
+    room: Mapped[str] = mapped_column(String, default="")
+    teacher_name: Mapped[str] = mapped_column(String, default="", index=True)
+    day: Mapped[str] = mapped_column(String, default="")     # Mon..Fri
+    kind: Mapped[str] = mapped_column(String, default="math", index=True)  # math|di
+    subject: Mapped[str] = mapped_column(String, default="")
+    start_time: Mapped[str] = mapped_column(String, default="")  # HH:MM
+    end_time: Mapped[str] = mapped_column(String, default="")
+
+
 class CoachNote(Base, TimestampMixin):
     """A coach's note about a teacher — the on-ramp to coaching cycles. Captures
     focus areas, observations, and next steps tied to a teacher (the CRM
