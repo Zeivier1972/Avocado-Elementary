@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/home", label: "🏠 Home" },
   { href: "/teachers", label: "👩‍🏫 Teachers" },
   { href: "/coach", label: "🗂 Planning" },
+  { href: "/framework", label: "🧭 Framework" },
   { href: "/schedule", label: "⏰ Schedule" },
   { href: "/calendar", label: "📅 Calendar" },
   { href: "/dates", label: "🗓 Key Dates" },

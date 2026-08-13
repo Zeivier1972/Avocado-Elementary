@@ -434,6 +434,16 @@ def _context_text(ctx: dict) -> str:
     if pbg:
         lines.append("\nGRADE-LEVEL PLANNING TIMES (when the math team is free): "
                      + "; ".join(f"G{g}: {', '.join(v)}" for g, v in sorted(pbg.items())))
+    fw = ctx.get("framework") or {}
+    if fw.get("this_week"):
+        tw = fw["this_week"]
+        lines.append(
+            f"\nFRAMEWORK OF EFFECTIVE INSTRUCTION — this week's coaching lens "
+            f"(week {tw['week']}): {tw['component_name']} — {tw['focus']} "
+            f"({tw['why']}). When helping the coach plan or prep to support "
+            "teachers, connect advice to this lens and be the expert on it. The "
+            "six components: "
+            + "; ".join(f"{c['name']} — {c['essence']}" for c in fw.get("components", [])))
     # Upcoming dates.
     ud = ctx.get("upcoming_dates") or []
     if ud:

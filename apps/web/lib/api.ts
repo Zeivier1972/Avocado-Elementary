@@ -82,6 +82,7 @@ export const api = {
   teachers: () => req("/reports/teachers"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
+  getFramework: () => req("/coach/framework"),
   getSchedule: () => req("/coach/schedule"),
   getVisitPlan: (kind: string, minutes: number, grade: string) =>
     req(

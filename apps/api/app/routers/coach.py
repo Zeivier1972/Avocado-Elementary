@@ -374,6 +374,20 @@ def _school_context(db: Session, user: User) -> dict:
         "upcoming_dates": _upcoming_dates(db, tenant_id, within_days=60, limit=12),
         "math_schedule": schedule_summary,
         "planning_by_grade": planning_by_grade,
+        "framework": _framework_context(),
+    }
+
+
+def _framework_context() -> dict:
+    """The Framework of Effective Instruction + this week's coaching lens, so the
+    AI Coach can lead planning through it and elaborate as the expert."""
+    from app.framework import load_framework, current_week_focus
+    fw = load_framework()
+    return {
+        "this_week": current_week_focus(),
+        "components": [{"name": c["name"], "essence": c["essence"],
+                        "in_math": c.get("in_math", "")}
+                       for c in fw["components"]],
     }
 
 
@@ -873,12 +887,14 @@ def coach_home(
          for n in notes],
         key=lambda x: (x["due_date"] == "", x["due_date"]))
 
+    from app.framework import current_week_focus
     return {
         "coach": {"name": user.name, "role": user.role},
         "today": today,
         "goal": goal,
         "teachers_to_watch": watch,
         "followups": followups,
+        "this_week_lens": current_week_focus(),
         "upcoming_dates": _upcoming_dates(db, user.tenant_id, within_days=45, limit=8),
         "counts": {
             "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
@@ -1204,3 +1220,17 @@ def schedule_visit_plan(
     grouped = _schedule_grouped(db, user.tenant_id)
     plan = build_visit_plan(grouped, kind=kind, minutes=minutes, grade=grade or None)
     return {"kind": kind, "minutes": minutes, "grade": grade, "visits": plan}
+
+
+@router.get("/framework")
+def get_framework(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The Framework of Effective Instruction (6 components, expert elaboration),
+    this week's coaching lens, and the year-long weekly focus plan."""
+    from app.framework import load_framework, current_week_focus, WEEKLY_FOCUS
+    fw = load_framework()
+    plan = [{"week": w, "component_key": k, "focus": f, "why": y}
+            for (w, k, f, y) in WEEKLY_FOCUS]
+    return {"framework": fw, "this_week": current_week_focus(), "weekly_plan": plan}
