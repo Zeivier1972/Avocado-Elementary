@@ -201,6 +201,47 @@ export default function GuideSummaryPage() {
               </Section>
             )}
 
+            {s.models?.length > 0 && (
+              <Section title="Worked models — how to show it (so you can model it)">
+                <div className="space-y-3">
+                  {s.models.map((mdl: any, i: number) => (
+                    <div
+                      key={i}
+                      className="rounded-xl border border-gray-100 bg-gray-50/60 p-3"
+                    >
+                      <div className="text-sm font-semibold text-gray-800">
+                        Lesson {mdl.code} — {mdl.title}
+                      </div>
+                      {mdl.problem && (
+                        <p className="text-sm text-gray-700 mt-1">
+                          <span className="font-semibold">Model this: </span>
+                          {mdl.problem}
+                        </p>
+                      )}
+                      {mdl.teacher_move && (
+                        <p className="text-sm text-gray-600 italic mt-0.5">
+                          “{mdl.teacher_move}”
+                        </p>
+                      )}
+                      {(mdl.concrete || mdl.pictorial || mdl.abstract) && (
+                        <div className="grid sm:grid-cols-3 gap-2 mt-2">
+                          {mdl.concrete && (
+                            <ModelStep label="Concrete" tint="bg-amber-50 border-amber-100" value={mdl.concrete} />
+                          )}
+                          {mdl.pictorial && (
+                            <ModelStep label="Pictorial" tint="bg-blue-50 border-blue-100" value={mdl.pictorial} />
+                          )}
+                          {mdl.abstract && (
+                            <ModelStep label="Abstract" tint="bg-avocado/10 border-avocado/20" value={mdl.abstract} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
             {s.lessons?.length > 0 && (
               <Section title="Lessons at a glance">
                 <div className="overflow-x-auto">
@@ -252,6 +293,25 @@ function Section({ title, children }: any) {
         {title}
       </div>
       {children}
+    </div>
+  );
+}
+
+function ModelStep({
+  label,
+  value,
+  tint,
+}: {
+  label: string;
+  value: string;
+  tint: string;
+}) {
+  return (
+    <div className={`rounded-lg border ${tint} p-2`}>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+      </div>
+      <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-wrap">{value}</p>
     </div>
   );
 }

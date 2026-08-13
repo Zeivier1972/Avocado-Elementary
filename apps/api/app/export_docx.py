@@ -294,6 +294,18 @@ def coach_summary_to_docx(summary: dict, narrative: dict) -> bytes:
         _label(doc, "Solution", l3.get("solution"))
         _label(doc, "Student explanation", l3.get("student_explanation"))
 
+    if summary.get("models"):
+        _heading(doc, "Worked models — how to show it (so you can model it)", 12)
+        for mdl in summary["models"]:
+            p = doc.add_paragraph()
+            r = p.add_run(f"Lesson {mdl.get('code','')} — {mdl.get('title','')}")
+            r.bold = True
+            _label(doc, "Model this problem", mdl.get("problem"))
+            _label(doc, "Teacher move", mdl.get("teacher_move"))
+            _label(doc, "Concrete (manipulative)", mdl.get("concrete"))
+            _label(doc, "Pictorial (drawing)", mdl.get("pictorial"))
+            _label(doc, "Abstract (equation)", mdl.get("abstract"))
+
     if summary.get("lessons"):
         _heading(doc, "Lessons at a glance", 12)
         table = doc.add_table(rows=1, cols=4)

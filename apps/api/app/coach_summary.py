@@ -122,6 +122,28 @@ def build_coach_summary(guide: dict) -> dict:
             "exit": _exit_text(L.get("exit_ticket")),
         })
 
+    # Worked models — "what it looks like" so the coach can model it. Pull the
+    # I Do example's Concrete → Pictorial → Abstract (falling back to a
+    # lesson-level cpa block), plus the problem and the teacher's opening move.
+    # Only lessons that actually carry a representation are included.
+    models = []
+    for L in lessons:
+        ido = L.get("i_do") if isinstance(L.get("i_do"), dict) else {}
+        cpa = L.get("cpa") if isinstance(L.get("cpa"), dict) else {}
+        concrete = ido.get("concrete") or cpa.get("concrete") or ""
+        pictorial = ido.get("pictorial") or cpa.get("pictorial") or ""
+        abstract = ido.get("abstract") or cpa.get("abstract") or ""
+        problem = ido.get("problem") or ""
+        say = ido.get("say")
+        teacher_move = (say[0] if isinstance(say, list) and say
+                        else (say if isinstance(say, str) else ""))
+        if concrete or pictorial or abstract or (problem and (say or cpa)):
+            models.append({
+                "code": L.get("code", ""), "title": L.get("title", ""),
+                "problem": problem, "teacher_move": teacher_move,
+                "concrete": concrete, "pictorial": pictorial, "abstract": abstract,
+            })
+
     focus = (guide.get("learning_goal") or qf.get("topic_focus")
              or (lessons[0].get("learning_goal") if lessons else "") or "")
 
@@ -138,6 +160,7 @@ def build_coach_summary(guide: dict) -> dict:
         "strategies": strategies,
         "misconceptions": misc,
         "level3": level3,
+        "models": models,
         "lessons": lesson_rows,
         "mtr_practices": qf.get("mtr_practices", []) or [],
         "materials": qf.get("materials", []) or [],
