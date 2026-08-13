@@ -599,13 +599,22 @@ export default function CoachPage() {
                           : ""}
                       </span>
                     </button>
-                    <button
-                      onClick={() => removeSavedGuide(g.id)}
-                      title="Delete saved guide"
-                      className="text-gray-300 hover:text-red-500 shrink-0"
-                    >
-                      🗑
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={`/guides/${g.id}/summary`}
+                        title="Coach one-pager — the essentials to present"
+                        className="text-avocado-dark hover:underline whitespace-nowrap"
+                      >
+                        📋 One-pager
+                      </a>
+                      <button
+                        onClick={() => removeSavedGuide(g.id)}
+                        title="Delete saved guide"
+                        className="text-gray-300 hover:text-red-500"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   </li>
                 ))}
             </ul>

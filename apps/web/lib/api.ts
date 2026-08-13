@@ -81,6 +81,7 @@ export const api = {
     req(`/reports/fast/${grade}?subject=${subject}&period=${period}`),
   teachers: () => req("/reports/teachers"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
+  guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
   coachHome: () => req("/coach/home"),
   teacherNotes: (id: string) => req(`/coach/teacher/${id}/notes`),
   addTeacherNote: (id: string, body: any) =>
@@ -188,6 +189,24 @@ export async function downloadGuideDocx(guide: any) {
   const a = document.createElement("a");
   a.href = url;
   a.download = (guide.title || "planning-guide").replace(/[^\w]+/g, "_") + ".docx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Download the Coach One-Pager for a saved guide as a Word document (blob).
+export async function downloadGuideSummaryDocx(id: string, title?: string) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/coach/guides/${id}/summary.docx`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = ((title || "coach-one-pager").replace(/[^\w]+/g, "_")) + "_OnePager.docx";
   document.body.appendChild(a);
   a.click();
   a.remove();

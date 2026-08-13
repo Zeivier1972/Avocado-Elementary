@@ -271,6 +271,79 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
     return base
 
 
+def _one_pager_fallback(summary: dict) -> dict:
+    """A useful coach narrative built straight from the guide when AI is off."""
+    strat = ", ".join(s["name"] for s in summary.get("strategies", [])) or "the lesson routines"
+    tp = [f"Open with the big idea: {summary.get('focus','the week’s focus')}."]
+    if summary.get("strategies"):
+        tp.append(f"Anchor teachers in {strat} — show one example of each in action.")
+    if summary.get("vocabulary"):
+        tp.append("Post and pre-teach the vocabulary; require it in student talk "
+                  "using the sentence frames.")
+    if summary.get("misconceptions"):
+        tp.append("Name the top misconception up front and the exact fix, so "
+                  "teachers plan for it.")
+    tp.append("Point every lesson at the exit ticket — that's the daily proof.")
+    return {
+        "big_idea": summary.get("focus", ""),
+        "why_it_matters": "These lessons build the on-grade (Level 3) skill the "
+                          "benchmark is assessed on; keeping the strategies and "
+                          "vocabulary consistent is what makes it stick.",
+        "talking_points": tp,
+        "watch_fors": [m["misconception"] for m in summary.get("misconceptions", [])][:3],
+        "ai_generated": False,
+    }
+
+
+def coach_one_pager_narrative(summary: dict) -> dict:
+    """A short coach-facing 'how to present this' narrative on top of the
+    deterministic one-pager. One quick call; falls back to a built narrative."""
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        return _one_pager_fallback(summary)
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+    except Exception:
+        return _one_pager_fallback(summary)
+    strat = "; ".join(f"{s['name']}: {s['what']}" for s in summary.get("strategies", []))
+    prompt = (
+        "You are coaching a K-3 math coach on how to present ONE planning topic to "
+        "teachers in a short PLC. Be specific and practical so the coach sounds "
+        "expert. Return ONLY a JSON object:\n"
+        '{"big_idea":"1-2 sentences: the single most important thing teachers must '
+        'understand for this topic",'
+        '"why_it_matters":"1-2 sentences tying it to on-grade (Level 3) proficiency",'
+        '"talking_points":["4-6 short things the coach should say/do when presenting, '
+        'in order"],'
+        '"watch_fors":["3-4 pitfalls or misconceptions to flag to teachers"]}\n\n'
+        f"TOPIC: Grade {summary.get('grade_level','')} {summary.get('subject','')} — "
+        f"{summary.get('title','')}\n"
+        f"Focus: {summary.get('focus','')}\n"
+        f"Benchmarks: {[b['code'] for b in summary.get('benchmarks', [])]}\n"
+        f"Strategies in the guide: {strat}\n"
+        f"Vocabulary: {summary.get('vocabulary', [])}\n"
+        f"Top misconceptions: {[m['misconception'] for m in summary.get('misconceptions', [])]}\n"
+    )
+    try:
+        with client.messages.stream(
+            model=settings.ai_model, max_tokens=1200,
+            system="You output ONLY one valid JSON object, no prose or fences.",
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            msg = stream.get_final_message()
+        text = "".join(b.text for b in msg.content if b.type == "text").strip()
+        import json as _json
+        import re as _re
+        m = _re.search(r"\{.*\}", text, _re.S)
+        data = _json.loads(m.group(0)) if m else None
+        if isinstance(data, dict) and data.get("big_idea"):
+            data["ai_generated"] = True
+            return data
+    except Exception:
+        pass
+    return _one_pager_fallback(summary)
+
+
 def ask_assistant(message: str, history: list[dict], context: dict) -> dict:
     """The in-system Expert AI Coach. Grounded in the school's aggregate data;
     helps manage teachers/students/standards/pacing and drafts communications.

@@ -1029,3 +1029,48 @@ def delete_key_date(
     db.delete(d)
     db.commit()
     return {"deleted": True}
+
+
+@router.get("/guides/{guide_id}/summary")
+def guide_coach_summary(
+    guide_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The Coach One-Pager for a saved guide: the essentials to present in
+    planning, plus a short 'how to present it' narrative."""
+    from app.coach_summary import build_coach_summary
+    from app.ai import coach_one_pager_narrative
+
+    g = db.get(SavedGuide, guide_id)
+    if not g or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Saved guide not found")
+    if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
+        raise HTTPException(409, "This guide is still generating — try again in a moment.")
+    summary = build_coach_summary(g.content)
+    narrative = coach_one_pager_narrative(summary)
+    return {"id": g.id, "title": g.title, "summary": summary, "narrative": narrative}
+
+
+@router.get("/guides/{guide_id}/summary.docx")
+def guide_coach_summary_docx(
+    guide_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Download the Coach One-Pager as a printable Word document."""
+    from app.coach_summary import build_coach_summary
+    from app.ai import coach_one_pager_narrative
+    from app.export_docx import coach_summary_to_docx
+
+    g = db.get(SavedGuide, guide_id)
+    if not g or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Saved guide not found")
+    summary = build_coach_summary(g.content)
+    narrative = coach_one_pager_narrative(summary)
+    data = coach_summary_to_docx(summary, narrative)
+    fname = f"CoachOnePager_{(g.topic_code or 'guide').replace(' ', '')}.docx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'})

@@ -235,3 +235,78 @@ def guide_to_docx(guide: dict) -> bytes:
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+def coach_summary_to_docx(summary: dict, narrative: dict) -> bytes:
+    """Render the one-page Coach Summary (essentials + how-to-present narrative)
+    a coach uses to lead planning without carrying the full packet."""
+    doc = Document()
+    _add_logo(doc)
+    _heading(doc, "Coach One-Pager", 16)
+    meta = doc.add_paragraph()
+    m = meta.add_run(
+        f"Grade {summary.get('grade_level','')} {summary.get('subject','')}  ·  "
+        f"{summary.get('title','')}"
+        + (f"  ·  Assessment: {summary['assessment_date']}"
+           if summary.get("assessment_date") else ""))
+    m.italic = True
+    m.font.size = Pt(9)
+
+    if narrative.get("big_idea"):
+        _heading(doc, "Big Idea — what teachers must understand", 13)
+        doc.add_paragraph(str(narrative["big_idea"]))
+        if narrative.get("why_it_matters"):
+            _label(doc, "Why it matters", narrative["why_it_matters"])
+
+    if narrative.get("talking_points"):
+        _heading(doc, "How to present it (your talking points)", 12)
+        _bullets(doc, narrative["talking_points"], style="List Number")
+
+    if summary.get("strategies"):
+        _heading(doc, "Strategies to reinforce", 12)
+        for s in summary["strategies"]:
+            p = doc.add_paragraph(style="List Bullet")
+            r = p.add_run(f"{s['name']} — ")
+            r.bold = True
+            p.add_run(s["what"])
+
+    if summary.get("vocabulary"):
+        _heading(doc, "Vocabulary (from the pacing guide)", 12)
+        doc.add_paragraph(" · ".join(summary["vocabulary"]))
+
+    if summary.get("sentence_frames"):
+        _heading(doc, "Sentence frames / stems", 12)
+        _bullets(doc, summary["sentence_frames"])
+
+    watch = narrative.get("watch_fors") or [m["misconception"] for m in summary.get("misconceptions", [])]
+    if watch:
+        _heading(doc, "Watch-fors (misconceptions to flag)", 12)
+        _bullets(doc, watch)
+    if summary.get("misconceptions"):
+        _misconception_table(
+            doc, [{"misconception": m["misconception"], "example": "", "fix": m["fix"]}
+                  for m in summary["misconceptions"]])
+
+    if summary.get("level3"):
+        l3 = summary["level3"]
+        _heading(doc, "What a Level 3 (on-grade) looks like", 12)
+        _label(doc, "Problem", l3.get("problem"))
+        _label(doc, "Solution", l3.get("solution"))
+        _label(doc, "Student explanation", l3.get("student_explanation"))
+
+    if summary.get("lessons"):
+        _heading(doc, "Lessons at a glance", 12)
+        table = doc.add_table(rows=1, cols=4)
+        table.style = "Light Grid Accent 1"
+        for i, h in enumerate(["#", "Learning goal", "Model this", "Exit ticket"]):
+            table.rows[0].cells[i].text = h
+        for L in summary["lessons"]:
+            c = table.add_row().cells
+            c[0].text = str(L.get("code", ""))
+            c[1].text = str(L.get("learning_goal", "") or L.get("title", ""))
+            c[2].text = str(L.get("model_focus", ""))
+            c[3].text = str(L.get("exit", ""))
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
