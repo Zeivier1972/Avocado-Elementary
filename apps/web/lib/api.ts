@@ -83,6 +83,12 @@ export const api = {
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
   getSchedule: () => req("/coach/schedule"),
+  getVisitPlan: (kind: string, minutes: number, grade: string) =>
+    req(
+      `/coach/schedule/visit-plan?kind=${kind}&minutes=${minutes}${
+        grade ? `&grade=${encodeURIComponent(grade)}` : ""
+      }`
+    ),
   importSchedule: (form: FormData) =>
     req("/coach/schedule/import", { method: "POST", body: form }),
   coachHome: () => req("/coach/home"),

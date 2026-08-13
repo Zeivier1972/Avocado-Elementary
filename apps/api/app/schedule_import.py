@@ -161,3 +161,68 @@ def to_blocks(teachers: list[dict]) -> list[dict]:
                              "subject": d["subject"],
                              "start": d["start"], "end": d["end"]})
     return rows
+
+
+def _to_min(t: str) -> int:
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
+
+
+def _to_hhmm(x: int) -> str:
+    return f"{x // 60:02d}:{x % 60:02d}"
+
+
+def build_visit_plan(by_grade: dict, kind: str = "math", minutes: int = 30,
+                     grade: str | None = None) -> list[dict]:
+    """Greedily lay out a conflict-free week: one visit per math teacher, during
+    one of their math blocks (kind='math') or DI windows (kind='di'). The coach
+    is one person, so two visits never overlap on the same day. Most-constrained
+    teachers (fewest options) are placed first, balancing load across days."""
+    teachers = []
+    for g, ts in by_grade.items():
+        if grade and g != grade:
+            continue
+        for t in ts:
+            if not t.get("teaches_math"):
+                continue
+            slots = []
+            for day, sub in t["days"].items():
+                for b in sub.get(kind, []):
+                    if b.get("start") and b.get("end"):
+                        slots.append({"day": day, "start": _to_min(b["start"]),
+                                      "end": _to_min(b["end"]), "subject": b.get("subject", "")})
+            if slots:
+                teachers.append({"grade": g, "room": t["room"],
+                                 "teacher": t["teacher"], "slots": slots})
+    teachers.sort(key=lambda t: (len(t["slots"]), t["grade"], t["room"]))
+    busy = {d: [] for d in DAY_ORDER}
+    load = {d: 0 for d in DAY_ORDER}
+
+    def overlaps(d, s, e):
+        return any(s < be and bs < e for bs, be in busy[d])
+
+    def dkey(d):
+        return DAY_ORDER.index(d) if d in DAY_ORDER else 99
+
+    plan = []
+    for t in teachers:
+        opts = sorted(t["slots"], key=lambda x: (load[x["day"]], dkey(x["day"]), x["start"]))
+        chosen, conflict = None, False
+        for o in opts:
+            s, e = o["start"], min(o["start"] + minutes, o["end"])
+            if not overlaps(o["day"], s, e):
+                chosen = (o, s, e)
+                break
+        if not chosen:
+            o = opts[0]
+            chosen, conflict = (o, o["start"], min(o["start"] + minutes, o["end"])), True
+        o, s, e = chosen
+        busy[o["day"]].append((s, e))
+        load[o["day"]] += 1
+        plan.append({"day": o["day"], "grade": t["grade"], "room": t["room"],
+                     "teacher": t["teacher"], "start": _to_hhmm(s), "end": _to_hhmm(e),
+                     "subject": o.get("subject", ""),
+                     "block": f"{_to_hhmm(o['start'])}-{_to_hhmm(o['end'])}",
+                     "conflict": conflict})
+    plan.sort(key=lambda p: (dkey(p["day"]), p["start"]))
+    return plan

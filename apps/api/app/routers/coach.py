@@ -1165,3 +1165,22 @@ def get_schedule(
 ):
     """The parsed math + Math-DI schedule, grouped by grade and teacher."""
     return {"by_grade": _schedule_grouped(db, user.tenant_id)}
+
+
+@router.get("/schedule/visit-plan")
+def schedule_visit_plan(
+    kind: str = Query("math"),
+    minutes: int = Query(30),
+    grade: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """A suggested conflict-free week: one visit per math teacher during a math
+    block (kind=math) or their DI window (kind=di)."""
+    from app.schedule_import import build_visit_plan
+    if kind not in ("math", "di"):
+        kind = "math"
+    minutes = max(10, min(90, minutes))
+    grouped = _schedule_grouped(db, user.tenant_id)
+    plan = build_visit_plan(grouped, kind=kind, minutes=minutes, grade=grade or None)
+    return {"kind": kind, "minutes": minutes, "grade": grade, "visits": plan}

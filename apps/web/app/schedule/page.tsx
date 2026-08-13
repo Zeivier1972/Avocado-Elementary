@@ -29,6 +29,13 @@ export default function SchedulePage() {
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // visit planner
+  const [planKind, setPlanKind] = useState("math");
+  const [planGrade, setPlanGrade] = useState("");
+  const [planMin, setPlanMin] = useState(30);
+  const [visits, setVisits] = useState<any[] | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
+
   useEffect(() => {
     if (!getToken()) {
       router.push("/");
@@ -67,11 +74,29 @@ export default function SchedulePage() {
     }
   }
 
+  async function buildPlan() {
+    setPlanBusy(true);
+    try {
+      const r = await api.getVisitPlan(planKind, planMin, planGrade);
+      setVisits(r.visits || []);
+    } catch (err) {
+      alert("Could not build plan: " + (err as Error).message);
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
   const grades = useMemo(
     () => Object.keys(byGrade).sort((a, b) => (a === "K" ? -1 : b === "K" ? 1 : +a - +b)),
     [byGrade]
   );
   const hasData = grades.length > 0;
+  const visitsByDay = useMemo(() => {
+    const m: Record<string, any[]> = {};
+    for (const v of visits || []) (m[v.day] ||= []).push(v);
+    for (const d of Object.keys(m)) m[d].sort((a, b) => a.start.localeCompare(b.start));
+    return m;
+  }, [visits]);
 
   if (!me) return <div className="p-10 text-gray-500">Loading…</div>;
 
@@ -241,6 +266,126 @@ export default function SchedulePage() {
               🧮 = math lesson (visit window) · DI = Science/Social-Studies block
               where Math DI can run. Times shown as start–end.
             </p>
+
+            {/* Visit planner */}
+            <div className="bg-white rounded-2xl border border-avocado/30 p-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <div className="font-semibold text-gray-800">
+                    Visit planner
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Auto-build a conflict-free week to catch each math teacher
+                    once — during their math lesson, or their Math-DI time.
+                  </p>
+                </div>
+                <div className="no-print flex items-center gap-2 flex-wrap">
+                  <select
+                    value={planKind}
+                    onChange={(e) => setPlanKind(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                  >
+                    <option value="math">Visit math lessons</option>
+                    <option value="di">Support Math DI</option>
+                  </select>
+                  <select
+                    value={planGrade}
+                    onChange={(e) => setPlanGrade(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                  >
+                    <option value="">All grades</option>
+                    {grades.map((g) => (
+                      <option key={g} value={g}>
+                        {GRADE_LABEL(g)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={planMin}
+                    onChange={(e) => setPlanMin(+e.target.value)}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                  >
+                    {[20, 30, 45, 60].map((m) => (
+                      <option key={m} value={m}>
+                        {m} min
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={buildPlan}
+                    disabled={planBusy}
+                    className="bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-1.5 disabled:opacity-60"
+                  >
+                    {planBusy ? "Building…" : "Build plan"}
+                  </button>
+                </div>
+              </div>
+
+              {visits && (
+                <div className="mt-4">
+                  {visits.length === 0 ? (
+                    <p className="text-sm text-gray-400">
+                      No {planKind === "di" ? "DI" : "math"} blocks to plan for
+                      this selection.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        {DAYS.map((d) => (
+                          <div key={d} className="rounded-xl border border-gray-100">
+                            <div
+                              className={`px-2 py-1 text-xs font-semibold border-b border-gray-100 ${
+                                d === DOW_TODAY
+                                  ? "text-avocado-dark bg-avocado/5"
+                                  : "text-gray-600 bg-gray-50"
+                              }`}
+                            >
+                              {d}
+                            </div>
+                            <ul className="p-2 space-y-1.5">
+                              {(visitsByDay[d] || []).map((v, i) => (
+                                <li key={i} className="text-xs">
+                                  <div className="font-semibold text-gray-800 tabular-nums">
+                                    {fmt(v.start)}–{fmt(v.end)}
+                                  </div>
+                                  <div className="text-gray-600">
+                                    {v.teacher}{" "}
+                                    <span className="text-gray-400">
+                                      · {GRADE_LABEL(v.grade)}
+                                      {v.room ? ` · Rm ${v.room}` : ""}
+                                    </span>
+                                  </div>
+                                  {planKind === "di" && v.subject && (
+                                    <div className="text-[10px] text-blue-600">
+                                      during {v.subject}
+                                    </div>
+                                  )}
+                                  {v.conflict && (
+                                    <div className="text-[10px] text-red-600">
+                                      ⚠ overlaps another visit — adjust
+                                    </div>
+                                  )}
+                                </li>
+                              ))}
+                              {(visitsByDay[d] || []).length === 0 && (
+                                <li className="text-[11px] text-gray-300">—</li>
+                              )}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2">
+                        {visits.length} visits ·{" "}
+                        {planKind === "di"
+                          ? "supporting Math DI during Science/Social Studies"
+                          : "one math lesson per teacher"}
+                        . Re-run to reshuffle; use 🖨 Print for a copy.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
