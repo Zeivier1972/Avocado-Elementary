@@ -43,11 +43,24 @@ def _col_min_map(ws) -> dict | None:
 
 def _classify(label: str) -> str | None:
     u = label.upper()
-    if re.search(r"\bMATHEMATICS\b|\bMATH\b", u) and "CP" not in u:
+    # Planning first: the explicit "Planning" block (K/1) or a "CP" (common
+    # planning) tag on a specials block (grades 2-3, departmentalized).
+    if re.search(r"\bPLANNING\b", u) or re.search(r"\bCP\b", u) or "COMMON PLAN" in u:
+        return "planning"
+    if re.search(r"\bMATHEMATICS\b|\bMATH\b", u):
         return "math"
     if "SCIENCE" in u or "SOCIAL" in u:
         return "di"
     return None
+
+
+def _planning_label(label: str) -> str:
+    u = label.upper()
+    if "MATH" in u and "CP" in u:
+        return "Math CP"
+    if "ELA" in u and "CP" in u:
+        return "ELA CP"
+    return "Planning"
 
 
 def _clean_subject(label: str) -> str:
@@ -114,15 +127,17 @@ def _parse_sheet(ws, canon: dict | None = None):
                 if not d or str(d).strip() not in DAY_MAP:
                     break
                 dd = DAY_MAP[str(d).strip()]
-                math, di = [], []
+                math, di, planning = [], [], []
                 for x, y, val in blocks(rr):
                     kind = _classify(val)
+                    s, e = _hhmm(col_min[x]), _hhmm(col_min[y] + 5)
                     if kind == "math":
-                        math.append({"start": _hhmm(col_min[x]), "end": _hhmm(col_min[y] + 5)})
+                        math.append({"start": s, "end": e})
                     elif kind == "di":
-                        di.append({"subject": _clean_subject(val),
-                                   "start": _hhmm(col_min[x]), "end": _hhmm(col_min[y] + 5)})
-                days[dd] = {"math": math, "di": di}
+                        di.append({"subject": _clean_subject(val), "start": s, "end": e})
+                    elif kind == "planning":
+                        planning.append({"subject": _planning_label(val), "start": s, "end": e})
+                days[dd] = {"math": math, "di": di, "planning": planning}
             teachers.append({"grade": grade, "room": room, "teacher": name,
                              "program": program,
                              "teaches_math": any(days[d]["math"] for d in days),
@@ -191,6 +206,11 @@ def to_blocks(teachers: list[dict]) -> list[dict]:
                              "teacher": t["teacher"], "day": day, "kind": "di",
                              "subject": d["subject"],
                              "start": d["start"], "end": d["end"]})
+            for p in sub.get("planning", []):
+                rows.append({"grade": t["grade"], "room": t["room"], "program": prog,
+                             "teacher": t["teacher"], "day": day, "kind": "planning",
+                             "subject": p["subject"],
+                             "start": p["start"], "end": p["end"]})
     return rows
 
 

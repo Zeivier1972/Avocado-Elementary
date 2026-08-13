@@ -430,6 +430,10 @@ def _context_text(ctx: dict) -> str:
                 f"  - G{s['grade']} Rm {s['room']} {s['teacher']}{tag}: "
                 f"Math {', '.join(s['math_times']) or '—'}; "
                 f"DI window {', '.join(s['di_windows']) or '—'}")
+    pbg = ctx.get("planning_by_grade") or {}
+    if pbg:
+        lines.append("\nGRADE-LEVEL PLANNING TIMES (when the math team is free): "
+                     + "; ".join(f"G{g}: {', '.join(v)}" for g, v in sorted(pbg.items())))
     # Upcoming dates.
     ud = ctx.get("upcoming_dates") or []
     if ud:

@@ -174,6 +174,9 @@ export default function SchedulePage() {
                 <span className="flex items-center gap-1">
                   <span className="w-3 h-3 rounded bg-blue-100 inline-block" /> DI window
                 </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-emerald-100 inline-block" /> Planning
+                </span>
               </div>
             </div>
 
@@ -229,7 +232,12 @@ export default function SchedulePage() {
                               </div>
                             </td>
                             {DAYS.map((d) => {
-                              const day = t.days?.[d] || { math: [], di: [] };
+                              const day = t.days?.[d] || {
+                                math: [],
+                                di: [],
+                                planning: [],
+                              };
+                              const planning = day.planning || [];
                               return (
                                 <td
                                   key={d}
@@ -244,7 +252,7 @@ export default function SchedulePage() {
                                   )}
                                   {day.di.length > 0 && (
                                     <div
-                                      className="rounded bg-blue-50 text-blue-700 px-1.5 py-0.5"
+                                      className="rounded bg-blue-50 text-blue-700 px-1.5 py-0.5 mb-1"
                                       title={day.di
                                         .map((x: any) => x.subject)
                                         .join(", ")}
@@ -252,8 +260,19 @@ export default function SchedulePage() {
                                       DI {span(day.di)}
                                     </div>
                                   )}
+                                  {planning.length > 0 && (
+                                    <div
+                                      className="rounded bg-emerald-50 text-emerald-700 px-1.5 py-0.5"
+                                      title={planning
+                                        .map((x: any) => x.subject)
+                                        .join(", ")}
+                                    >
+                                      📋 {span(planning)}
+                                    </div>
+                                  )}
                                   {day.math.length === 0 &&
-                                    day.di.length === 0 && (
+                                    day.di.length === 0 &&
+                                    planning.length === 0 && (
                                       <span className="text-gray-300">—</span>
                                     )}
                                 </td>
@@ -269,7 +288,8 @@ export default function SchedulePage() {
             })}
             <p className="text-xs text-gray-400">
               🧮 = math lesson (visit window) · DI = Science/Social-Studies block
-              where Math DI can run. Times shown as start–end.
+              where Math DI can run · 📋 = planning time (K/1: 1:50–3:05; 2/3:
+              Math common planning). Times shown as start–end.
             </p>
 
             {/* Visit planner */}

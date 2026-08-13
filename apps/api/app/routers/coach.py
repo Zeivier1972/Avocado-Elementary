@@ -337,6 +337,17 @@ def _school_context(db: Session, user: User) -> dict:
                 "grade": grade, "room": t["room"], "teacher": t["teacher"],
                 "program": t.get("program", ""),
                 "math_times": math_times, "di_windows": di_times})
+    # Per-grade planning windows (math planning where distinguishable).
+    planning_by_grade: dict = {}
+    for grade, ts in sched.items():
+        wins = set()
+        for t in ts:
+            for d in t["days"].values():
+                for p in d.get("planning", []):
+                    if p.get("subject") in ("Planning", "Math CP"):
+                        wins.add(f"{p['start']}-{p['end']} ({p['subject']})")
+        if wins:
+            planning_by_grade[grade] = sorted(wins)
 
     return {
         "school": school.name if school else "",
@@ -362,6 +373,7 @@ def _school_context(db: Session, user: User) -> dict:
         "standards_count": db.query(Standard).count(),
         "upcoming_dates": _upcoming_dates(db, tenant_id, within_days=60, limit=12),
         "math_schedule": schedule_summary,
+        "planning_by_grade": planning_by_grade,
     }
 
 
@@ -1101,22 +1113,27 @@ def _schedule_grouped(db, tenant_id) -> dict:
     from app.schedule_import import DAY_ORDER
     rows = db.query(ScheduleBlock).filter(
         ScheduleBlock.tenant_id == tenant_id).all()
+    def _blank():
+        return {"math": [], "di": [], "planning": []}
     teachers: dict = {}
     for b in rows:
         key = (b.grade, b.room, b.teacher_name)
         t = teachers.setdefault(key, {
             "grade": b.grade, "room": b.room, "teacher": b.teacher_name,
             "program": getattr(b, "program", "") or "",
-            "days": {d: {"math": [], "di": []} for d in DAY_ORDER}})
-        day = t["days"].setdefault(b.day, {"math": [], "di": []})
+            "days": {d: _blank() for d in DAY_ORDER}})
+        day = t["days"].setdefault(b.day, _blank())
         if b.kind == "math":
             day["math"].append({"start": b.start_time, "end": b.end_time})
+        elif b.kind == "planning":
+            day.setdefault("planning", []).append(
+                {"subject": b.subject, "start": b.start_time, "end": b.end_time})
         else:
             day["di"].append({"subject": b.subject, "start": b.start_time, "end": b.end_time})
     for t in teachers.values():
         for d in t["days"].values():
-            d["math"].sort(key=lambda x: x["start"])
-            d["di"].sort(key=lambda x: x["start"])
+            for k in ("math", "di", "planning"):
+                d.setdefault(k, []).sort(key=lambda x: x["start"])
         t["teaches_math"] = any(t["days"][d]["math"] for d in t["days"])
     by_grade: dict = {}
     for t in sorted(teachers.values(), key=lambda x: (x["grade"], x["room"], x["teacher"])):
