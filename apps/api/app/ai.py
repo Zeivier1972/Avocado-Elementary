@@ -437,12 +437,15 @@ def _context_text(ctx: dict) -> str:
     fw = ctx.get("framework") or {}
     if fw.get("this_week"):
         tw = fw["this_week"]
+        pf = fw.get("planning_for") or tw
         lines.append(
-            f"\nFRAMEWORK OF EFFECTIVE INSTRUCTION — this week's coaching lens "
-            f"(week {tw['week']}): {tw['component_name']} — {tw['focus']} "
-            f"({tw['why']}). When helping the coach plan or prep to support "
-            "teachers, connect advice to this lens and be the expert on it. The "
-            "six components: "
+            f"\nFRAMEWORK OF EFFECTIVE INSTRUCTION. Teachers are currently teaching "
+            f"week {tw['week']} (lens: {tw['component_name']} — {tw['focus']}). "
+            f"IMPORTANT: the coach plans a WEEK AHEAD — this week's planning "
+            f"meetings are about NEXT week (week {pf['week']}, lens: "
+            f"{pf['component_name']} — {pf['focus']}; {pf['why']}). So when helping "
+            "the coach prepare for a planning meeting, lead with NEXT week's lens "
+            "and next week's lessons, and be the expert on it. The six components: "
             + "; ".join(f"{c['name']} — {c['essence']}" for c in fw.get("components", [])))
     # Upcoming dates.
     ud = ctx.get("upcoming_dates") or []

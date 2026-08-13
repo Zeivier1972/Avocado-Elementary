@@ -26,7 +26,11 @@ export default function FrameworkPage() {
       })
       .then((r) => {
         setData(r);
-        setOpen(r.this_week?.component_key || r.framework?.components?.[0]?.key);
+        setOpen(
+          r.planning_for?.component_key ||
+            r.this_week?.component_key ||
+            r.framework?.components?.[0]?.key
+        );
       })
       .catch(() => setData(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -41,7 +45,8 @@ export default function FrameworkPage() {
   if (!me) return <div className="p-10 text-gray-500">Loading…</div>;
 
   const fw = data?.framework;
-  const tw = data?.this_week;
+  const tw = data?.planning_for || data?.this_week;
+  const teachingNow = data?.this_week;
 
   return (
     <main className="min-h-screen">
@@ -61,13 +66,20 @@ export default function FrameworkPage() {
         {tw && (
           <div className="rounded-2xl border border-avocado/30 bg-avocado/5 p-5">
             <div className="text-xs font-semibold uppercase tracking-wide text-avocado-dark">
-              This week&apos;s coaching lens · Week {tw.week}
+              Plan with teachers this week → for next week · Week {tw.week}
             </div>
             <div className="text-xl font-bold text-gray-800 mt-1">
               {tw.component_name}: {tw.focus}
             </div>
             <p className="text-sm text-gray-600 mt-1">{tw.why}</p>
             <p className="text-sm text-gray-500 mt-1 italic">{tw.essence}</p>
+            {teachingNow && (
+              <p className="text-xs text-gray-400 mt-2">
+                Teachers are teaching Week {teachingNow.week} now (
+                {teachingNow.component_name}: {teachingNow.focus}). Your planning
+                meetings prep the week ahead.
+              </p>
+            )}
             <button
               onClick={() => {
                 setOpen(tw.component_key);

@@ -99,7 +99,7 @@ export default function CoachHomePage() {
           </div>
         )}
 
-        {home?.this_week_lens && (
+        {(home?.planning_for || home?.this_week_lens) && (
           <a
             href="/framework"
             className="block rounded-2xl border border-avocado/30 bg-avocado/5 p-4 hover:border-avocado transition"
@@ -107,14 +107,22 @@ export default function CoachHomePage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-avocado-dark">
-                  🧭 This week&apos;s coaching lens · Week {home.this_week_lens.week}
+                  🧭 Plan with teachers this week → for next week (Week{" "}
+                  {(home.planning_for || home.this_week_lens).week})
                 </div>
                 <div className="font-bold text-gray-800 mt-0.5">
-                  {home.this_week_lens.component_name}: {home.this_week_lens.focus}
+                  {(home.planning_for || home.this_week_lens).component_name}:{" "}
+                  {(home.planning_for || home.this_week_lens).focus}
                 </div>
                 <div className="text-sm text-gray-600">
-                  {home.this_week_lens.why}
+                  {(home.planning_for || home.this_week_lens).why}
                 </div>
+                {home.this_week_lens && home.planning_for && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    Teaching now (Week {home.this_week_lens.week}):{" "}
+                    {home.this_week_lens.component_name} — {home.this_week_lens.focus}
+                  </div>
+                )}
               </div>
               <span className="text-sm text-avocado-dark shrink-0">Open →</span>
             </div>

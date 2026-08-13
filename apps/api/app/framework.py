@@ -71,20 +71,33 @@ def _school_week(today: date, year_start: date) -> int:
     return min(36, (today - year_start).days // 7 + 1)
 
 
-def current_week_focus(today_iso: str | None = None,
-                       year_start_iso: str = SCHOOL_YEAR_START) -> dict:
-    """The framework component to lead with this school week, with its rationale
-    and the full component detail."""
-    today = date.fromisoformat(today_iso) if today_iso else date.today()
-    ys = date.fromisoformat(year_start_iso)
-    wk = _school_week(today, ys)
-    week, key, focus, why = WEEKLY_FOCUS[wk - 1]
+def week_focus(week: int) -> dict:
+    """The lens/focus for a given school week number (1-36)."""
+    week = max(1, min(36, week))
+    wk, key, focus, why = WEEKLY_FOCUS[week - 1]
     comp = component_map().get(key, {})
     return {
-        "week": week,
+        "week": wk,
         "component_key": key,
         "component_name": comp.get("name", key),
         "focus": focus,
         "why": why,
         "essence": comp.get("essence", ""),
     }
+
+
+def current_week_focus(today_iso: str | None = None,
+                       year_start_iso: str = SCHOOL_YEAR_START) -> dict:
+    """The framework lens for THIS school week (what teachers are teaching now)."""
+    today = date.fromisoformat(today_iso) if today_iso else date.today()
+    ys = date.fromisoformat(year_start_iso)
+    return week_focus(_school_week(today, ys))
+
+
+def planning_week_focus(today_iso: str | None = None,
+                        year_start_iso: str = SCHOOL_YEAR_START) -> dict:
+    """The framework lens for NEXT school week — what this week's planning
+    meetings are actually about (coaches plan a week ahead)."""
+    today = date.fromisoformat(today_iso) if today_iso else date.today()
+    ys = date.fromisoformat(year_start_iso)
+    return week_focus(_school_week(today, ys) + 1)
