@@ -16,18 +16,29 @@ from collections import defaultdict
 
 DAY_MAP = {"M": "Mon", "T": "Tue", "W": "Wed", "R": "Thu", "F": "Fri"}
 DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri"]
-# K-3 homeroom sheets (the coach supports K-3 math). Others (ASD/ESE/PreK) can be
-# added later; the parser itself is sheet-agnostic.
-DEFAULT_SHEETS = ["Kinder & Grade 1", "Grade  2 & 3"]
+# K-3 homeroom sheets the coach supports for math, including the ASD (autism
+# spectrum, self-contained) K-3 classes. The parser is sheet-agnostic.
+DEFAULT_SHEETS = ["Kinder & Grade 1", "Grade  2 & 3", "ASD K & 1", "ASD 2 & 3"]
 
 
-def _hhmm(v) -> str | None:
-    return f"{v.hour:02d}:{v.minute:02d}" if hasattr(v, "hour") else None
+def _hhmm(minutes: int) -> str:
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
-def _plus5(v) -> str:
-    m = v.hour * 60 + v.minute + 5
-    return f"{m // 60:02d}:{m % 60:02d}"
+def _col_min_map(ws) -> dict | None:
+    """Column -> minutes-from-midnight, read from whichever early row carries the
+    5-minute time headers. Returns None if this sheet has no time row."""
+    best_row, best_n = None, 0
+    for r in range(1, 7):
+        n = sum(1 for c in range(1, ws.max_column + 1)
+                if hasattr(ws.cell(r, c).value, "hour"))
+        if n > best_n:
+            best_row, best_n = r, n
+    if not best_row:
+        return None
+    return {c: ws.cell(best_row, c).value.hour * 60 + ws.cell(best_row, c).value.minute
+            for c in range(1, ws.max_column + 1)
+            if hasattr(ws.cell(best_row, c).value, "hour")}
 
 
 def _classify(label: str) -> str | None:
@@ -44,12 +55,13 @@ def _clean_subject(label: str) -> str:
     return re.sub(r"\s+", " ", label.split("(")[0]).strip()
 
 
-def _parse_sheet(ws, grade_default=""):
-    col_time = {c: ws.cell(3, c).value for c in range(1, ws.max_column + 1)
-                if hasattr(ws.cell(3, c).value, "hour")}
-    if not col_time:
+def _parse_sheet(ws, canon: dict | None = None):
+    # Some tabs (e.g. ASD K & 1) omit the time-header row; fall back to the
+    # workbook's canonical column->time grid (all tabs share the column layout).
+    col_min = _col_min_map(ws) or canon
+    if not col_min:
         return []
-    tmin = min(col_time)
+    tmin = min(col_min)
     starts = defaultdict(list)
     for mr in ws.merged_cells.ranges:
         if mr.min_row == mr.max_row and mr.min_col >= tmin:
@@ -62,7 +74,7 @@ def _parse_sheet(ws, grade_default=""):
             if v is not None and str(v).strip():
                 out.append((a, b, str(v).strip()))
                 seen.update(range(a, b + 1))
-        for c in sorted(col_time):
+        for c in sorted(col_min):
             if c in seen:
                 continue
             v = ws.cell(r, c).value
@@ -71,37 +83,48 @@ def _parse_sheet(ws, grade_default=""):
         return sorted(out)
 
     teachers = []
-    grade = grade_default
-    r = 4
+    grade, program = "", ""
+    r = 3
     while r <= ws.max_row:
         a = ws.cell(r, 1).value
-        if a and re.search(r"grade|kinder|prek|pre-k", str(a), re.I):
+        if a and re.search(r"grade|kinder|prek|pre-k|asd", str(a), re.I):
             grade = _norm_grade(str(a))
+            program = "ASD" if re.search(r"asd", str(a), re.I) else ""
         b = ws.cell(r, 2).value
         day = ws.cell(r, 3).value
-        if b and str(b).strip() and day:  # Monday row starts a teacher block
+        if b and str(b).strip() and day and str(day).strip() in DAY_MAP:
             binfo = re.sub(r"\s+", " ", str(b)).strip()
             mroom = re.match(r"^([A-Z]?\d{2,3}[A-Z]?)", binfo)
             room = mroom.group(1) if mroom else ""
             name = binfo[len(room):] if room else binfo
             name = re.split(r"\(|Room|ESOL|LV|SPED|/", name)[0].strip(" -·")
+            # ASD rows are room-labeled (e.g. "A07 (2nd)") with no teacher name;
+            # use the room as the label (the ASD tag distinguishes it).
+            if not name:
+                name = room or "—"
+            # a room-only ASD block may still carry the grade in its label "(2nd)"
+            if not grade:
+                gm = re.search(r"\((kinder|k|\d)", binfo, re.I)
+                if gm:
+                    grade = _norm_grade(gm.group(1))
             days = {}
             for k in range(5):
                 rr = r + k
                 d = ws.cell(rr, 3).value
-                if not d:
+                if not d or str(d).strip() not in DAY_MAP:
                     break
-                dd = DAY_MAP.get(str(d).strip(), str(d).strip())
+                dd = DAY_MAP[str(d).strip()]
                 math, di = [], []
                 for x, y, val in blocks(rr):
                     kind = _classify(val)
                     if kind == "math":
-                        math.append({"start": _hhmm(col_time[x]), "end": _plus5(col_time[y])})
+                        math.append({"start": _hhmm(col_min[x]), "end": _hhmm(col_min[y] + 5)})
                     elif kind == "di":
                         di.append({"subject": _clean_subject(val),
-                                   "start": _hhmm(col_time[x]), "end": _plus5(col_time[y])})
+                                   "start": _hhmm(col_min[x]), "end": _hhmm(col_min[y] + 5)})
                 days[dd] = {"math": math, "di": di}
             teachers.append({"grade": grade, "room": room, "teacher": name,
+                             "program": program,
                              "teaches_math": any(days[d]["math"] for d in days),
                              "days": days})
             r += 5
@@ -132,12 +155,19 @@ def parse_master_schedule(data: bytes, sheets: list[str] | None = None) -> dict:
     want = sheets or DEFAULT_SHEETS
     # tolerant sheet matching (trailing/double spaces vary)
     norm = {re.sub(r"\s+", " ", s).strip().lower(): s for s in wb.sheetnames}
+    # Canonical column->time grid from any sheet that has one, so tabs missing
+    # their time header (ASD K & 1) still resolve to clock times.
+    canon = None
+    for s in wb.sheetnames:
+        canon = _col_min_map(wb[s])
+        if canon:
+            break
     teachers, used = [], []
     for target in want:
         key = re.sub(r"\s+", " ", target).strip().lower()
         real = norm.get(key)
         if real:
-            teachers.extend(_parse_sheet(wb[real]))
+            teachers.extend(_parse_sheet(wb[real], canon=canon))
             used.append(real)
     if not teachers:
         return {"teachers": [], "sheets_used": used,
@@ -149,14 +179,15 @@ def to_blocks(teachers: list[dict]) -> list[dict]:
     """Flatten parsed teachers into storable rows (one per math/di block)."""
     rows = []
     for t in teachers:
+        prog = t.get("program", "")
         for day, sub in t["days"].items():
             for m in sub["math"]:
-                rows.append({"grade": t["grade"], "room": t["room"],
+                rows.append({"grade": t["grade"], "room": t["room"], "program": prog,
                              "teacher": t["teacher"], "day": day, "kind": "math",
                              "subject": "Mathematics",
                              "start": m["start"], "end": m["end"]})
             for d in sub["di"]:
-                rows.append({"grade": t["grade"], "room": t["room"],
+                rows.append({"grade": t["grade"], "room": t["room"], "program": prog,
                              "teacher": t["teacher"], "day": day, "kind": "di",
                              "subject": d["subject"],
                              "start": d["start"], "end": d["end"]})
@@ -193,7 +224,8 @@ def build_visit_plan(by_grade: dict, kind: str = "math", minutes: int = 30,
                                       "end": _to_min(b["end"]), "subject": b.get("subject", "")})
             if slots:
                 teachers.append({"grade": g, "room": t["room"],
-                                 "teacher": t["teacher"], "slots": slots})
+                                 "teacher": t["teacher"],
+                                 "program": t.get("program", ""), "slots": slots})
     teachers.sort(key=lambda t: (len(t["slots"]), t["grade"], t["room"]))
     busy = {d: [] for d in DAY_ORDER}
     load = {d: 0 for d in DAY_ORDER}
@@ -220,7 +252,8 @@ def build_visit_plan(by_grade: dict, kind: str = "math", minutes: int = 30,
         busy[o["day"]].append((s, e))
         load[o["day"]] += 1
         plan.append({"day": o["day"], "grade": t["grade"], "room": t["room"],
-                     "teacher": t["teacher"], "start": _to_hhmm(s), "end": _to_hhmm(e),
+                     "teacher": t["teacher"], "program": t.get("program", ""),
+                     "start": _to_hhmm(s), "end": _to_hhmm(e),
                      "subject": o.get("subject", ""),
                      "block": f"{_to_hhmm(o['start'])}-{_to_hhmm(o['end'])}",
                      "conflict": conflict})

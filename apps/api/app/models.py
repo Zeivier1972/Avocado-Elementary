@@ -369,6 +369,7 @@ class ScheduleBlock(Base, TimestampMixin):
     grade: Mapped[str] = mapped_column(String, default="", index=True)
     room: Mapped[str] = mapped_column(String, default="")
     teacher_name: Mapped[str] = mapped_column(String, default="", index=True)
+    program: Mapped[str] = mapped_column(String, default="")  # "" | ASD
     day: Mapped[str] = mapped_column(String, default="")     # Mon..Fri
     kind: Mapped[str] = mapped_column(String, default="math", index=True)  # math|di
     subject: Mapped[str] = mapped_column(String, default="")

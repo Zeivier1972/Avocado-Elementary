@@ -23,6 +23,9 @@ _ADDED_COLUMNS = {
         "status": "VARCHAR DEFAULT 'ready'",
         "error": "TEXT DEFAULT ''",
     },
+    "schedule_blocks": {
+        "program": "VARCHAR DEFAULT ''",  # "" | ASD
+    },
 }
 # student_assessments is a new table (create_all builds it) — no ALTERs needed.
 

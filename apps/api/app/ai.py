@@ -425,8 +425,9 @@ def _context_text(ctx: dict) -> str:
         lines.append("\nMATH & MATH-DI SCHEDULE (Math-DI runs during Science/Social "
                      "Studies time):")
         for s in ms:
+            tag = " (ASD)" if s.get("program") == "ASD" else ""
             lines.append(
-                f"  - G{s['grade']} Rm {s['room']} {s['teacher']}: "
+                f"  - G{s['grade']} Rm {s['room']} {s['teacher']}{tag}: "
                 f"Math {', '.join(s['math_times']) or '—'}; "
                 f"DI window {', '.join(s['di_windows']) or '—'}")
     # Upcoming dates.

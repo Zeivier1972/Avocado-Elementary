@@ -217,6 +217,11 @@ export default function SchedulePage() {
                             <td className="p-2 whitespace-nowrap">
                               <div className="font-semibold text-gray-800">
                                 {t.teacher || "—"}
+                                {t.program === "ASD" && (
+                                  <span className="ml-1 text-[9px] font-mono uppercase bg-purple-50 text-purple-700 border border-purple-200 rounded px-1 py-0.5">
+                                    ASD
+                                  </span>
+                                )}
                               </div>
                               <div className="text-gray-400">
                                 {t.room ? `Rm ${t.room}` : ""}
@@ -349,7 +354,12 @@ export default function SchedulePage() {
                                     {fmt(v.start)}–{fmt(v.end)}
                                   </div>
                                   <div className="text-gray-600">
-                                    {v.teacher}{" "}
+                                    {v.teacher}
+                                    {v.program === "ASD" && (
+                                      <span className="ml-1 text-[9px] font-mono uppercase text-purple-600">
+                                        ASD
+                                      </span>
+                                    )}{" "}
                                     <span className="text-gray-400">
                                       · {GRADE_LABEL(v.grade)}
                                       {v.room ? ` · Rm ${v.room}` : ""}

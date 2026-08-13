@@ -335,6 +335,7 @@ def _school_context(db: Session, user: User) -> dict:
                                for d in t["days"].values() for x in d["di"]})
             schedule_summary.append({
                 "grade": grade, "room": t["room"], "teacher": t["teacher"],
+                "program": t.get("program", ""),
                 "math_times": math_times, "di_windows": di_times})
 
     return {
@@ -1105,6 +1106,7 @@ def _schedule_grouped(db, tenant_id) -> dict:
         key = (b.grade, b.room, b.teacher_name)
         t = teachers.setdefault(key, {
             "grade": b.grade, "room": b.room, "teacher": b.teacher_name,
+            "program": getattr(b, "program", "") or "",
             "days": {d: {"math": [], "di": []} for d in DAY_ORDER}})
         day = t["days"].setdefault(b.day, {"math": [], "di": []})
         if b.kind == "math":
@@ -1147,8 +1149,9 @@ async def import_schedule(
     for row in to_blocks(res["teachers"]):
         db.add(ScheduleBlock(
             tenant_id=user.tenant_id, grade=row["grade"], room=row["room"],
-            teacher_name=row["teacher"], day=row["day"], kind=row["kind"],
-            subject=row["subject"], start_time=row["start"], end_time=row["end"]))
+            program=row.get("program", ""), teacher_name=row["teacher"],
+            day=row["day"], kind=row["kind"], subject=row["subject"],
+            start_time=row["start"], end_time=row["end"]))
         n += 1
     db.commit()
     audit(db, actor=user, action="import", entity_type="schedule",
