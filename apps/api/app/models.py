@@ -377,6 +377,21 @@ class ScheduleBlock(Base, TimestampMixin):
     end_time: Mapped[str] = mapped_column(String, default="")
 
 
+class CollabMeeting(Base, TimestampMixin):
+    """A math collaborative-planning (CPT) meeting in the A/B two-week rotation:
+    when the coach meets a grade's math team. Host is this year's teacher."""
+    __tablename__ = "collab_meetings"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    week: Mapped[str] = mapped_column(String, default="A")     # A | B
+    day: Mapped[str] = mapped_column(String, default="")        # Mon..Fri
+    time: Mapped[str] = mapped_column(String, default="")       # HH:MM
+    grade: Mapped[str] = mapped_column(String, default="", index=True)
+    group: Mapped[str] = mapped_column(String, default="")      # Gen Ed | ASD | ESOL | ...
+    host: Mapped[str] = mapped_column(String, default="")       # this year's teacher
+    note: Mapped[str] = mapped_column(Text, default="")
+
+
 class CoachNote(Base, TimestampMixin):
     """A coach's note about a teacher — the on-ramp to coaching cycles. Captures
     focus areas, observations, and next steps tied to a teacher (the CRM

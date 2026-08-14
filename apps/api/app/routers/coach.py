@@ -27,6 +27,7 @@ from app.models import (
     CalendarEntry,
     ClassRoom,
     CoachNote,
+    CollabMeeting,
     District,
     KeyDate,
     PacingTopic,
@@ -375,7 +376,21 @@ def _school_context(db: Session, user: User) -> dict:
         "math_schedule": schedule_summary,
         "planning_by_grade": planning_by_grade,
         "framework": _framework_context(),
+        "collab_meetings": _collab_context(db, tenant_id),
     }
+
+
+def _collab_context(db, tenant_id) -> dict:
+    """This week's A/B collaborative-planning meetings for the AI snapshot."""
+    from app.framework import current_ab_week
+    cur = current_ab_week()
+    rows = db.query(CollabMeeting).filter(
+        CollabMeeting.tenant_id == tenant_id, CollabMeeting.week == cur).all()
+    meetings = [
+        {"day": m.day, "time": m.time, "grade": m.grade, "group": m.group,
+         "host": m.host}
+        for m in sorted(rows, key=lambda x: (x.day, x.time))]
+    return {"current_week": cur, "this_week": meetings}
 
 
 def _framework_context() -> dict:
@@ -897,6 +912,7 @@ def coach_home(
         "followups": followups,
         "this_week_lens": current_week_focus(),
         "planning_for": planning_week_focus(),
+        "collab_meetings": _collab_context(db, user.tenant_id),
         "upcoming_dates": _upcoming_dates(db, user.tenant_id, within_days=45, limit=8),
         "counts": {
             "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
@@ -1238,3 +1254,108 @@ def get_framework(
             for (w, k, f, y) in WEEKLY_FOCUS]
     return {"framework": fw, "this_week": current_week_focus(),
             "planning_for": planning_week_focus(), "weekly_plan": plan}
+
+
+# --- Collaborative planning (CPT) A/B rotation --------------------------------
+
+def _collab_host_suggestions(db, tenant_id) -> dict:
+    """Per grade, this year's math teachers split by Gen Ed / ASD — to assign a
+    meeting host from real teachers instead of last year's names."""
+    grouped = _schedule_grouped(db, tenant_id)
+    out: dict = {}
+    for grade, ts in grouped.items():
+        gen = sorted({t["teacher"] for t in ts if t.get("teaches_math") and not t.get("program")})
+        asd = sorted({t["teacher"] for t in ts if t.get("teaches_math") and t.get("program") == "ASD"})
+        out[grade] = {"Gen Ed": gen, "ASD": asd}
+    return out
+
+
+@router.get("/collab")
+def get_collab(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The math collaborative-planning A/B rotation, this week's A/B side, and
+    host suggestions from this year's teachers."""
+    from app.framework import current_ab_week
+    rows = db.query(CollabMeeting).filter(
+        CollabMeeting.tenant_id == user.tenant_id).all()
+    by_week = {"A": [], "B": []}
+    for m in sorted(rows, key=lambda x: (x.day, x.time)):
+        by_week.setdefault(m.week, []).append({
+            "id": m.id, "week": m.week, "day": m.day, "time": m.time,
+            "grade": m.grade, "group": m.group, "host": m.host, "note": m.note})
+    return {"by_week": by_week, "current_week": current_ab_week(),
+            "suggestions": _collab_host_suggestions(db, user.tenant_id),
+            "has_data": bool(rows)}
+
+
+@router.post("/collab/load")
+def load_collab(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Load the standard A/B rotation template (times/grades/groups), replacing
+    any existing meetings. Hosts start blank — assign this year's teachers."""
+    import json as _json
+    from pathlib import Path
+    path = Path(__file__).parent.parent / "data" / "collab_planning.json"
+    data = _json.loads(path.read_text())
+    db.query(CollabMeeting).filter(
+        CollabMeeting.tenant_id == user.tenant_id).delete()
+    n = 0
+    for m in data.get("meetings", []):
+        db.add(CollabMeeting(
+            tenant_id=user.tenant_id, week=m.get("week", "A"), day=m.get("day", ""),
+            time=m.get("time", ""), grade=m.get("grade", ""), group=m.get("group", ""),
+            host=m.get("host", "")))
+        n += 1
+    db.commit()
+    return {"loaded": n}
+
+
+class CollabIn(BaseModel):
+    week: str = "A"
+    day: str = ""
+    time: str = ""
+    grade: str = ""
+    group: str = ""
+    host: str = ""
+    note: str = ""
+
+
+@router.post("/collab")
+def add_collab(payload: CollabIn, db: Session = Depends(get_db),
+               user: User = Depends(_require_coach)):
+    m = CollabMeeting(tenant_id=user.tenant_id, week=payload.week or "A",
+                      day=payload.day, time=payload.time, grade=payload.grade,
+                      group=payload.group, host=payload.host, note=payload.note)
+    db.add(m)
+    db.commit()
+    return {"id": m.id}
+
+
+@router.patch("/collab/{mid}")
+def update_collab(mid: str, payload: CollabIn, db: Session = Depends(get_db),
+                  user: User = Depends(_require_coach)):
+    m = db.get(CollabMeeting, mid)
+    if not m or m.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Meeting not found")
+    for f in ("week", "day", "time", "grade", "group", "host", "note"):
+        v = getattr(payload, f)
+        if v is not None:
+            setattr(m, f, v)
+    db.add(m)
+    db.commit()
+    return {"id": m.id, "host": m.host}
+
+
+@router.delete("/collab/{mid}")
+def delete_collab(mid: str, db: Session = Depends(get_db),
+                  user: User = Depends(_require_coach)):
+    m = db.get(CollabMeeting, mid)
+    if not m or m.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Meeting not found")
+    db.delete(m)
+    db.commit()
+    return {"deleted": True}

@@ -83,6 +83,16 @@ export const api = {
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
   getFramework: () => req("/coach/framework"),
+  getCollab: () => req("/coach/collab"),
+  loadCollab: () => req("/coach/collab/load", { method: "POST" }),
+  updateCollab: (id: string, body: any) =>
+    req(`/coach/collab/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  deleteCollab: (id: string) =>
+    req(`/coach/collab/${id}`, { method: "DELETE" }),
   getSchedule: () => req("/coach/schedule"),
   getVisitPlan: (kind: string, minutes: number, grade: string) =>
     req(

@@ -1,0 +1,17 @@
+{
+  "title": "Math Collaborative Planning Schedule — At A Glance",
+  "note": "Two-week A/B rotation. Times carry over year to year; assign this year's host teacher per grade/group.",
+  "meetings": [
+    {"week": "A", "day": "Mon", "time": "13:05", "grade": "3", "group": "ASD"},
+    {"week": "A", "day": "Mon", "time": "14:05", "grade": "3", "group": "Gen Ed"},
+    {"week": "A", "day": "Thu", "time": "08:35", "grade": "2", "group": "Gen Ed & ASD"},
+    {"week": "A", "day": "Thu", "time": "14:10", "grade": "1", "group": "Gen Ed"},
+
+    {"week": "B", "day": "Mon", "time": "13:05", "grade": "3", "group": "ASD"},
+    {"week": "B", "day": "Tue", "time": "10:35", "grade": "2", "group": "ASD"},
+    {"week": "B", "day": "Tue", "time": "14:10", "grade": "K", "group": "Gen Ed"},
+    {"week": "B", "day": "Thu", "time": "08:35", "grade": "2", "group": "Gen Ed & ASD"},
+    {"week": "B", "day": "Thu", "time": "14:10", "grade": "1", "group": "Gen Ed & ASD"},
+    {"week": "B", "day": "Thu", "time": "08:35", "grade": "2", "group": "ESOL"}
+  ]
+}

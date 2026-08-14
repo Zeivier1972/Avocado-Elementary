@@ -447,6 +447,15 @@ def _context_text(ctx: dict) -> str:
             "the coach prepare for a planning meeting, lead with NEXT week's lens "
             "and next week's lessons, and be the expert on it. The six components: "
             + "; ".join(f"{c['name']} — {c['essence']}" for c in fw.get("components", [])))
+    cm = ctx.get("collab_meetings") or {}
+    if cm.get("this_week"):
+        lines.append(
+            f"\nCOLLABORATIVE PLANNING MEETINGS this week (rotation side "
+            f"{cm.get('current_week','?')}): "
+            + "; ".join(
+                f"{m['day']} {m['time']} G{m['grade']} {m['group']}"
+                + (f" (host {m['host']})" if m.get('host') else "")
+                for m in cm["this_week"]))
     # Upcoming dates.
     ud = ctx.get("upcoming_dates") or []
     if ud:

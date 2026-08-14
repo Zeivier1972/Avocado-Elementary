@@ -101,3 +101,12 @@ def planning_week_focus(today_iso: str | None = None,
     today = date.fromisoformat(today_iso) if today_iso else date.today()
     ys = date.fromisoformat(year_start_iso)
     return week_focus(_school_week(today, ys) + 1)
+
+
+def current_ab_week(today_iso: str | None = None,
+                    year_start_iso: str = SCHOOL_YEAR_START) -> str:
+    """Which side of the A/B collaborative-planning rotation this week is
+    (school week 1 = A, week 2 = B, alternating)."""
+    today = date.fromisoformat(today_iso) if today_iso else date.today()
+    ys = date.fromisoformat(year_start_iso)
+    return "A" if _school_week(today, ys) % 2 == 1 else "B"

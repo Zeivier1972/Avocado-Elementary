@@ -29,6 +29,10 @@ export default function SchedulePage() {
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // collaborative planning (A/B rotation)
+  const [collab, setCollab] = useState<any>(null);
+  const [collabBusy, setCollabBusy] = useState(false);
+
   // visit planner
   const [planKind, setPlanKind] = useState("math");
   const [planGrade, setPlanGrade] = useState("");
@@ -50,8 +54,23 @@ export default function SchedulePage() {
       })
       .then((r) => setByGrade(r.by_grade || {}))
       .catch(() => setByGrade({}));
+    api.getCollab().then(setCollab).catch(() => setCollab(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function loadCollabTemplate() {
+    setCollabBusy(true);
+    try {
+      await api.loadCollab();
+      setCollab(await api.getCollab());
+    } finally {
+      setCollabBusy(false);
+    }
+  }
+  async function setHost(id: string, host: string) {
+    await api.updateCollab(id, { host });
+    setCollab(await api.getCollab());
+  }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -148,6 +167,114 @@ export default function SchedulePage() {
             {msg}
           </div>
         )}
+
+        {/* Collaborative planning (A/B rotation) */}
+        <div className="bg-white rounded-2xl border border-avocado/30 p-5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <div className="font-semibold text-gray-800">
+                Collaborative Planning Meetings
+                {collab?.current_week && (
+                  <span className="ml-2 text-xs font-mono bg-avocado/10 text-avocado-dark border border-avocado/30 rounded px-1.5 py-0.5">
+                    This week: {collab.current_week}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Your CPT meetings — a two-week A/B rotation. When you meet each
+                grade's math team.
+              </p>
+            </div>
+            {!collab?.has_data && (
+              <button
+                onClick={loadCollabTemplate}
+                disabled={collabBusy}
+                className="no-print bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-2 disabled:opacity-60"
+              >
+                {collabBusy ? "Loading…" : "Load standard rotation"}
+              </button>
+            )}
+          </div>
+
+          {collab?.has_data ? (
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+              {["A", "B"].map((wk) => (
+                <div
+                  key={wk}
+                  className={`rounded-xl border ${
+                    collab.current_week === wk
+                      ? "border-avocado/40 bg-avocado/5"
+                      : "border-gray-100"
+                  }`}
+                >
+                  <div className="px-3 py-1.5 border-b border-gray-100 text-sm font-semibold text-gray-700">
+                    Week {wk}
+                    {collab.current_week === wk && (
+                      <span className="text-avocado-dark"> · this week</span>
+                    )}
+                  </div>
+                  <ul className="p-2 space-y-1.5">
+                    {(collab.by_week?.[wk] || []).map((m: any) => {
+                      const sugg =
+                        collab.suggestions?.[m.grade]?.[
+                          m.group.includes("ASD") && !m.group.includes("Gen")
+                            ? "ASD"
+                            : "Gen Ed"
+                        ] || [];
+                      const options = Array.from(
+                        new Set([
+                          ...(collab.suggestions?.[m.grade]?.["Gen Ed"] || []),
+                          ...(collab.suggestions?.[m.grade]?.["ASD"] || []),
+                        ])
+                      );
+                      return (
+                        <li
+                          key={m.id}
+                          className="text-xs flex items-center gap-2 flex-wrap"
+                        >
+                          <span className="font-semibold text-gray-800 w-12 tabular-nums">
+                            {fmt(m.time)}
+                          </span>
+                          <span className="text-gray-600 w-8">{m.day}</span>
+                          <span className="text-gray-700">
+                            {m.grade === "K" ? "Kinder" : `Gr ${m.grade}`}
+                            <span className="text-gray-400"> · {m.group}</span>
+                          </span>
+                          <select
+                            value={m.host || ""}
+                            onChange={(e) => setHost(m.id, e.target.value)}
+                            className="ml-auto no-print border border-gray-200 rounded px-1 py-0.5 text-[11px] max-w-[140px]"
+                          >
+                            <option value="">host…</option>
+                            {options.map((o: string) => (
+                              <option key={o} value={o}>
+                                {o}
+                              </option>
+                            ))}
+                            {m.host && !options.includes(m.host) && (
+                              <option value={m.host}>{m.host}</option>
+                            )}
+                          </select>
+                          {m.host && (
+                            <span className="print-only hidden text-gray-600">
+                              {m.host}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 mt-3">
+              Click "Load standard rotation" to bring in your A/B meeting times,
+              then pick this year&apos;s host teacher for each (suggestions come
+              from your uploaded master schedule).
+            </p>
+          )}
+        </div>
 
         {!hasData ? (
           <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-500 text-sm">

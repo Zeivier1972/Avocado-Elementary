@@ -129,6 +129,44 @@ export default function CoachHomePage() {
           </a>
         )}
 
+        {home?.collab_meetings?.this_week?.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-semibold text-gray-800">
+                Your planning meetings this week
+                <span className="ml-2 text-xs font-mono bg-avocado/10 text-avocado-dark border border-avocado/30 rounded px-1.5 py-0.5">
+                  Week {home.collab_meetings.current_week}
+                </span>
+              </div>
+              <a href="/schedule" className="text-sm text-avocado-dark hover:underline">
+                Full rotation →
+              </a>
+            </div>
+            <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1">
+              {home.collab_meetings.this_week.map((m: any, i: number) => (
+                <li key={i} className="text-sm flex items-center gap-2">
+                  <span className="font-semibold text-gray-800 w-14 tabular-nums">
+                    {m.time
+                      ? (() => {
+                          const [h, mm] = m.time.split(":").map(Number);
+                          return `${((h + 11) % 12) + 1}:${String(mm).padStart(2, "0")}`;
+                        })()
+                      : ""}
+                  </span>
+                  <span className="text-gray-500 w-9">{m.day}</span>
+                  <span className="text-gray-700">
+                    {m.grade === "K" ? "Kinder" : `Gr ${m.grade}`}
+                    <span className="text-gray-400"> · {m.group}</span>
+                    {m.host && (
+                      <span className="text-gray-400"> · {m.host}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Top row: goal + quick counts */}
         <div className="grid md:grid-cols-3 gap-4">
           <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-5">
