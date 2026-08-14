@@ -50,6 +50,15 @@ CUBS_ROUTINE = (
 )
 
 
+# Plain-language rule appended to every writing prompt so output is simple enough
+# for the coach to read aloud and explain to teachers.
+_PLAIN = (
+    "WRITE IN PLAIN, SIMPLE LANGUAGE — short sentences, everyday words a 10-year-old "
+    "could understand — so the coach can explain it to teachers easily. Avoid jargon; "
+    "if a technical term is truly needed, add a quick plain-words meaning right after it."
+)
+
+
 def generate_di_plan(standard: dict, group_size: int,
                      student_profiles: list[dict]) -> dict:
     """Return a 7-day DI plan. Uses the configured LLM when available, else a
@@ -322,7 +331,8 @@ def coach_one_pager_narrative(summary: dict) -> dict:
         f"Benchmarks: {[b['code'] for b in summary.get('benchmarks', [])]}\n"
         f"Strategies in the guide: {strat}\n"
         f"Vocabulary: {summary.get('vocabulary', [])}\n"
-        f"Top misconceptions: {[m['misconception'] for m in summary.get('misconceptions', [])]}\n"
+        f"Top misconceptions: {[m['misconception'] for m in summary.get('misconceptions', [])]}\n\n"
+        + _PLAIN
     )
     try:
         with client.messages.stream(
@@ -393,7 +403,8 @@ def generate_framework_application(component: dict, grade: str, topic_name: str,
         f"Component look-fors: {component.get('coach_lookfors', [])}\n"
         f"WEEK FOCUS: {week_focus}\n"
         f"GRADE: {grade}   TOPIC: {topic_name}\n"
-        f"BENCHMARKS: {codes}\n"
+        f"BENCHMARKS: {codes}\n\n"
+        + _PLAIN
     )
     try:
         with client.messages.stream(
@@ -433,7 +444,8 @@ def ask_assistant(message: str, history: list[dict], context: dict) -> dict:
         "action-oriented. Never invent individual student names or scores — "
         "student data here is aggregate/teacher-level by design; for a single "
         "student, direct the coach to that teacher's tracker. When asked, draft "
-        "teacher emails with a clear subject line and a body ready to send.\n\n"
+        "teacher emails with a clear subject line and a body ready to send.\n"
+        + _PLAIN + "\n\n"
         f"TODAY: {context.get('today','')}   COACH: {context.get('coach','')}\n\n"
         f"LIVE SYSTEM SNAPSHOT:\n{_context_text(context)}"
     )
@@ -961,7 +973,8 @@ _LESSON_RULES = (
     "a Level 3 (proficient) student does for THIS lesson — never vague.\n"
     "- vocabulary from the pacing guide + how to teach those exact terms here; a "
     "3-column misconceptions table (misconception, a real example error, the fix).\n"
-    "Do not invent standards or student data. Output ONLY the JSON array."
+    "Do not invent standards or student data. Output ONLY the JSON array.\n"
+    + _PLAIN
 )
 
 
@@ -1213,7 +1226,8 @@ def _llm_agenda(topic: dict, standards: list[dict]) -> dict | None:
             "objective, standards deep-dive, success criteria, anticipated "
             "misconceptions, vocabulary, instructional plan + common formative "
             "task, OPM/assessment plan, and teacher commitments/action items. "
-            "Ground everything in the benchmarks above. Do not invent standards."
+            "Ground everything in the benchmarks above. Do not invent standards.\n\n"
+            + _PLAIN
         )
         msg = client.messages.create(
             model=settings.ai_model, max_tokens=2000,
@@ -1256,7 +1270,8 @@ def _llm_plan(standard: dict, group_size: int,
             + "; ".join(f"Day {d}: {t}" for d, (t, _) in CYCLE.items())
             + ". For each day give focus, concrete activities, and which "
             "printable artifacts to produce. Return concise structured text. "
-            "Do not invent student data or scores."
+            "Do not invent student data or scores.\n\n"
+            + _PLAIN
         )
         msg = client.messages.create(
             model=settings.ai_model,
