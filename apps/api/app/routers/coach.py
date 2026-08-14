@@ -1341,17 +1341,32 @@ def load_collab(
     from pathlib import Path
     path = Path(__file__).parent.parent / "data" / "collab_planning.json"
     data = _json.loads(path.read_text())
+    # This year's math teachers per grade — used to keep only host hints for
+    # teachers who actually teach that grade this year (carry-overs).
+    sugg = _collab_host_suggestions(db, user.tenant_id)
+
+    def _valid_host(grade, hint):
+        if not hint:
+            return ""
+        names = set((sugg.get(grade, {}).get("Gen Ed", [])) +
+                    (sugg.get(grade, {}).get("ASD", [])))
+        return hint if hint in names else ""
+
     db.query(CollabMeeting).filter(
         CollabMeeting.tenant_id == user.tenant_id).delete()
     n = 0
+    filled = 0
     for m in data.get("meetings", []):
+        host = _valid_host(m.get("grade", ""), m.get("host_hint", ""))
+        if host:
+            filled += 1
         db.add(CollabMeeting(
             tenant_id=user.tenant_id, week=m.get("week", "A"), day=m.get("day", ""),
             time=m.get("time", ""), grade=m.get("grade", ""), group=m.get("group", ""),
-            host=m.get("host", "")))
+            host=host))
         n += 1
     db.commit()
-    return {"loaded": n}
+    return {"loaded": n, "hosts_prefilled": filled}
 
 
 class CollabIn(BaseModel):
