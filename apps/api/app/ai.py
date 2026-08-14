@@ -344,6 +344,77 @@ def coach_one_pager_narrative(summary: dict) -> dict:
     return _one_pager_fallback(summary)
 
 
+def _framework_app_fallback(component: dict, grade: str, topic_name: str,
+                            week_focus: str) -> dict:
+    name = component.get("name", "")
+    return {
+        "how_it_shows_up": component.get("in_math", "")
+        or f"How {name} looks in {topic_name} for Grade {grade}.",
+        "look_fors": component.get("coach_lookfors", [])[:5],
+        "coaching_questions": component.get("coaching_questions", [])[:4],
+        "growth_moves": component.get("growth_moves", [])[:3],
+        "teacher_talking_points": [
+            f"This week's lens is {name}: {week_focus}.",
+            "Anchor it in the topic — model, question, and check through this lens.",
+        ],
+        "watch_fors": component.get("pitfalls", [])[:3],
+        "ai_generated": False,
+    }
+
+
+def generate_framework_application(component: dict, grade: str, topic_name: str,
+                                   standards: list[dict], week_focus: str) -> dict:
+    """Script how one Framework of Effective Instruction component applies to a
+    SPECIFIC grade + topic — content-specific look-fors, coaching questions,
+    growth moves, teacher talking points, and watch-fors. One short AI call with
+    a deterministic fallback."""
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        return _framework_app_fallback(component, grade, topic_name, week_focus)
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+    except Exception:
+        return _framework_app_fallback(component, grade, topic_name, week_focus)
+    codes = [f"{s.get('code','')}: {s.get('description','')}" for s in standards][:8]
+    prompt = (
+        "You are an expert K-3 math instructional coach. Script how ONE component "
+        "of the Framework of Effective Instruction applies to a SPECIFIC grade and "
+        "math topic, so the coach can lead a focused, content-specific planning "
+        "conversation. Be concrete to the math in this topic — reference the actual "
+        "content, models (CPA), and misconceptions. Return ONLY a JSON object:\n"
+        '{"how_it_shows_up":"2-3 sentences: what this component looks like in THIS '
+        'topic for THIS grade, referencing the actual math",'
+        '"look_fors":["4-6 content-specific things to observe in a lesson"],'
+        '"coaching_questions":["4-5 questions tied to this topic\'s math"],'
+        '"growth_moves":["3-4 concrete coaching moves for this topic"],'
+        '"teacher_talking_points":["3-5 things to say in the planning meeting"],'
+        '"watch_fors":["3-4 topic-specific misconceptions or pitfalls to flag"]}\n\n'
+        f"FRAMEWORK COMPONENT: {component.get('name','')} — {component.get('essence','')}\n"
+        f"Component look-fors: {component.get('coach_lookfors', [])}\n"
+        f"WEEK FOCUS: {week_focus}\n"
+        f"GRADE: {grade}   TOPIC: {topic_name}\n"
+        f"BENCHMARKS: {codes}\n"
+    )
+    try:
+        with client.messages.stream(
+            model=settings.ai_model, max_tokens=1500,
+            system="You output ONLY one valid JSON object, no prose or fences.",
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            msg = stream.get_final_message()
+        text = "".join(b.text for b in msg.content if b.type == "text").strip()
+        import json as _json
+        import re as _re
+        m = _re.search(r"\{.*\}", text, _re.S)
+        data = _json.loads(m.group(0)) if m else None
+        if isinstance(data, dict) and data.get("how_it_shows_up"):
+            data["ai_generated"] = True
+            return data
+    except Exception:
+        pass
+    return _framework_app_fallback(component, grade, topic_name, week_focus)
+
+
 def ask_assistant(message: str, history: list[dict], context: dict) -> dict:
     """The in-system Expert AI Coach. Grounded in the school's aggregate data;
     helps manage teachers/students/standards/pacing and drafts communications.
@@ -447,6 +518,11 @@ def _context_text(ctx: dict) -> str:
             "the coach prepare for a planning meeting, lead with NEXT week's lens "
             "and next week's lessons, and be the expert on it. The six components: "
             + "; ".join(f"{c['name']} — {c['essence']}" for c in fw.get("components", [])))
+    fapps = ctx.get("framework_applications") or []
+    if fapps:
+        lines.append("Framework already scripted to specific topics: "
+                     + "; ".join(f"G{a['grade']} {a['topic']} ({a['component']})"
+                                 for a in fapps[:12]))
     gr = ctx.get("goal_rubric") or {}
     if gr.get("level3"):
         lines.append(

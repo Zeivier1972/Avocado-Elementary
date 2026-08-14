@@ -30,6 +30,7 @@ from app.models import (
     CoachNote,
     CollabMeeting,
     District,
+    FrameworkApplication,
     KeyDate,
     PacingTopic,
     PlanningDocument,
@@ -377,6 +378,11 @@ def _school_context(db: Session, user: User) -> dict:
         "math_schedule": schedule_summary,
         "planning_by_grade": planning_by_grade,
         "framework": _framework_context(),
+        "framework_applications": [
+            {"grade": a.grade, "topic": f"{a.topic_code}: {a.topic_name}",
+             "component": a.component_name}
+            for a in db.query(FrameworkApplication).filter(
+                FrameworkApplication.tenant_id == tenant_id).all()],
         "collab_meetings": _collab_context(db, tenant_id),
         "goal_rubric": _goal_rubric_context(),
     }
@@ -1419,5 +1425,91 @@ def delete_collab(mid: str, db: Session = Depends(get_db),
     if not m or m.tenant_id != user.tenant_id:
         raise HTTPException(404, "Meeting not found")
     db.delete(m)
+    db.commit()
+    return {"deleted": True}
+
+
+# --- Framework applied to a specific grade + topic ---------------------------
+
+class FrameworkTopicIn(BaseModel):
+    grade: str
+    topic_code: str
+    component_key: str = ""   # blank -> use next week's (planning) lens
+
+
+@router.post("/framework/for-topic")
+def framework_for_topic(
+    payload: FrameworkTopicIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Script how a framework component applies to a specific grade+topic, save
+    it, and return it. Defaults to the week's planning lens if none given."""
+    from app.framework import component_map, planning_week_focus
+    from app.ai import generate_framework_application
+
+    topic = db.query(PacingTopic).filter(
+        PacingTopic.tenant_id == user.tenant_id,
+        PacingTopic.grade_level == payload.grade,
+        PacingTopic.topic_code == payload.topic_code).first()
+    if not topic:
+        raise HTTPException(404, "Topic not found for that grade.")
+
+    comps = component_map()
+    key = payload.component_key
+    wf = planning_week_focus()
+    if not key or key not in comps:
+        key = wf["component_key"]
+    component = comps.get(key, {})
+    standards = _resolve_standards(db, topic.benchmarks) if topic.benchmarks else []
+
+    content = generate_framework_application(
+        component, payload.grade, f"{topic.topic_code}: {topic.name}",
+        standards, wf["focus"])
+
+    rec = FrameworkApplication(
+        tenant_id=user.tenant_id, grade=payload.grade, topic_code=topic.topic_code,
+        topic_name=topic.name, component_key=key,
+        component_name=component.get("name", key), week_focus=wf["focus"],
+        content=content, ai_generated=bool(content.get("ai_generated")),
+        created_by=user.id)
+    db.add(rec)
+    db.commit()
+    return {"id": rec.id, "grade": payload.grade, "topic_code": topic.topic_code,
+            "topic_name": topic.name, "component_key": key,
+            "component_name": component.get("name", key),
+            "week_focus": wf["focus"], "content": content}
+
+
+@router.get("/framework/applications")
+def list_framework_applications(
+    grade: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    q = db.query(FrameworkApplication).filter(
+        FrameworkApplication.tenant_id == user.tenant_id)
+    if grade:
+        q = q.filter(FrameworkApplication.grade == grade)
+    rows = q.order_by(FrameworkApplication.created_at.desc()).all()
+    return {"applications": [
+        {"id": r.id, "grade": r.grade, "topic_code": r.topic_code,
+         "topic_name": r.topic_name, "component_key": r.component_key,
+         "component_name": r.component_name, "week_focus": r.week_focus,
+         "content": r.content, "ai_generated": r.ai_generated,
+         "created_at": r.created_at.isoformat() if r.created_at else ""}
+        for r in rows]}
+
+
+@router.delete("/framework/applications/{app_id}")
+def delete_framework_application(
+    app_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    r = db.get(FrameworkApplication, app_id)
+    if not r or r.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Not found")
+    db.delete(r)
     db.commit()
     return {"deleted": True}

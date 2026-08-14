@@ -84,6 +84,16 @@ export const api = {
   goalAnalysis: (grade: string) => req(`/reports/goal-analysis/${grade}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
   getFramework: () => req("/coach/framework"),
+  frameworkForTopic: (body: any) =>
+    req("/coach/framework/for-topic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  frameworkApplications: (grade?: string) =>
+    req(`/coach/framework/applications${grade ? `?grade=${grade}` : ""}`),
+  deleteFrameworkApplication: (id: string) =>
+    req(`/coach/framework/applications/${id}`, { method: "DELETE" }),
   getCollab: () => req("/coach/collab"),
   loadCollab: () => req("/coach/collab/load", { method: "POST" }),
   setCollabWeek: (week: string) =>

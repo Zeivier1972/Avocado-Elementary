@@ -377,6 +377,23 @@ class ScheduleBlock(Base, TimestampMixin):
     end_time: Mapped[str] = mapped_column(String, default="")
 
 
+class FrameworkApplication(Base, TimestampMixin):
+    """A scripted application of one Framework component to a specific grade +
+    topic (how the week's coaching lens plays out in that content)."""
+    __tablename__ = "framework_applications"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    grade: Mapped[str] = mapped_column(String, default="", index=True)
+    topic_code: Mapped[str] = mapped_column(String, default="", index=True)
+    topic_name: Mapped[str] = mapped_column(String, default="")
+    component_key: Mapped[str] = mapped_column(String, default="")
+    component_name: Mapped[str] = mapped_column(String, default="")
+    week_focus: Mapped[str] = mapped_column(String, default="")
+    content: Mapped[dict] = mapped_column(JSON, default=dict)
+    ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str] = mapped_column(String, default="")
+
+
 class AppSetting(Base, TimestampMixin):
     """Small per-tenant key/value settings (e.g. the A/B rotation anchor)."""
     __tablename__ = "app_settings"
