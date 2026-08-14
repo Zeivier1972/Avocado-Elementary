@@ -602,3 +602,92 @@ def grade_report(
         "watchlist": watch[:40],
         "watchlist_count": len(watch),
     }
+
+
+@router.get("/goal-analysis/{grade}")
+def goal_analysis(
+    grade: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """FAST↔Topic goal analysis for a grade, from the Math Goal Setting Rubric:
+    each student's FAST-based topic goal, their actual topic average, whether
+    they're meeting it, and an end-of-year projection toward Level 3+. Plus
+    benchmark coverage (what's been assessed, how often, how many items)."""
+    from app.goal_rubric import evaluate, project
+
+    students = db.query(Student).filter(
+        Student.tenant_id == user.tenant_id, Student.grade_level == grade).all()
+    sids = {s.id for s in students}
+    name = {s.id: f"{s.first_name.title()} {s.last_name.title()}" for s in students}
+    rows = [a for a in db.query(StudentAssessment).filter(
+        StudentAssessment.tenant_id == user.tenant_id).all() if a.student_id in sids]
+
+    order = FAST_REPORT_PERIODS  # Baseline, PM1, PM2, PM3
+    per = {}
+    for a in rows:
+        d = per.setdefault(a.student_id, {"scale": {}, "level": {}, "topics": []})
+        if a.source == "FAST" and a.subject == "MATH":
+            if a.scale_score is not None:
+                d["scale"][a.period] = a.scale_score
+            if a.level is not None and 1 <= a.level <= 5:
+                d["level"][a.period] = int(a.level)
+        elif a.source == "TOPIC" and a.percent is not None:
+            d["topics"].append(a.percent)
+
+    def latest(m):
+        for p in reversed(order):
+            if p in m:
+                return m[p]
+        return None
+
+    out = []
+    summary = {"students": len(students), "with_fast": 0, "meeting": 0,
+               "below": 0, "above": 0, "projected_goal": 0}
+    for s in students:
+        d = per.get(s.id, {"scale": {}, "level": {}, "topics": []})
+        scale = latest(d["scale"])
+        topic_avg = round(100 * sum(d["topics"]) / len(d["topics"])) if d["topics"] else None
+        ev = evaluate(grade, scale, topic_avg)
+        pr = project(grade, d["level"], topic_avg)
+        if scale is not None:
+            summary["with_fast"] += 1
+        if ev["status"] in ("meeting", "above"):
+            summary[ev["status"]] += 1
+        elif ev["status"] == "below":
+            summary["below"] += 1
+        if pr["projected_level_3_plus"]:
+            summary["projected_goal"] += 1
+        out.append({
+            "student_id": s.id, "name": name[s.id],
+            "fast_scale": scale, "fast_level": ev["level"],
+            "instructional": ev["instructional"],
+            "goal_min": ev["goal_min"], "goal_max": ev["goal_max"],
+            "topic_avg": topic_avg, "status": ev["status"], "gap": ev["gap"],
+            "meets_school_goal": ev["meets_school_goal"],
+            "trend": pr["trend"], "projected": pr["projected_level_3_plus"],
+            "projection_note": pr["rationale"],
+        })
+    out.sort(key=lambda r: (r["status"] != "below", r["name"]))
+
+    items = [r for r in db.query(StudentBenchmarkResult).filter(
+        StudentBenchmarkResult.tenant_id == user.tenant_id,
+        StudentBenchmarkResult.subject == "MATH").all() if r.student_id in sids]
+    std_desc = {s.code: s.description for s in db.query(Standard).all()}
+    cov = {}
+    for r in items:
+        c = cov.setdefault(r.benchmark_code, {"periods": set(), "items": 0,
+                                              "earned": 0.0, "possible": 0.0})
+        c["periods"].add(r.period)
+        c["items"] += 1
+        c["earned"] += r.points_earned
+        c["possible"] += r.points_possible
+    coverage = sorted(
+        [{"benchmark": k, "description": std_desc.get(k, ""),
+          "times_assessed": len(v["periods"]), "questions": v["items"],
+          "avg_pct": round(100 * v["earned"] / v["possible"]) if v["possible"] else None}
+         for k, v in cov.items()],
+        key=lambda x: (x["avg_pct"] if x["avg_pct"] is not None else 999))
+
+    return {"grade": grade, "students": out, "summary": summary,
+            "benchmark_coverage": coverage, "has_fast": summary["with_fast"] > 0}

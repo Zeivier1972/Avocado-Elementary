@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/calendar", label: "📅 Calendar" },
   { href: "/dates", label: "🗓 Key Dates" },
   { href: "/reports", label: "📊 Reports" },
+  { href: "/analysis", label: "📈 Analysis" },
   { href: "/goal", label: "🎯 Goal" },
   { href: "/assistant", label: "🤖 AI Coach" },
 ];

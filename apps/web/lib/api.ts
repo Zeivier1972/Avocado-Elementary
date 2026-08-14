@@ -81,6 +81,7 @@ export const api = {
     req(`/reports/fast/${grade}?subject=${subject}&period=${period}`),
   teachers: () => req("/reports/teachers"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
+  goalAnalysis: (grade: string) => req(`/reports/goal-analysis/${grade}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
   getFramework: () => req("/coach/framework"),
   getCollab: () => req("/coach/collab"),

@@ -378,7 +378,14 @@ def _school_context(db: Session, user: User) -> dict:
         "planning_by_grade": planning_by_grade,
         "framework": _framework_context(),
         "collab_meetings": _collab_context(db, tenant_id),
+        "goal_rubric": _goal_rubric_context(),
     }
+
+
+def _goal_rubric_context() -> dict:
+    """The Math Goal Setting Rubric crosswalk (Level-3 thresholds) for the AI."""
+    from app.goal_rubric import level3_thresholds
+    return {"level3": level3_thresholds()}
 
 
 def _ab_week(db, tenant_id) -> str:

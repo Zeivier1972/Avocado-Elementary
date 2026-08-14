@@ -447,6 +447,15 @@ def _context_text(ctx: dict) -> str:
             "the coach prepare for a planning meeting, lead with NEXT week's lens "
             "and next week's lessons, and be the expert on it. The six components: "
             + "; ".join(f"{c['name']} — {c['essence']}" for c in fw.get("components", [])))
+    gr = ctx.get("goal_rubric") or {}
+    if gr.get("level3"):
+        lines.append(
+            "\nMATH GOAL SETTING RUBRIC (FAST scale -> topic-assessment goal). "
+            "On-grade (Level 3, the school goal) begins at: "
+            + "; ".join(f"G{g}: FAST {v['scale_at_or_above']}+ -> topic goal {v['topic_goal']}"
+                        for g, v in sorted(gr["level3"].items()))
+            + ". Use this to compare a student's topic-test average to where their "
+            "FAST score says they should be, and to project end-of-year.")
     cm = ctx.get("collab_meetings") or {}
     if cm.get("this_week"):
         lines.append(
