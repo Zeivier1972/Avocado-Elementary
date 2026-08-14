@@ -35,6 +35,7 @@ export default function GuideSummaryPage() {
 
   const s = data?.summary;
   const n = data?.narrative;
+  const lens = data?.framework_lens;
 
   return (
     <main className="min-h-screen">
@@ -117,6 +118,28 @@ export default function GuideSummaryPage() {
                   ))}
                 </ol>
               </Section>
+            )}
+
+            {lens?.content && (
+              <div className="rounded-xl border border-avocado/30 bg-avocado/5 p-4">
+                <div className="font-semibold text-avocado-dark">
+                  Coaching lens — {lens.component_name}
+                  {lens.week_focus ? ` (${lens.week_focus})` : ""}
+                </div>
+                {lens.content.how_it_shows_up && (
+                  <p className="text-gray-700 mt-1 text-sm">
+                    {lens.content.how_it_shows_up}
+                  </p>
+                )}
+                <div className="grid sm:grid-cols-2 gap-3 mt-2">
+                  <LensCol title="Look-fors" items={lens.content.look_fors} />
+                  <LensCol title="Coaching questions" items={lens.content.coaching_questions} />
+                </div>
+                <LensCol
+                  title="Say this in the meeting"
+                  items={lens.content.teacher_talking_points}
+                />
+              </div>
             )}
 
             {s.strategies?.length > 0 && (
@@ -283,6 +306,20 @@ export default function GuideSummaryPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function LensCol({ title, items }: { title: string; items?: string[] }) {
+  if (!items?.length) return null;
+  return (
+    <div>
+      <div className="text-xs font-semibold text-gray-600">{title}</div>
+      <ul className="list-disc ml-5 text-sm text-gray-700 space-y-0.5">
+        {items.map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

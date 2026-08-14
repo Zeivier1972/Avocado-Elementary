@@ -1146,7 +1146,25 @@ def guide_coach_summary(
         raise HTTPException(409, "This guide is still generating — try again in a moment.")
     summary = build_coach_summary(g.content)
     narrative = coach_one_pager_narrative(summary)
-    return {"id": g.id, "title": g.title, "summary": summary, "narrative": narrative}
+    lens = _guide_framework_lens(db, user.tenant_id, g.grade_level, g.topic_code)
+    return {"id": g.id, "title": g.title, "summary": summary,
+            "narrative": narrative, "framework_lens": lens}
+
+
+def _guide_framework_lens(db, tenant_id, grade, topic_code) -> dict | None:
+    """The most recent scripted framework application for this grade+topic, so
+    the one-pager carries the week's coaching lens for the same content."""
+    if not topic_code:
+        return None
+    r = (db.query(FrameworkApplication)
+         .filter(FrameworkApplication.tenant_id == tenant_id,
+                 FrameworkApplication.grade == grade,
+                 FrameworkApplication.topic_code == topic_code)
+         .order_by(FrameworkApplication.created_at.desc()).first())
+    if not r:
+        return None
+    return {"component_name": r.component_name, "week_focus": r.week_focus,
+            "content": r.content}
 
 
 @router.get("/guides/{guide_id}/summary.docx")
@@ -1165,7 +1183,8 @@ def guide_coach_summary_docx(
         raise HTTPException(404, "Saved guide not found")
     summary = build_coach_summary(g.content)
     narrative = coach_one_pager_narrative(summary)
-    data = coach_summary_to_docx(summary, narrative)
+    lens = _guide_framework_lens(db, user.tenant_id, g.grade_level, g.topic_code)
+    data = coach_summary_to_docx(summary, narrative, lens)
     fname = f"CoachOnePager_{(g.topic_code or 'guide').replace(' ', '')}.docx"
     return Response(
         content=data,

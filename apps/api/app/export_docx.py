@@ -237,9 +237,10 @@ def guide_to_docx(guide: dict) -> bytes:
     return buf.getvalue()
 
 
-def coach_summary_to_docx(summary: dict, narrative: dict) -> bytes:
-    """Render the one-page Coach Summary (essentials + how-to-present narrative)
-    a coach uses to lead planning without carrying the full packet."""
+def coach_summary_to_docx(summary: dict, narrative: dict,
+                          framework_lens: dict | None = None) -> bytes:
+    """Render the one-page Coach Summary (essentials + how-to-present narrative +
+    this week's coaching-framework lens) a coach uses to lead planning."""
     doc = Document()
     _add_logo(doc)
     _heading(doc, "Coach One-Pager", 16)
@@ -261,6 +262,23 @@ def coach_summary_to_docx(summary: dict, narrative: dict) -> bytes:
     if narrative.get("talking_points"):
         _heading(doc, "How to present it (your talking points)", 12)
         _bullets(doc, narrative["talking_points"], style="List Number")
+
+    # This week's coaching-framework lens, scripted to this topic.
+    if framework_lens and framework_lens.get("content"):
+        c = framework_lens["content"]
+        _heading(doc, f"Coaching Lens — {framework_lens.get('component_name','')} "
+                 f"({framework_lens.get('week_focus','')})", 12)
+        if c.get("how_it_shows_up"):
+            doc.add_paragraph(str(c["how_it_shows_up"]))
+        if c.get("look_fors"):
+            _label(doc, "Look-fors", "")
+            _bullets(doc, c["look_fors"])
+        if c.get("coaching_questions"):
+            _label(doc, "Coaching questions", "")
+            _bullets(doc, c["coaching_questions"])
+        if c.get("teacher_talking_points"):
+            _label(doc, "Say this in the meeting", "")
+            _bullets(doc, c["teacher_talking_points"])
 
     if summary.get("strategies"):
         _heading(doc, "Strategies to reinforce", 12)
