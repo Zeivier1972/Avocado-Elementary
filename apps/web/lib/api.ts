@@ -176,6 +176,8 @@ export const api = {
   getGuide: (id: string) => req(`/coach/guides/${id}`),
   deleteGuide: (id: string) =>
     req(`/coach/guides/${id}`, { method: "DELETE" }),
+  simplifyGuide: (id: string) =>
+    req(`/coach/guides/${id}/simplify`, { method: "POST" }),
   getCalendar: (grade: string, subject = "MATH", start = "", end = "") =>
     req(
       `/coach/calendar?grade=${encodeURIComponent(grade)}&subject=${subject}` +

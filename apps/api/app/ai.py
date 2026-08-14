@@ -1148,6 +1148,95 @@ def _parse_json_array(text: str):
     return None
 
 
+# Keys whose string values are prose the coach reads to teachers. We simplify
+# ONLY these. Number-bearing keys (problem, abstract, solution, code, benchmarks,
+# cfu, *_example) are deliberately NOT here, so every problem, equation and
+# number in an existing guide is left exactly as written.
+_SIMPLIFY_KEYS = {
+    "focus", "learning_goal", "benchmark_clarification", "clarification",
+    "vocabulary_integration", "activate_prior_knowledge", "say", "do",
+    "concrete", "pictorial", "look_for", "cubs", "roles", "structure",
+    "misconception", "fix", "student_explanation", "sentence_frame",
+    "how_it_shows_up", "big_idea", "why_it_matters", "talking_points",
+    "watch_fors", "note", "overview", "teacher_talking_points",
+    "coaching_questions", "growth_moves", "success_criteria", "explanation",
+}
+
+
+def _collect_prose_slots(node, slots):
+    """Walk a guide dict, appending (container, key_or_index, original) for every
+    prose string under a key we simplify. Because we keep the container + key we
+    can write the rewrite straight back in place — structure and number-bearing
+    fields are untouched."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k in _SIMPLIFY_KEYS:
+                if isinstance(v, str) and v.strip():
+                    slots.append((node, k, v))
+                elif isinstance(v, list):
+                    for i, item in enumerate(v):
+                        if isinstance(item, str) and item.strip():
+                            slots.append((v, i, item))
+                        else:
+                            _collect_prose_slots(item, slots)
+                elif isinstance(v, dict):
+                    _collect_prose_slots(v, slots)
+            else:
+                _collect_prose_slots(v, slots)
+    elif isinstance(node, list):
+        for item in node:
+            _collect_prose_slots(item, slots)
+
+
+def simplify_guide_text(guide: dict):
+    """Rewrite the prose inside an EXISTING guide into plain, teacher-friendly
+    language without rebuilding it — same structure, same keys, same problems,
+    numbers and equations. Returns (new_guide, changed_count, error)."""
+    import copy
+    new_guide = copy.deepcopy(guide)
+    slots: list = []
+    _collect_prose_slots(new_guide, slots)
+    if not slots:
+        return new_guide, 0, None
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        return new_guide, 0, "AI is off — set the AI key in Railway to simplify language."
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+    except Exception as e:  # pragma: no cover
+        return new_guide, 0, f"AI unavailable: {e}"
+
+    import json as _json
+    changed = 0
+    BATCH = 25
+    for start in range(0, len(slots), BATCH):
+        chunk = slots[start:start + BATCH]
+        originals = [s[2] for s in chunk]
+        prompt = (
+            "Rewrite each string below into plain, simple language a 10-year-old "
+            "could understand, so a coach can read it to teachers. KEEP THE "
+            "MEANING. Keep every number, equation, fraction, blank (like __), "
+            "student name, manipulative name, and vocabulary term EXACTLY as "
+            "written — only make the words simpler and the sentences shorter. "
+            "Return ONLY a JSON array of the rewritten strings, the SAME length "
+            "and SAME order as the input (one rewrite per input, nothing extra).\n\n"
+            "INPUT:\n" + _json.dumps(originals, ensure_ascii=False)
+        )
+        arr, _reason = _llm_json(
+            client, prompt,
+            "You output ONLY a JSON array of strings, same length as the input.",
+            8000,
+        )
+        if isinstance(arr, list) and len(arr) == len(chunk):
+            for (container, key, _orig), new_val in zip(chunk, arr):
+                if isinstance(new_val, str) and new_val.strip():
+                    container[key] = new_val.strip()
+                    changed += 1
+        # A mismatched or failed batch keeps its originals — never corrupts.
+    new_guide["language_simplified"] = True
+    return new_guide, changed, None
+
+
 def generate_plc_agenda(topic: dict, standards: list[dict]) -> dict:
     """Generate a collaborative-planning (PLC) agenda for a pacing week, grounded
     in the topic's real benchmarks, learning target, misconceptions and vocab.

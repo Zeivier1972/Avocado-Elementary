@@ -19,6 +19,7 @@ from app.ai import (
     ask_assistant,
     generate_planning_guide,
     generate_plc_agenda,
+    simplify_guide_text,
 )
 from app.export_docx import guide_to_docx
 from app.db.session import get_db
@@ -230,6 +231,40 @@ def _run_topic_guide_job(guide_id: str, topic_id: str):
             rec.status = "ready"
             rec.error = ""
             db.add(rec)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        rec = db.get(SavedGuide, guide_id)
+        if rec:
+            rec.status = "error"
+            rec.error = f"{type(e).__name__}: {str(e)[:400]}"
+            db.add(rec)
+            db.commit()
+    finally:
+        db.close()
+
+
+def _run_simplify_guide_job(guide_id: str):
+    """Rewrite an existing guide's prose into plain language in place (own DB
+    session). Keeps every problem, number and equation exactly as written."""
+    from app.db.session import SessionLocal
+
+    db = SessionLocal()
+    try:
+        rec = db.get(SavedGuide, guide_id)
+        if not rec:
+            raise ValueError("Saved guide not found")
+        new_guide, changed, err = simplify_guide_text(rec.content or {})
+        if err and changed == 0:
+            rec.status = "error"
+            rec.error = err
+            db.add(rec)
+            db.commit()
+            return
+        rec.content = new_guide
+        rec.status = "ready"
+        rec.error = ""
+        db.add(rec)
         db.commit()
     except Exception as e:
         db.rollback()
@@ -898,6 +933,29 @@ def delete_guide(
     audit(db, actor=user, action="delete", entity_type="saved_guide",
           entity_id=guide_id, purpose="planning_management")
     return {"deleted": True, "title": title}
+
+
+@router.post("/guides/{guide_id}/simplify")
+def simplify_guide(
+    guide_id: str,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Rewrite this saved guide's wording into plain, teacher-friendly language
+    WITHOUT rebuilding it — problems, numbers and structure are untouched. Runs
+    in the BACKGROUND: returns status "generating"; the page polls the guide."""
+    g = db.get(SavedGuide, guide_id)
+    if not g or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Saved guide not found")
+    g.status = "generating"
+    g.error = ""
+    db.add(g)
+    db.commit()
+    background.add_task(_run_simplify_guide_job, guide_id)
+    audit(db, actor=user, action="update", entity_type="saved_guide",
+          entity_id=guide_id, purpose="simplify_language")
+    return {"guide_id": guide_id, "status": "generating"}
 
 
 # --- Coach Home (command center) + Teachers hub -------------------------------

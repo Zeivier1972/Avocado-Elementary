@@ -19,6 +19,7 @@ export default function CoachPage() {
   const [build, setBuild] = useState<any>(null);
   const [topic, setTopic] = useState<any>(null);
   const [guide, setGuide] = useState<any>(null);
+  const [guideId, setGuideId] = useState<string>("");
   const [genStatus, setGenStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [grade, setGrade] = useState("3");
@@ -43,8 +44,28 @@ export default function CoachPage() {
     try {
       const r = await api.getGuide(id);
       setGuide(r.guide);
+      setGuideId(r.id || id);
     } catch (err) {
       alert("Could not open guide: " + (err as Error).message);
+    }
+  }
+
+  // Rewrite the currently-open guide's wording into plain language in place —
+  // problems and numbers are untouched. Runs in the background; poll to refresh.
+  async function simplifyOpenGuide() {
+    if (!guideId) return;
+    if (
+      !confirm(
+        "Rewrite this guide's wording in simpler, teacher-friendly language? " +
+          "Your problems, numbers and structure stay exactly the same."
+      )
+    )
+      return;
+    try {
+      await api.simplifyGuide(guideId);
+      await pollGuide(guideId, "Simplifying the language… this can take a minute.");
+    } catch (err) {
+      alert("Could not simplify: " + (err as Error).message);
     }
   }
 
@@ -99,8 +120,8 @@ export default function CoachPage() {
 
   // Generation runs in the background on the server; poll the saved guide until
   // it's ready (or errors). Keeps the request short so it never "Failed to fetch".
-  async function pollGuide(id: string) {
-    setGenStatus("Writing the scripted lessons… this can take a minute.");
+  async function pollGuide(id: string, msg?: string) {
+    setGenStatus(msg || "Writing the scripted lessons… this can take a minute.");
     for (let i = 0; i < 150; i++) {
       await new Promise((res) => setTimeout(res, 3000));
       let r: any;
@@ -111,6 +132,7 @@ export default function CoachPage() {
       }
       if (r.status === "ready") {
         setGuide(r.guide);
+        setGuideId(r.id || id);
         setGenStatus("");
         await loadGuides(grade);
         return;
@@ -719,7 +741,13 @@ export default function CoachPage() {
                 <span className="text-sm text-gray-700">{genStatus}</span>
               </div>
             )}
-            {guide && <GuideView guide={guide} />}
+            {guide && (
+              <GuideView
+                guide={guide}
+                canSimplify={!!guideId && !genStatus}
+                onSimplify={simplifyOpenGuide}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1060,23 +1088,35 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function GuideView({ guide }: any) {
+function GuideView({ guide, canSimplify, onSimplify }: any) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5">
       <div className="flex items-start justify-between gap-3">
         <h2 className="font-bold text-gray-800">{guide.title}</h2>
-        <button
-          onClick={() => downloadGuideDocx(guide)}
-          className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-3 py-2"
-        >
-          ⬇ Download Word (.docx)
-        </button>
+        <div className="shrink-0 flex gap-2">
+          {canSimplify && (
+            <button
+              onClick={onSimplify}
+              title="Rewrite the wording in simpler language for teachers — problems and numbers stay the same"
+              className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-2 hover:bg-avocado/5"
+            >
+              ✨ Simplify language
+            </button>
+          )}
+          <button
+            onClick={() => downloadGuideDocx(guide)}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-3 py-2"
+          >
+            ⬇ Download Word (.docx)
+          </button>
+        </div>
       </div>
       <p className="text-xs text-gray-500 mb-1">
         {guide.ai_generated
           ? `AI-generated draft (${guide.generated_by})`
           : "Structured template draft"}{" "}
         — review with your team before teaching.
+        {guide.language_simplified ? " · Plain-language version." : ""}
       </p>
       {!guide.ai_generated && guide.ai_status && (
         <p className="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded px-2 py-1 mb-3">
