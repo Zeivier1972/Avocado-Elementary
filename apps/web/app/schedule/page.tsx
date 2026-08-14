@@ -71,6 +71,10 @@ export default function SchedulePage() {
     await api.updateCollab(id, { host });
     setCollab(await api.getCollab());
   }
+  async function setWeek(week: string) {
+    await api.setCollabWeek(week);
+    setCollab(await api.getCollab());
+  }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -174,24 +178,36 @@ export default function SchedulePage() {
             <div>
               <div className="font-semibold text-gray-800">
                 Collaborative Planning Meetings
-                {collab?.current_week && (
-                  <span className="ml-2 text-xs font-mono bg-avocado/10 text-avocado-dark border border-avocado/30 rounded px-1.5 py-0.5">
-                    This week: {collab.current_week}
-                  </span>
-                )}
               </div>
               <p className="text-xs text-gray-500">
                 Your CPT meetings — a two-week A/B rotation. When you meet each
                 grade's math team.
               </p>
             </div>
-            {!collab?.has_data && (
+            {collab?.has_data ? (
+              <div className="no-print flex items-center gap-2">
+                <span className="text-xs text-gray-500">This week is:</span>
+                {["A", "B"].map((w) => (
+                  <button
+                    key={w}
+                    onClick={() => setWeek(w)}
+                    className={`text-sm font-semibold rounded-lg px-3 py-1.5 border ${
+                      collab.current_week === w
+                        ? "bg-avocado text-white border-avocado"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-avocado"
+                    }`}
+                  >
+                    Week {w}
+                  </button>
+                ))}
+              </div>
+            ) : (
               <button
                 onClick={loadCollabTemplate}
                 disabled={collabBusy}
                 className="no-print bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-2 disabled:opacity-60"
               >
-                {collabBusy ? "Loading…" : "Load standard rotation"}
+                {collabBusy ? "Setting up…" : "＋ Set up my meeting times"}
               </button>
             )}
           </div>
@@ -269,9 +285,10 @@ export default function SchedulePage() {
             </div>
           ) : (
             <p className="text-xs text-gray-400 mt-3">
-              Click "Load standard rotation" to bring in your A/B meeting times,
-              then pick this year&apos;s host teacher for each (suggestions come
-              from your uploaded master schedule).
+              Click <b>＋ Set up my meeting times</b> to fill in your A/B rotation
+              (the days &amp; times from your planning schedule) — no typing. Then
+              pick this year&apos;s host teacher for each meeting and set whether
+              this week is A or B.
             </p>
           )}
         </div>

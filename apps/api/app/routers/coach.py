@@ -24,6 +24,7 @@ from app.export_docx import guide_to_docx
 from app.db.session import get_db
 from app.deps import audit, get_current_user
 from app.models import (
+    AppSetting,
     CalendarEntry,
     ClassRoom,
     CoachNote,
@@ -380,10 +381,29 @@ def _school_context(db: Session, user: User) -> dict:
     }
 
 
+def _ab_week(db, tenant_id) -> str:
+    """Which A/B rotation side this week is. Uses the coach's anchor ('this week
+    is A/B') when set, alternating weekly from it; else the calendar default."""
+    from datetime import date, timedelta
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    s = db.query(AppSetting).filter(
+        AppSetting.tenant_id == tenant_id, AppSetting.key == "ab_anchor").first()
+    if s and s.value and s.value.get("date") and s.value.get("letter"):
+        try:
+            anchor = date.fromisoformat(s.value["date"])
+            weeks = (monday - anchor).days // 7
+            letter = s.value["letter"]
+            return letter if weeks % 2 == 0 else ("B" if letter == "A" else "A")
+        except Exception:
+            pass
+    from app.framework import current_ab_week
+    return current_ab_week()
+
+
 def _collab_context(db, tenant_id) -> dict:
     """This week's A/B collaborative-planning meetings for the AI snapshot."""
-    from app.framework import current_ab_week
-    cur = current_ab_week()
+    cur = _ab_week(db, tenant_id)
     rows = db.query(CollabMeeting).filter(
         CollabMeeting.tenant_id == tenant_id, CollabMeeting.week == cur).all()
     meetings = [
@@ -1277,7 +1297,6 @@ def get_collab(
 ):
     """The math collaborative-planning A/B rotation, this week's A/B side, and
     host suggestions from this year's teachers."""
-    from app.framework import current_ab_week
     rows = db.query(CollabMeeting).filter(
         CollabMeeting.tenant_id == user.tenant_id).all()
     by_week = {"A": [], "B": []}
@@ -1285,9 +1304,30 @@ def get_collab(
         by_week.setdefault(m.week, []).append({
             "id": m.id, "week": m.week, "day": m.day, "time": m.time,
             "grade": m.grade, "group": m.group, "host": m.host, "note": m.note})
-    return {"by_week": by_week, "current_week": current_ab_week(),
+    return {"by_week": by_week, "current_week": _ab_week(db, user.tenant_id),
             "suggestions": _collab_host_suggestions(db, user.tenant_id),
             "has_data": bool(rows)}
+
+
+@router.post("/collab/set-week")
+def set_ab_week(
+    week: str = Query(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Anchor the A/B rotation: 'this week is A' (or B). It alternates weekly."""
+    from datetime import date, timedelta
+    letter = "A" if str(week).upper().startswith("A") else "B"
+    today = date.today()
+    monday = (today - timedelta(days=today.weekday())).isoformat()
+    s = db.query(AppSetting).filter(
+        AppSetting.tenant_id == user.tenant_id, AppSetting.key == "ab_anchor").first()
+    if not s:
+        s = AppSetting(tenant_id=user.tenant_id, key="ab_anchor", value={})
+        db.add(s)
+    s.value = {"date": monday, "letter": letter}
+    db.commit()
+    return {"current_week": letter}
 
 
 @router.post("/collab/load")

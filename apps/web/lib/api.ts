@@ -85,6 +85,8 @@ export const api = {
   getFramework: () => req("/coach/framework"),
   getCollab: () => req("/coach/collab"),
   loadCollab: () => req("/coach/collab/load", { method: "POST" }),
+  setCollabWeek: (week: string) =>
+    req(`/coach/collab/set-week?week=${week}`, { method: "POST" }),
   updateCollab: (id: string, body: any) =>
     req(`/coach/collab/${id}`, {
       method: "PATCH",
