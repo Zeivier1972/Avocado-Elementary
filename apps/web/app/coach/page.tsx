@@ -729,6 +729,24 @@ export default function CoachPage() {
 
 function TopicPanel({ topic, busy, onGuide }: any) {
   const qf = topic.quick_facts || {};
+  const [lensBusy, setLensBusy] = useState(false);
+  const [lens, setLens] = useState<any>(null);
+
+  async function scriptLens() {
+    setLensBusy(true);
+    try {
+      const r = await api.frameworkForTopic({
+        grade: topic.grade_level,
+        topic_code: topic.topic_code,
+      });
+      setLens(r);
+    } catch (e) {
+      alert("Could not script the lens: " + (e as Error).message);
+    } finally {
+      setLensBusy(false);
+    }
+  }
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5">
       <div className="flex items-start justify-between">
@@ -741,14 +759,47 @@ function TopicPanel({ topic, busy, onGuide }: any) {
           </p>
           <p className="text-xs text-gray-400 mt-0.5">{topic.source}</p>
         </div>
-        <button
-          onClick={onGuide}
-          disabled={busy}
-          className="bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-2 disabled:opacity-60 whitespace-nowrap"
-        >
-          {busy ? "Working…" : "Generate Planning Guide"}
-        </button>
+        <div className="flex flex-col gap-2 items-end">
+          <button
+            onClick={onGuide}
+            disabled={busy}
+            className="bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-2 disabled:opacity-60 whitespace-nowrap"
+          >
+            {busy ? "Working…" : "Generate Planning Guide"}
+          </button>
+          <button
+            onClick={scriptLens}
+            disabled={lensBusy}
+            className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-1.5 hover:bg-avocado/5 disabled:opacity-60 whitespace-nowrap"
+          >
+            {lensBusy ? "Scripting…" : "🧭 Script coaching lens"}
+          </button>
+        </div>
       </div>
+
+      {lens && (
+        <div className="mt-3 rounded-xl border border-avocado/30 bg-avocado/5 p-3 text-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-avocado-dark">
+            This week&apos;s lens for this topic · {lens.component_name}
+          </div>
+          {lens.content?.how_it_shows_up && (
+            <p className="text-gray-700 mt-1">{lens.content.how_it_shows_up}</p>
+          )}
+          <div className="grid sm:grid-cols-2 gap-3 mt-2">
+            <LensList label="🔎 Look-fors" items={lens.content?.look_fors} />
+            <LensList label="💬 Coaching questions" items={lens.content?.coaching_questions} />
+            <LensList label="📈 Growth moves" items={lens.content?.growth_moves} />
+            <LensList label="⚠️ Watch-fors" items={lens.content?.watch_fors} />
+          </div>
+          <LensList
+            label="🗣 Say this in the meeting"
+            items={lens.content?.teacher_talking_points}
+          />
+          <a href="/framework" className="text-xs text-avocado-dark hover:underline">
+            Open Framework →
+          </a>
+        </div>
+      )}
 
       {/* Quick Facts */}
       <div className="mt-3 grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs bg-gray-50 rounded-lg p-3">
@@ -780,6 +831,20 @@ function TopicPanel({ topic, busy, onGuide }: any) {
           </ol>
         </div>
       )}
+    </div>
+  );
+}
+
+function LensList({ label, items }: { label: string; items?: string[] }) {
+  if (!items?.length) return null;
+  return (
+    <div>
+      <div className="text-xs font-semibold text-gray-600">{label}</div>
+      <ul className="list-disc ml-5 text-gray-700 text-xs space-y-0.5">
+        {items.map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
+      </ul>
     </div>
   );
 }
