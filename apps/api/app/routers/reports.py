@@ -604,17 +604,13 @@ def grade_report(
     }
 
 
-@router.get("/goal-analysis/{grade}")
-def goal_analysis(
-    grade: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    """FAST↔Topic goal analysis for a grade, from the Math Goal Setting Rubric:
-    each student's FAST-based topic goal, their actual topic average, whether
-    they're meeting it, and an end-of-year projection toward Level 3+. Plus
-    benchmark coverage (what's been assessed, how often, how many items)."""
-    from app.goal_rubric import evaluate, project
+def _goal_analysis_data(db, tenant_id, grade):
+    from app.goal_rubric import evaluate, project, topic_color
+
+    class _U:
+        pass
+    user = _U()
+    user.tenant_id = tenant_id
 
     students = db.query(Student).filter(
         Student.tenant_id == user.tenant_id, Student.grade_level == grade).all()
@@ -650,6 +646,7 @@ def goal_analysis(
         topic_avg = round(100 * sum(d["topics"]) / len(d["topics"])) if d["topics"] else None
         ev = evaluate(grade, scale, topic_avg)
         pr = project(grade, d["level"], topic_avg)
+        tc = topic_color(grade, topic_avg)
         if scale is not None:
             summary["with_fast"] += 1
         if ev["status"] in ("meeting", "above"):
@@ -664,6 +661,9 @@ def goal_analysis(
             "instructional": ev["instructional"],
             "goal_min": ev["goal_min"], "goal_max": ev["goal_max"],
             "topic_avg": topic_avg, "status": ev["status"], "gap": ev["gap"],
+            "topic_level": tc["level"] if tc else None,
+            "topic_color": tc["color"] if tc else None,
+            "topic_hex": tc["hex"] if tc else None,
             "meets_school_goal": ev["meets_school_goal"],
             "trend": pr["trend"], "projected": pr["projected_level_3_plus"],
             "projection_note": pr["rationale"],
@@ -691,3 +691,35 @@ def goal_analysis(
 
     return {"grade": grade, "students": out, "summary": summary,
             "benchmark_coverage": coverage, "has_fast": summary["with_fast"] > 0}
+
+
+@router.get("/goal-analysis/{grade}")
+def goal_analysis(
+    grade: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """FAST↔Topic goal analysis for a grade, from the Math Goal Setting Rubric:
+    each student's FAST-based topic goal, actual topic average, the topic level +
+    color code (L1 Red … L5 Orange), and an end-of-year projection toward Level
+    3+, plus benchmark coverage."""
+    return _goal_analysis_data(db, user.tenant_id, grade)
+
+
+@router.get("/goal-analysis/{grade}.xlsx")
+def goal_analysis_xlsx(
+    grade: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Download the goal analysis as a color-coded Excel report (topic-average
+    cells shaded by achievement level)."""
+    from fastapi import Response
+    from app.export_xlsx import goal_analysis_to_xlsx
+    data = _goal_analysis_data(db, user.tenant_id, grade)
+    xlsx = goal_analysis_to_xlsx(data)
+    fname = f"MathGoalAnalysis_Grade{grade}.xlsx"
+    return Response(
+        content=xlsx,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'})

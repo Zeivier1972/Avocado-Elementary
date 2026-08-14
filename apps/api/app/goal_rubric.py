@@ -127,3 +127,44 @@ def level3_thresholds() -> dict:
                 out[grade] = {"scale_at_or_above": lo,
                               "topic_goal": f"{gmin}-{gmax}%" if gmin != gmax else f"{gmin}%"}
     return out
+
+
+# Topic-assessment color code (by achievement level).
+LEVEL_COLORS = {
+    1: {"name": "Red", "hex": "C0392B"},
+    2: {"name": "Yellow", "hex": "F1C40F"},
+    3: {"name": "Green", "hex": "27AE60"},
+    4: {"name": "Blue", "hex": "2E86C1"},
+    5: {"name": "Orange", "hex": "E67E22"},
+}
+
+
+def _level_entry_topic(grade: str) -> dict:
+    """The minimum topic-average % that earns each achievement level, derived
+    from the rubric's goal column for that grade."""
+    bands = _rubric()["grades"].get(str(grade)) or []
+    entry = {}
+    for b in bands:
+        entry[b["level"]] = min(g["goal"][0] for g in b["goals"])
+    return entry
+
+
+def topic_level(grade: str, topic_avg_pct: float | None) -> int | None:
+    """Map a topic-assessment average (0-100) to its achievement level (1-5)."""
+    if topic_avg_pct is None:
+        return None
+    entry = _level_entry_topic(grade)
+    lvl = 1
+    for L in (2, 3, 4, 5):
+        if L in entry and topic_avg_pct >= entry[L]:
+            lvl = L
+    return lvl
+
+
+def topic_color(grade: str, topic_avg_pct: float | None) -> dict | None:
+    """The level + color code for a topic average (L1 Red … L5 Orange)."""
+    L = topic_level(grade, topic_avg_pct)
+    if not L:
+        return None
+    c = LEVEL_COLORS[L]
+    return {"level": L, "color": c["name"], "hex": c["hex"]}

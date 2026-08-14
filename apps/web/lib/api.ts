@@ -236,6 +236,24 @@ export async function downloadGuideSummaryDocx(id: string, title?: string) {
   URL.revokeObjectURL(url);
 }
 
+// Download the color-coded Math Goal Analysis as an Excel report (blob).
+export async function downloadGoalAnalysisXlsx(grade: string) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/reports/goal-analysis/${grade}.xlsx`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `MathGoalAnalysis_Grade${grade}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // Download an uploaded planning document (blob).
 export async function downloadDocument(id: string, filename: string) {
   const token = getToken();

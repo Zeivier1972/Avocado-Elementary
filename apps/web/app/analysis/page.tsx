@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, downloadGoalAnalysisXlsx } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADES = ["K", "1", "2", "3", "4"];
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
+const LEVEL_COLORS: Record<number, { name: string; hex: string; dark: boolean }> = {
+  1: { name: "Red", hex: "#C0392B", dark: true },
+  2: { name: "Yellow", hex: "#F1C40F", dark: false },
+  3: { name: "Green", hex: "#27AE60", dark: true },
+  4: { name: "Blue", hex: "#2E86C1", dark: true },
+  5: { name: "Orange", hex: "#E67E22", dark: true },
+};
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   above: { label: "Above goal", cls: "bg-green-50 text-green-700 border-green-200" },
@@ -70,19 +77,50 @@ export default function AnalysisPage() {
           </p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          {GRADES.map((g) => (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {GRADES.map((g) => (
+              <button
+                key={g}
+                onClick={() => setGrade(g)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
+                  grade === g
+                    ? "bg-avocado text-white border-avocado"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-avocado"
+                }`}
+              >
+                {GRADE_LABEL(g)}
+              </button>
+            ))}
+          </div>
+          {data?.has_fast && (
             <button
-              key={g}
-              onClick={() => setGrade(g)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
-                grade === g
-                  ? "bg-avocado text-white border-avocado"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-avocado"
-              }`}
+              onClick={() =>
+                downloadGoalAnalysisXlsx(grade).catch((e) =>
+                  alert("Download failed: " + (e as Error).message)
+                )
+              }
+              className="bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-2"
             >
-              {GRADE_LABEL(g)}
+              ⬇ Download Excel (color-coded)
             </button>
+          )}
+        </div>
+
+        {/* Color legend */}
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <span className="text-gray-500">Topic color code:</span>
+          {[1, 2, 3, 4, 5].map((l) => (
+            <span
+              key={l}
+              className="rounded px-2 py-0.5 font-semibold"
+              style={{
+                backgroundColor: LEVEL_COLORS[l].hex,
+                color: LEVEL_COLORS[l].dark ? "#fff" : "#000",
+              }}
+            >
+              L{l} {LEVEL_COLORS[l].name}
+            </span>
           ))}
         </div>
 
@@ -166,15 +204,40 @@ export default function AnalysisPage() {
                           <td className="p-2 tabular-nums text-gray-700">
                             {goalText(r.goal_min, r.goal_max)}
                           </td>
-                          <td className="p-2 tabular-nums text-gray-700">
-                            {r.topic_avg != null ? `${r.topic_avg}%` : "—"}
+                          <td className="p-2 tabular-nums">
+                            {r.topic_avg != null ? (
+                              <span
+                                className="inline-block rounded px-1.5 py-0.5 font-semibold"
+                                title={
+                                  r.topic_level
+                                    ? `Level ${r.topic_level} (${LEVEL_COLORS[r.topic_level]?.name})`
+                                    : ""
+                                }
+                                style={
+                                  r.topic_level
+                                    ? {
+                                        backgroundColor:
+                                          LEVEL_COLORS[r.topic_level].hex,
+                                        color: LEVEL_COLORS[r.topic_level].dark
+                                          ? "#fff"
+                                          : "#000",
+                                      }
+                                    : {}
+                                }
+                              >
+                                {r.topic_avg}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
                             {r.gap != null && (
                               <span
                                 className={
-                                  r.gap >= 0 ? "text-green-600" : "text-red-600"
+                                  r.gap >= 0
+                                    ? "text-green-600 ml-1"
+                                    : "text-red-600 ml-1"
                                 }
                               >
-                                {" "}
                                 ({r.gap >= 0 ? "+" : ""}
                                 {r.gap})
                               </span>
