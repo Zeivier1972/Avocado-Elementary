@@ -503,6 +503,16 @@ def _context_text(ctx: dict) -> str:
     if ctx.get("standards_count"):
         lines.append(f"Standards loaded: {ctx['standards_count']}")
     # Math + Math-DI schedule.
+    sd = ctx.get("staff_directory") or []
+    if sd:
+        lines.append("\nSTAFF / SECTION DIRECTORY (which teacher owns each class "
+                     "code; ★ = teaches math):")
+        for s in sd:
+            star = "★" if s.get("teaches_math") else " "
+            bday = f" · bday {s['birthday']}" if s.get("birthday") else ""
+            lines.append(
+                f"  {star} {s['section'] or '—'} · G{s['grade']} {s['program']} · "
+                f"{s['teacher']} (Rm {s['room']}){bday}")
     ms = ctx.get("math_schedule") or []
     if ms:
         lines.append("\nMATH & MATH-DI SCHEDULE (Math-DI runs during Science/Social "

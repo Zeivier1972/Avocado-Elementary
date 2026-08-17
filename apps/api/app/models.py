@@ -433,3 +433,23 @@ class CoachNote(Base, TimestampMixin):
     # Optional due date for next_step items (ISO yyyy-mm-dd); "" if none.
     due_date: Mapped[str] = mapped_column(String, default="")
     done: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class StaffMember(Base, TimestampMixin):
+    """The staff/section directory: one row per homeroom/section, mapping the
+    section code (K01, 101, A13 …) to this year's teacher, so the whole system
+    can say WHOSE class a code belongs to. Uploaded from the Staff Roster; real
+    names live here in the DB, never in the repo."""
+    __tablename__ = "staff_members"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    section: Mapped[str] = mapped_column(String, default="", index=True)  # K01|101|A13
+    grade: Mapped[str] = mapped_column(String, default="", index=True)    # K|1|2|3|PK|VPK
+    program: Mapped[str] = mapped_column(String, default="")   # ""=Gen Ed | ASD | ASD-Modified | Reverse
+    name: Mapped[str] = mapped_column(String, default="", index=True)
+    room: Mapped[str] = mapped_column(String, default="")
+    role: Mapped[str] = mapped_column(String, default="")      # subject taught, as written
+    teaches_math: Mapped[bool] = mapped_column(Boolean, default=False)
+    ext: Mapped[str] = mapped_column(String, default="")       # phone extension
+    birthday: Mapped[str] = mapped_column(String, default="")  # M/D as written
+    active: Mapped[bool] = mapped_column(Boolean, default=True)

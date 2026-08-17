@@ -363,6 +363,11 @@ export default function SchedulePage() {
                           >
                             <td className="p-2 whitespace-nowrap">
                               <div className="font-semibold text-gray-800">
+                                {t.section && (
+                                  <span className="mr-1 text-[9px] font-mono font-bold bg-gray-100 text-gray-700 border border-gray-200 rounded px-1 py-0.5">
+                                    {t.section}
+                                  </span>
+                                )}
                                 {t.teacher || "—"}
                                 {t.program === "ASD" && (
                                   <span className="ml-1 text-[9px] font-mono uppercase bg-purple-50 text-purple-700 border border-purple-200 rounded px-1 py-0.5">

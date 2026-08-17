@@ -115,6 +115,9 @@ export const api = {
     ),
   importSchedule: (form: FormData) =>
     req("/coach/schedule/import", { method: "POST", body: form }),
+  getStaff: () => req("/coach/staff"),
+  importStaff: (form: FormData) =>
+    req("/coach/staff/import", { method: "POST", body: form }),
   coachHome: () => req("/coach/home"),
   teacherNotes: (id: string) => req(`/coach/teacher/${id}/notes`),
   addTeacherNote: (id: string, body: any) =>

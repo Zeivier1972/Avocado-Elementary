@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/coach", label: "🗂 Planning" },
   { href: "/framework", label: "🧭 Framework" },
   { href: "/schedule", label: "⏰ Schedule" },
+  { href: "/staff", label: "🧑‍🏫 Staff" },
   { href: "/calendar", label: "📅 Calendar" },
   { href: "/dates", label: "🗓 Key Dates" },
   { href: "/reports", label: "📊 Reports" },

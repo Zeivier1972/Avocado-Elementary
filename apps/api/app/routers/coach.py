@@ -39,6 +39,7 @@ from app.models import (
     SavedGuide,
     ScheduleBlock,
     School,
+    StaffMember,
     Standard,
     Student,
     User,
@@ -420,6 +421,11 @@ def _school_context(db: Session, user: User) -> dict:
                 FrameworkApplication.tenant_id == tenant_id).all()],
         "collab_meetings": _collab_context(db, tenant_id),
         "goal_rubric": _goal_rubric_context(),
+        "staff_directory": [
+            {"section": s["section"], "grade": g, "program": s["program"] or "Gen Ed",
+             "teacher": s["name"], "room": s["room"], "teaches_math": s["teaches_math"],
+             "birthday": s["birthday"]}
+            for g, ts in _staff_grouped(db, tenant_id).items() for s in ts],
     }
 
 
@@ -1252,11 +1258,30 @@ def guide_coach_summary_docx(
 
 # --- Master schedule: math times & Math-DI windows ---------------------------
 
+def _last_name(name: str) -> str:
+    return (name or "").strip().split(" ")[-1].lower()
+
+
+def _staff_by_name(db, tenant_id) -> dict:
+    """Index the staff directory by teacher last name (and full name) so we can
+    stamp the section code (A13, 302 …) onto schedule rows and lookups."""
+    idx: dict = {}
+    for s in db.query(StaffMember).filter(
+            StaffMember.tenant_id == tenant_id, StaffMember.active == True).all():  # noqa: E712
+        entry = {"section": s.section, "grade": s.grade, "program": s.program,
+                 "name": s.name, "room": s.room, "role": s.role,
+                 "teaches_math": s.teaches_math, "birthday": s.birthday}
+        idx[s.name.lower()] = entry
+        idx.setdefault(_last_name(s.name), entry)
+    return idx
+
+
 def _schedule_grouped(db, tenant_id) -> dict:
     """Rebuild the per-grade / per-teacher / per-day view from stored blocks."""
     from app.schedule_import import DAY_ORDER
     rows = db.query(ScheduleBlock).filter(
         ScheduleBlock.tenant_id == tenant_id).all()
+    staff_idx = _staff_by_name(db, tenant_id)
     def _blank():
         return {"math": [], "di": [], "planning": []}
     teachers: dict = {}
@@ -1279,10 +1304,80 @@ def _schedule_grouped(db, tenant_id) -> dict:
             for k in ("math", "di", "planning"):
                 d.setdefault(k, []).sort(key=lambda x: x["start"])
         t["teaches_math"] = any(t["days"][d]["math"] for d in t["days"])
+        # Stamp the section code (A13, 302 …) from the staff directory so the
+        # schedule shows whose class each block is.
+        match = staff_idx.get(t["teacher"].lower()) or staff_idx.get(_last_name(t["teacher"]))
+        t["section"] = match["section"] if match else ""
+        if match and not t.get("program"):
+            t["program"] = match.get("program", "")
     by_grade: dict = {}
     for t in sorted(teachers.values(), key=lambda x: (x["grade"], x["room"], x["teacher"])):
         by_grade.setdefault(t["grade"], []).append(t)
     return by_grade
+
+
+# --- Staff / section directory ------------------------------------------------
+
+def _staff_grouped(db, tenant_id) -> dict:
+    """The staff directory grouped by grade, sections sorted, for the Staff page
+    and the AI. Each row says whose class a code belongs to."""
+    order = {"K": 0, "1": 1, "2": 2, "3": 3, "PK": 4, "VPK": 5}
+    rows = db.query(StaffMember).filter(
+        StaffMember.tenant_id == tenant_id, StaffMember.active == True).all()  # noqa: E712
+    by_grade: dict = {}
+    for s in rows:
+        by_grade.setdefault(s.grade, []).append({
+            "section": s.section, "grade": s.grade, "program": s.program,
+            "name": s.name, "room": s.room, "role": s.role,
+            "teaches_math": s.teaches_math, "ext": s.ext, "birthday": s.birthday})
+    for g in by_grade:
+        by_grade[g].sort(key=lambda x: (x["program"], x["section"]))
+    return dict(sorted(by_grade.items(), key=lambda kv: order.get(kv[0], 99)))
+
+
+@router.post("/staff/import")
+async def import_staff(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Upload the Staff Roster (.xlsx). Builds the section↔teacher directory
+    (section code, grade, program, room, math role, birthday), replacing any
+    previously imported staff for this school. Names live in the DB only."""
+    from app.staff_import import parse_staff_roster
+
+    data = await file.read()
+    if len(data) > _MAX_DOC_BYTES:
+        raise HTTPException(400, "File is larger than the 25 MB limit.")
+    res = parse_staff_roster(data)
+    if not res["staff"]:
+        raise HTTPException(
+            400, f"Could not read the roster: {res.get('reason')}. Upload the "
+                 "Staff Roster .xlsx (with the CLASSROOM TEACHERS sheet).")
+    db.query(StaffMember).filter(StaffMember.tenant_id == user.tenant_id).delete()
+    math_n = 0
+    for s in res["staff"]:
+        if s["teaches_math"]:
+            math_n += 1
+        db.add(StaffMember(
+            tenant_id=user.tenant_id, section=s["section"], grade=s["grade"],
+            program=s["program"], name=s["name"], room=s["room"], role=s["role"],
+            teaches_math=s["teaches_math"], ext=s["ext"], birthday=s["birthday"]))
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="staff",
+          purpose="staff_roster_import")
+    return {"staff": len(res["staff"]), "math_teachers": math_n}
+
+
+@router.get("/staff")
+def get_staff(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The staff/section directory grouped by grade — whose class each code is."""
+    by_grade = _staff_grouped(db, user.tenant_id)
+    total = sum(len(v) for v in by_grade.values())
+    return {"by_grade": by_grade, "total": total}
 
 
 @router.post("/schedule/import")
