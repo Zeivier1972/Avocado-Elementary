@@ -424,7 +424,8 @@ def _school_context(db: Session, user: User) -> dict:
         "staff_directory": [
             {"section": s["section"], "grade": g, "program": s["program"] or "Gen Ed",
              "teacher": s["name"], "room": s["room"], "teaches_math": s["teaches_math"],
-             "birthday": s["birthday"]}
+             "birthday": s["birthday"], "math_times": s.get("math_times", []),
+             "di_windows": s.get("di_windows", [])}
             for g, ts in _staff_grouped(db, tenant_id).items() for s in ts],
     }
 
@@ -1011,6 +1012,7 @@ def coach_home(
         "planning_for": planning_week_focus(),
         "collab_meetings": _collab_context(db, user.tenant_id),
         "upcoming_dates": _upcoming_dates(db, user.tenant_id, within_days=45, limit=8),
+        "upcoming_birthdays": _upcoming_birthdays(db, user.tenant_id, within_days=30, limit=10),
         "counts": {
             "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
             "students": db.query(Student).filter(
@@ -1132,6 +1134,43 @@ def _upcoming_dates(db, tenant_id, within_days=45, limit=8):
             upcoming.append(d)
     upcoming.sort(key=lambda d: d.date)
     return [_date_row(d, today_iso) for d in upcoming[:limit]]
+
+
+def _upcoming_birthdays(db, tenant_id, within_days=30, limit=10):
+    """Staff birthdays coming up within the horizon, soonest first. Birthdays
+    are stored as 'M/D'; we compute the next occurrence from today (wrapping
+    across the new year) so the Home page can celebrate them."""
+    from datetime import date as _date, timedelta
+    today = _date.today()
+    out = []
+    for s in db.query(StaffMember).filter(
+            StaffMember.tenant_id == tenant_id, StaffMember.active == True).all():  # noqa: E712
+        raw = (s.birthday or "").strip()
+        if not raw or "/" not in raw:
+            continue
+        try:
+            mo, da = [int(x) for x in raw.split("/")[:2]]
+            year = today.year
+            try:
+                nxt = _date(year, mo, da)
+            except ValueError:
+                continue  # e.g. 2/29 in a non-leap year
+            if nxt < today:
+                try:
+                    nxt = _date(year + 1, mo, da)
+                except ValueError:
+                    continue
+        except Exception:
+            continue
+        days = (nxt - today).days
+        if days <= within_days:
+            out.append({
+                "name": s.name, "section": s.section, "grade": s.grade,
+                "program": s.program, "teaches_math": s.teaches_math,
+                "date": f"{mo}/{da}", "days_until": days,
+                "is_today": days == 0})
+    out.sort(key=lambda x: x["days_until"])
+    return out[:limit]
 
 
 @router.get("/dates")
@@ -1262,18 +1301,34 @@ def _last_name(name: str) -> str:
     return (name or "").strip().split(" ")[-1].lower()
 
 
-def _staff_by_name(db, tenant_id) -> dict:
-    """Index the staff directory by teacher last name (and full name) so we can
-    stamp the section code (A13, 302 …) onto schedule rows and lookups."""
-    idx: dict = {}
+def _staff_index(db, tenant_id) -> tuple[dict, dict]:
+    """Index the staff directory two ways so we can connect it to the master
+    schedule: by teacher name (full + last), and by SECTION CODE. The code index
+    matters because ASD rows on the master schedule carry the code (A13) as the
+    'teacher', with no real name — this is how we resolve them to a person."""
+    by_name: dict = {}
+    by_section: dict = {}
     for s in db.query(StaffMember).filter(
             StaffMember.tenant_id == tenant_id, StaffMember.active == True).all():  # noqa: E712
         entry = {"section": s.section, "grade": s.grade, "program": s.program,
                  "name": s.name, "room": s.room, "role": s.role,
                  "teaches_math": s.teaches_math, "birthday": s.birthday}
-        idx[s.name.lower()] = entry
-        idx.setdefault(_last_name(s.name), entry)
-    return idx
+        if s.name:
+            by_name[s.name.lower()] = entry
+            by_name.setdefault(_last_name(s.name), entry)
+        if s.section:
+            by_section[s.section.strip().upper()] = entry
+    return by_name, by_section
+
+
+def _resolve_teacher(raw: str, by_name: dict, by_section: dict) -> dict | None:
+    """Match a master-schedule teacher label to a directory person — by full
+    name, last name, or (for ASD rows) the section code it was stored under."""
+    if not raw:
+        return None
+    return (by_name.get(raw.lower())
+            or by_section.get(raw.strip().upper())
+            or by_name.get(_last_name(raw)))
 
 
 def _schedule_grouped(db, tenant_id) -> dict:
@@ -1281,7 +1336,7 @@ def _schedule_grouped(db, tenant_id) -> dict:
     from app.schedule_import import DAY_ORDER
     rows = db.query(ScheduleBlock).filter(
         ScheduleBlock.tenant_id == tenant_id).all()
-    staff_idx = _staff_by_name(db, tenant_id)
+    by_name, by_section = _staff_index(db, tenant_id)
     def _blank():
         return {"math": [], "di": [], "planning": []}
     teachers: dict = {}
@@ -1304,12 +1359,23 @@ def _schedule_grouped(db, tenant_id) -> dict:
             for k in ("math", "di", "planning"):
                 d.setdefault(k, []).sort(key=lambda x: x["start"])
         t["teaches_math"] = any(t["days"][d]["math"] for d in t["days"])
-        # Stamp the section code (A13, 302 …) from the staff directory so the
-        # schedule shows whose class each block is.
-        match = staff_idx.get(t["teacher"].lower()) or staff_idx.get(_last_name(t["teacher"]))
-        t["section"] = match["section"] if match else ""
-        if match and not t.get("program"):
-            t["program"] = match.get("program", "")
+        # Connect this Math/DI row to the staff directory: stamp the section code
+        # and, for ASD rows that carry the code as the 'teacher', resolve it to
+        # the real person so the schedule, visit planner and host lists all show
+        # a name instead of a bare code.
+        raw = t["teacher"]
+        match = _resolve_teacher(raw, by_name, by_section)
+        t["code"] = raw.strip().upper() if raw.strip().upper() in by_section else ""
+        t["section"] = (match["section"] if match else "") or t.get("code", "")
+        if match:
+            if match.get("name"):
+                t["teacher"] = match["name"]
+            if not t.get("program"):
+                t["program"] = match.get("program", "")
+            t["teaches_math"] = t["teaches_math"] or bool(match.get("teaches_math"))
+            t["unmatched"] = False
+        else:
+            t["unmatched"] = True
     by_grade: dict = {}
     for t in sorted(teachers.values(), key=lambda x: (x["grade"], x["room"], x["teacher"])):
         by_grade.setdefault(t["grade"], []).append(t)
@@ -1318,18 +1384,43 @@ def _schedule_grouped(db, tenant_id) -> dict:
 
 # --- Staff / section directory ------------------------------------------------
 
+def _schedule_conn(db, tenant_id) -> dict:
+    """A lookup from the master schedule keyed by teacher name AND section code,
+    giving each teacher's Math times and DI windows — so the Staff directory can
+    show, per person, when they teach math and when they can run Math DI."""
+    conn: dict = {}
+    for grade, ts in _schedule_grouped(db, tenant_id).items():
+        for t in ts:
+            math_times = sorted({f"{m['start']}-{m['end']}"
+                                 for d in t["days"].values() for m in d["math"]})
+            di_windows = sorted({f"{x['start']}-{x['end']}"
+                                 for d in t["days"].values() for x in d["di"]})
+            info = {"math_times": math_times, "di_windows": di_windows}
+            if t.get("teacher"):
+                conn[t["teacher"].lower()] = info
+            if t.get("section"):
+                conn[t["section"].strip().upper()] = info
+    return conn
+
+
 def _staff_grouped(db, tenant_id) -> dict:
     """The staff directory grouped by grade, sections sorted, for the Staff page
-    and the AI. Each row says whose class a code belongs to."""
+    and the AI. Each row says whose class a code belongs to AND — connected to
+    the master schedule — that teacher's Math time and DI window."""
     order = {"K": 0, "1": 1, "2": 2, "3": 3, "PK": 4, "VPK": 5}
     rows = db.query(StaffMember).filter(
         StaffMember.tenant_id == tenant_id, StaffMember.active == True).all()  # noqa: E712
+    conn = _schedule_conn(db, tenant_id)
     by_grade: dict = {}
     for s in rows:
+        sched = conn.get(s.name.lower()) or conn.get((s.section or "").strip().upper()) or {}
         by_grade.setdefault(s.grade, []).append({
             "section": s.section, "grade": s.grade, "program": s.program,
             "name": s.name, "room": s.room, "role": s.role,
-            "teaches_math": s.teaches_math, "ext": s.ext, "birthday": s.birthday})
+            "teaches_math": s.teaches_math, "ext": s.ext, "birthday": s.birthday,
+            "math_times": sched.get("math_times", []),
+            "di_windows": sched.get("di_windows", []),
+            "in_schedule": bool(sched)})
     for g in by_grade:
         by_grade[g].sort(key=lambda x: (x["program"], x["section"]))
     return dict(sorted(by_grade.items(), key=lambda kv: order.get(kv[0], 99)))

@@ -73,6 +73,7 @@ export default function CoachHomePage() {
   const watch = home?.teachers_to_watch || [];
   const followups = home?.followups || [];
   const upcoming = home?.upcoming_dates || [];
+  const birthdays = home?.upcoming_birthdays || [];
   const counts = home?.counts || {};
   const dateLabel = home?.today
     ? new Date(home.today + "T00:00:00").toLocaleDateString(undefined, {
@@ -423,6 +424,70 @@ export default function CoachHomePage() {
             </ul>
           )}
         </div>
+
+        {/* Upcoming staff birthdays */}
+        {birthdays.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-semibold text-gray-800">🎂 Staff birthdays</div>
+              <a
+                href="/staff"
+                className="text-sm text-avocado-dark hover:underline"
+              >
+                Staff directory →
+              </a>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              Coming up in the next month — a quick way to celebrate your team.
+            </p>
+            <ul className="divide-y divide-gray-50">
+              {birthdays.map((b: any, i: number) => (
+                <li key={i} className="flex items-center gap-3 py-2">
+                  <div className="w-14 shrink-0 text-center">
+                    <div className="text-lg">🎂</div>
+                    <div className="text-xs font-semibold text-gray-500 tabular-nums">
+                      {b.date}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-gray-700 truncate">
+                      {b.name}
+                      {b.section && (
+                        <span className="text-gray-400"> · {b.section}</span>
+                      )}
+                      {b.teaches_math && (
+                        <span className="ml-1 text-[10px]">🧮</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-gray-400">
+                      {b.grade === "K"
+                        ? "Kindergarten"
+                        : ["PK", "VPK"].includes(b.grade)
+                        ? b.grade
+                        : `Grade ${b.grade}`}
+                      {b.program ? ` · ${b.program}` : ""}
+                    </div>
+                  </div>
+                  <span
+                    className={`text-xs font-semibold shrink-0 ${
+                      b.is_today
+                        ? "text-avocado-dark"
+                        : b.days_until <= 7
+                        ? "text-red-600"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {b.is_today
+                      ? "Today! 🎉"
+                      : b.days_until === 1
+                      ? "Tomorrow"
+                      : `in ${b.days_until} days`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </main>
   );

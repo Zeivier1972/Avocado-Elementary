@@ -14,6 +14,20 @@ const GRADE_LABEL = (g: string) =>
     ? "VPK"
     : `Grade ${g}`;
 
+function fmt(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  const hr = ((h + 11) % 12) + 1;
+  return `${hr}:${String(m).padStart(2, "0")}`;
+}
+function fmtTimes(ranges: string[]) {
+  return ranges
+    .map((r) => {
+      const [a, b] = r.split("-");
+      return `${fmt(a)}–${fmt(b)}`;
+    })
+    .join(", ");
+}
+
 const PROGRAM_TINT: Record<string, string> = {
   "": "bg-gray-50 text-gray-600 border-gray-200",
   ASD: "bg-purple-50 text-purple-700 border-purple-200",
@@ -166,7 +180,8 @@ export default function StaffPage() {
                       <th className="p-2 font-semibold">Teacher</th>
                       <th className="p-2 font-semibold">Program</th>
                       <th className="p-2 font-semibold">Room</th>
-                      <th className="p-2 font-semibold">Teaches</th>
+                      <th className="p-2 font-semibold">🧮 Math time</th>
+                      <th className="p-2 font-semibold">🔬 DI window</th>
                       <th className="p-2 font-semibold">Birthday</th>
                     </tr>
                   </thead>
@@ -194,13 +209,28 @@ export default function StaffPage() {
                           </span>
                         </td>
                         <td className="p-2 text-gray-500">{s.room || "—"}</td>
-                        <td className="p-2">
+                        <td className="p-2 text-gray-600 whitespace-nowrap">
                           {s.teaches_math ? (
-                            <span className="text-avocado-dark font-semibold">
-                              🧮 Math
-                            </span>
+                            (s.math_times || []).length ? (
+                              fmtTimes(s.math_times)
+                            ) : (
+                              <span className="text-amber-600" title="No matching math block found in the master schedule">
+                                not in schedule
+                              </span>
+                            )
                           ) : (
-                            <span className="text-gray-400">{s.role || "—"}</span>
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="p-2 text-gray-600 whitespace-nowrap">
+                          {s.teaches_math ? (
+                            (s.di_windows || []).length ? (
+                              fmtTimes(s.di_windows)
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )
+                          ) : (
+                            <span className="text-gray-300">—</span>
                           )}
                         </td>
                         <td className="p-2 text-gray-500">

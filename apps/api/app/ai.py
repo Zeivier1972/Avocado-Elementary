@@ -510,9 +510,13 @@ def _context_text(ctx: dict) -> str:
         for s in sd:
             star = "★" if s.get("teaches_math") else " "
             bday = f" · bday {s['birthday']}" if s.get("birthday") else ""
+            mt = ", ".join(s.get("math_times") or [])
+            di = ", ".join(s.get("di_windows") or [])
+            when = f" · Math {mt}" if mt else ""
+            when += f" · DI {di}" if di else ""
             lines.append(
                 f"  {star} {s['section'] or '—'} · G{s['grade']} {s['program']} · "
-                f"{s['teacher']} (Rm {s['room']}){bday}")
+                f"{s['teacher']} (Rm {s['room']}){when}{bday}")
     ms = ctx.get("math_schedule") or []
     if ms:
         lines.append("\nMATH & MATH-DI SCHEDULE (Math-DI runs during Science/Social "
