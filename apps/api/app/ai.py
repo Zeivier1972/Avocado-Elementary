@@ -751,6 +751,32 @@ def _as_phase(val, *, problem, say, do, concrete, pictorial, abstract, **extra):
     return base
 
 
+# Pacing-guide day rows that are NOT teaching lessons — review days and
+# test/assessment days. The coach only wants a guide for the actual lessons.
+import re as _re_lessons
+_SKIP_ROW = _re_lessons.compile(
+    r"(?:\breview\b|\bre-?teach\w*|\bassess\w*|\btest\w*|\btesting\b|\bquiz\w*"
+    r"|\bexam\b|\bmid-?topic\b|\bunit\s+test\b|\bchapter\s+test\b"
+    r"|\bperformance\s+task\b|\bculminating\b)",
+    _re_lessons.I)
+
+
+def _is_teaching_lesson(row: dict) -> bool:
+    """True unless the row is a review or test/assessment day. We check the code,
+    title and kind (not the free-text focus, which may mention assessment as an
+    instructional move)."""
+    text = f"{row.get('code','')} {row.get('title','')} {row.get('kind','')}".lower()
+    return not _SKIP_ROW.search(text)
+
+
+def _lessons_only(rows: list[dict]) -> list[dict]:
+    """Drop review and test/assessment days, keeping the actual lessons in order.
+    If a list is ALL non-lesson rows (e.g. a topic that is only an assessment),
+    keep it as-is so we never produce an empty guide."""
+    kept = [r for r in (rows or []) if _is_teaching_lesson(r)]
+    return kept if kept else (rows or [])
+
+
 def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
     """Build the per-lesson breakdown. Prefer lesson-specific content authored in
     the pacing guide (activate_prior_knowledge, i_do, we_do, cfu, you_do,
@@ -761,7 +787,7 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
     materials = topic.get("materials", [])
     conc = ", ".join(materials[:3]) if materials else "base-ten blocks / manipulatives"
     out = []
-    for L in topic.get("lessons", []):
+    for L in _lessons_only(topic.get("lessons", [])):
         title = L.get("title", "")
         focus = L.get("focus", "")
         codes = L.get("benchmarks") or []
@@ -1012,8 +1038,10 @@ def _llm_json(client, prompt: str, system: str, max_tokens: int):
 def _lesson_skeleton(client, topic, std_ctx, pacing_text):
     """Small call: the lesson list only (code/title/benchmarks/focus)."""
     if pacing_text and pacing_text.strip():
-        source = ("From the UPLOADED PACING GUIDE below, list EVERY lesson/day in "
-                  "order — however many there are.\n\nPACING GUIDE:\n"
+        source = ("From the UPLOADED PACING GUIDE below, list the actual TEACHING "
+                  "lessons in order. SKIP review days and test/assessment days "
+                  "(review, re-teach, topic/chapter/unit assessment or test, "
+                  "quiz) — the coach only wants the lessons.\n\nPACING GUIDE:\n"
                   + pacing_text.strip()[:30000])
     else:
         source = "Design a logical sequence of 5-7 lessons covering the benchmarks below."
@@ -1033,7 +1061,7 @@ def _lesson_skeleton(client, topic, std_ctx, pacing_text):
         if isinstance(L, dict) and (L.get("title") or L.get("code")):
             out.append({"code": str(L.get("code", "")), "title": str(L.get("title", "")),
                         "benchmarks": L.get("benchmarks", []), "focus": str(L.get("focus", ""))})
-    return out
+    return _lessons_only(out)
 
 
 def _lesson_detail(client, topic, std_ctx, batch, pacing_text):
@@ -1083,7 +1111,7 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             skeleton = [
                 {"code": L.get("code", ""), "title": L.get("title", ""),
                  "benchmarks": L.get("benchmarks", []), "focus": L.get("focus", "")}
-                for L in (topic.get("lessons") or [])
+                for L in _lessons_only(topic.get("lessons") or [])
             ]
         if not skeleton:
             return None, "could not determine the lesson list from the pacing guide"
