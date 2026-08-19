@@ -1,0 +1,309 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api, getToken } from "@/lib/api";
+import CoachHeader from "@/app/_components/CoachHeader";
+
+const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
+
+export default function AssessmentsPage() {
+  const router = useRouter();
+  const [me, setMe] = useState<any>(null);
+  const [build, setBuild] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
+  const [detail, setDetail] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const akRef = useRef<HTMLInputElement>(null);
+  const testRef = useRef<HTMLInputElement>(null);
+
+  async function load() {
+    setData(await api.getTopicTests());
+  }
+
+  useEffect(() => {
+    if (!getToken()) {
+      router.push("/");
+      return;
+    }
+    api.health().then(setBuild).catch(() => setBuild(null));
+    api
+      .me()
+      .then((u) => {
+        setMe(u);
+        return load();
+      })
+      .catch(() => setData({ by_grade: {}, coverage: {} }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function onUpload() {
+    const ak = akRef.current?.files?.[0];
+    if (!ak) {
+      setMsg("Choose the answer-key PDF first.");
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      const form = new FormData();
+      form.append("answer_key", ak);
+      const t = testRef.current?.files?.[0];
+      if (t) form.append("test", t);
+      const r = await api.importTopicTest(form);
+      const f = r.form;
+      setMsg(
+        `Added ${GRADE_LABEL(f.grade)} ${f.topic_code}: ${f.item_count} items · ` +
+          `${f.standards.length} standards${
+            r.questions_captured ? ` · ${r.questions_captured} questions captured` : ""
+          }.`
+      );
+      if (akRef.current) akRef.current.value = "";
+      if (testRef.current) testRef.current.value = "";
+      await load();
+    } catch (err) {
+      setMsg("Import failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openDetail(id: string) {
+    try {
+      setDetail(await api.getTopicTest(id));
+    } catch (err) {
+      alert("Could not open: " + (err as Error).message);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Remove this test blueprint?")) return;
+    await api.deleteTopicTest(id);
+    if (detail?.form?.id === id) setDetail(null);
+    await load();
+  }
+
+  if (!me) return <div className="p-10 text-gray-500">Loading…</div>;
+
+  const byGrade = data?.by_grade || {};
+  const coverage = data?.coverage || {};
+  const grades = Object.keys(byGrade);
+  const hasData = (data?.total_forms || 0) > 0;
+
+  return (
+    <main className="min-h-screen bg-gray-50/60">
+      <CoachHeader me={me} active="/assessments" build={build} />
+      <div className="max-w-5xl mx-auto p-6 space-y-5">
+        <div>
+          <h1 className="text-xl font-bold text-gray-800">
+            Topic Tests & Standards Assessed
+          </h1>
+          <p className="text-sm text-gray-500">
+            Upload each topic test&apos;s <b>answer key</b> (and the test) to record
+            which standards it assesses. This is the map we track all year against
+            i-Ready and FAST — and the basis for finding the deficient standard per
+            class once results come in.
+          </p>
+        </div>
+
+        {/* Upload */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <label className="text-sm">
+              <span className="font-semibold text-gray-700">
+                Answer key (PDF) <span className="text-red-500">*</span>
+              </span>
+              <input
+                ref={akRef}
+                type="file"
+                accept=".pdf"
+                className="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-avocado/10 file:px-3 file:py-1.5 file:text-avocado-dark file:font-semibold"
+              />
+              <span className="text-xs text-gray-400">
+                The item / standard / answer table.
+              </span>
+            </label>
+            <label className="text-sm">
+              <span className="font-semibold text-gray-700">
+                Test (PDF) <span className="text-gray-400">— optional</span>
+              </span>
+              <input
+                ref={testRef}
+                type="file"
+                accept=".pdf"
+                className="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-gray-600 file:font-semibold"
+              />
+              <span className="text-xs text-gray-400">
+                Captures each question for later DI packets.
+              </span>
+            </label>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={onUpload}
+              disabled={busy}
+              className="bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-4 py-2 disabled:opacity-60"
+            >
+              {busy ? "Reading…" : "⬆ Add topic test"}
+            </button>
+            {msg && <span className="text-sm text-gray-600">{msg}</span>}
+          </div>
+        </div>
+
+        {!hasData && (
+          <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-500">
+            No topic tests yet. Upload a grade&apos;s topic-test answer key to start
+            the standards map.
+          </div>
+        )}
+
+        {/* Per-grade: standards coverage + the topic tests */}
+        {grades.map((g) => (
+          <div key={g} className="space-y-3">
+            {coverage[g]?.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                <div className="font-semibold text-gray-800 mb-2">
+                  {GRADE_LABEL(g)} — standards we&apos;re tracking
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {coverage[g].map((c: any) => (
+                    <div
+                      key={c.standard}
+                      title={c.description}
+                      className="border border-avocado/30 bg-avocado/5 rounded-lg px-2.5 py-1.5"
+                    >
+                      <div className="text-sm font-mono font-bold text-avocado-dark">
+                        {c.standard}
+                      </div>
+                      <div className="text-[11px] text-gray-500">
+                        {c.items} items · {c.topics.join(", ")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {byGrade[g].map((f: any) => (
+              <div
+                key={f.id}
+                className="bg-white rounded-2xl border border-gray-100 p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-gray-800">
+                      {GRADE_LABEL(f.grade)} · {f.topic_code}
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono">
+                      {f.test_name || f.test_id}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-gray-500">
+                      {f.item_count} items · {f.total_points} pts
+                    </span>
+                    <button
+                      onClick={() => openDetail(f.id)}
+                      className="text-sm font-semibold text-avocado-dark hover:underline"
+                    >
+                      View items
+                    </button>
+                    <button
+                      onClick={() => remove(f.id)}
+                      className="text-sm text-gray-400 hover:text-red-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {f.by_standard.map((bs: any) => (
+                    <span
+                      key={bs.standard}
+                      className="text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1"
+                    >
+                      <span className="font-mono font-semibold text-gray-700">
+                        {bs.standard}
+                      </span>{" "}
+                      <span className="text-gray-500">
+                        · {bs.items} items ({bs.points} pts)
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        {/* Item detail drawer */}
+        {detail && (
+          <div className="bg-white rounded-2xl border border-avocado/30 p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-bold text-gray-800">
+                {GRADE_LABEL(detail.form.grade)} · {detail.form.topic_code} — items
+              </div>
+              <button
+                onClick={() => setDetail(null)}
+                className="text-sm text-gray-400 hover:text-gray-700"
+              >
+                Close ✕
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b border-gray-100">
+                    <th className="p-2 font-semibold">#</th>
+                    <th className="p-2 font-semibold">Standard</th>
+                    <th className="p-2 font-semibold">Answer</th>
+                    <th className="p-2 font-semibold">Pts</th>
+                    <th className="p-2 font-semibold">Question</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.items.map((it: any) => (
+                    <tr
+                      key={it.position}
+                      className={`border-b border-gray-50 align-top ${
+                        it.scored ? "" : "text-gray-400"
+                      }`}
+                    >
+                      <td className="p-2 font-semibold">{it.position}</td>
+                      <td className="p-2 font-mono text-xs">
+                        {it.standard || (
+                          <span className="text-gray-400">no standard</span>
+                        )}
+                      </td>
+                      <td className="p-2 font-semibold text-avocado-dark">
+                        {it.correct_response}
+                      </td>
+                      <td className="p-2 tabular-nums">{it.points}</td>
+                      <td className="p-2 text-gray-600 max-w-md">
+                        {it.stem || (
+                          <span className="text-gray-300">
+                            (upload the test PDF to capture)
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {hasData && (
+          <p className="text-xs text-gray-400">
+            Field-test items with no standard (0 pts) are shown greyed out and don&apos;t
+            count. When you upload class results, we&apos;ll score each standard, flag
+            the deficient one per class, and pull the most-missed questions into
+            DI packets (Red / Yellow / Green) using the ACES model.
+          </p>
+        )}
+      </div>
+    </main>
+  );
+}

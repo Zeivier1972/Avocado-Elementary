@@ -453,3 +453,39 @@ class StaffMember(Base, TimestampMixin):
     ext: Mapped[str] = mapped_column(String, default="")       # phone extension
     birthday: Mapped[str] = mapped_column(String, default="")  # M/D as written
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class AssessmentForm(Base, TimestampMixin):
+    """A topic-test blueprint (from the answer key): which standards a grade's
+    topic assessment covers, how many items/points. The anchor for tracking
+    standards all year and, later, scoring class results to target DI."""
+    __tablename__ = "assessment_forms"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    test_name: Mapped[str] = mapped_column(String, default="", index=True)
+    test_id: Mapped[str] = mapped_column(String, default="", index=True)
+    grade: Mapped[str] = mapped_column(String, default="", index=True)
+    topic_code: Mapped[str] = mapped_column(String, default="")   # "Topic 1"
+    subject: Mapped[str] = mapped_column(String, default="MATH")
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_points: Mapped[float] = mapped_column(Float, default=0.0)
+    standards: Mapped[list] = mapped_column(JSON, default=list)   # distinct codes
+    created_by: Mapped[str] = mapped_column(String, default="")
+
+
+class AssessmentItem(Base, TimestampMixin):
+    """One question on a topic test: the standard it assesses, the key, points,
+    and (when the test PDF is uploaded) the question text — so specific missed
+    items can be pulled into DI packets later."""
+    __tablename__ = "assessment_items"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    form_id: Mapped[str] = mapped_column(ForeignKey("assessment_forms.id"), index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    item_id: Mapped[str] = mapped_column(String, default="")
+    standard: Mapped[str] = mapped_column(String, default="", index=True)  # MA.3.NSO.2.2
+    standard_raw: Mapped[str] = mapped_column(String, default="")
+    correct_response: Mapped[str] = mapped_column(String, default="")  # "D" or "A,C,D"
+    points: Mapped[float] = mapped_column(Float, default=0.0)
+    scored: Mapped[bool] = mapped_column(Boolean, default=True)
+    stem: Mapped[str] = mapped_column(Text, default="")  # question text if available

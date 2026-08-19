@@ -26,6 +26,8 @@ from app.db.session import get_db
 from app.deps import audit, get_current_user
 from app.models import (
     AppSetting,
+    AssessmentForm,
+    AssessmentItem,
     CalendarEntry,
     ClassRoom,
     CoachNote,
@@ -427,6 +429,13 @@ def _school_context(db: Session, user: User) -> dict:
              "birthday": s["birthday"], "math_times": s.get("math_times", []),
              "di_windows": s.get("di_windows", [])}
             for g, ts in _staff_grouped(db, tenant_id).items() for s in ts],
+        "assessments": [
+            {"grade": f.grade, "topic": f.topic_code, "test_name": f.test_name,
+             "items": f.item_count, "points": f.total_points,
+             "standards": f.standards or []}
+            for f in db.query(AssessmentForm).filter(
+                AssessmentForm.tenant_id == tenant_id).order_by(
+                AssessmentForm.grade, AssessmentForm.topic_code).all()],
     }
 
 
@@ -1469,6 +1478,179 @@ def get_staff(
     by_grade = _staff_grouped(db, user.tenant_id)
     total = sum(len(v) for v in by_grade.values())
     return {"by_grade": by_grade, "total": total}
+
+
+# --- Topic-test blueprints & standards-assessed tracking ----------------------
+
+def _form_summary(db, form: AssessmentForm) -> dict:
+    """One form's standards breakdown (items + points per standard)."""
+    items = db.query(AssessmentItem).filter(
+        AssessmentItem.form_id == form.id).order_by(AssessmentItem.position).all()
+    per_std: dict = {}
+    for it in items:
+        if not it.standard:
+            continue
+        e = per_std.setdefault(it.standard, {"standard": it.standard,
+                                             "items": 0, "points": 0.0,
+                                             "positions": []})
+        e["items"] += 1
+        e["points"] += it.points
+        e["positions"].append(it.position)
+    return {
+        "id": form.id, "test_name": form.test_name, "test_id": form.test_id,
+        "grade": form.grade, "topic_code": form.topic_code,
+        "subject": form.subject, "item_count": form.item_count,
+        "total_points": form.total_points, "standards": form.standards or [],
+        "by_standard": sorted(per_std.values(), key=lambda x: -x["points"]),
+    }
+
+
+def _std_desc_map(db) -> dict:
+    """code -> short standard description, to label the standards we track."""
+    out: dict = {}
+    for s in db.query(Standard).all():
+        out[s.code] = s.description
+    return out
+
+
+@router.post("/assessments/import")
+async def import_assessment(
+    answer_key: UploadFile = File(...),
+    test: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Upload a topic-test ANSWER KEY (PDF) — and optionally the test PDF — to
+    register the blueprint: the standard each item assesses, the key and points.
+    Re-uploading the same Test Id replaces it. This is what we track all year."""
+    from app.assessment_import import parse_answer_key, parse_test_questions
+
+    ak = await answer_key.read()
+    if len(ak) > _MAX_DOC_BYTES:
+        raise HTTPException(400, "Answer key is larger than the 25 MB limit.")
+    res = parse_answer_key(ak)
+    if not res["items"]:
+        raise HTTPException(
+            400, f"Could not read the answer key: {res.get('reason')}. Upload the "
+                 "answer-key PDF (the item/standard/answer table).")
+
+    stems: dict = {}
+    if test is not None:
+        tb = await test.read()
+        if len(tb) <= _MAX_DOC_BYTES:
+            stems = parse_test_questions(tb).get("questions", {})
+
+    # Replace any existing form with the same Test Id (or name) for this tenant.
+    q = db.query(AssessmentForm).filter(AssessmentForm.tenant_id == user.tenant_id)
+    existing = None
+    if res["test_id"]:
+        existing = q.filter(AssessmentForm.test_id == res["test_id"]).first()
+    if not existing and res["test_name"]:
+        existing = q.filter(AssessmentForm.test_name == res["test_name"]).first()
+    if existing:
+        db.query(AssessmentItem).filter(
+            AssessmentItem.form_id == existing.id).delete()
+        db.delete(existing)
+        db.flush()
+
+    form = AssessmentForm(
+        tenant_id=user.tenant_id, test_name=res["test_name"],
+        test_id=res["test_id"], grade=res["grade"], topic_code=res["topic_code"],
+        subject=res["subject"], item_count=res["item_count"],
+        total_points=res["total_points"], standards=res["standards"],
+        created_by=user.id)
+    db.add(form)
+    db.flush()
+    for it in res["items"]:
+        db.add(AssessmentItem(
+            tenant_id=user.tenant_id, form_id=form.id, position=it["position"],
+            item_id=it["item_id"], standard=it["standard"],
+            standard_raw=it["standard_raw"], correct_response=it["correct_response"],
+            points=it["points"], scored=it["scored"],
+            stem=str(stems.get(it["position"], ""))[:2000]))
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="assessment_form",
+          entity_id=form.id, purpose="topic_test_blueprint")
+    return {"form": _form_summary(db, form),
+            "questions_captured": len(stems)}
+
+
+@router.get("/assessments")
+def list_assessments(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """All topic-test blueprints grouped by grade, plus the year-long map of
+    standards assessed per grade (how many tests/items touch each standard)."""
+    forms = db.query(AssessmentForm).filter(
+        AssessmentForm.tenant_id == user.tenant_id).all()
+    order = {"K": 0, "1": 1, "2": 2, "3": 3, "4": 4}
+    by_grade: dict = {}
+    for f in forms:
+        by_grade.setdefault(f.grade, []).append(_form_summary(db, f))
+    for g in by_grade:
+        by_grade[g].sort(key=lambda x: x["topic_code"])
+
+    desc = _std_desc_map(db)
+    coverage: dict = {}
+    for g, summaries in by_grade.items():
+        std_map: dict = {}
+        for s in summaries:
+            for bs in s["by_standard"]:
+                e = std_map.setdefault(bs["standard"], {
+                    "standard": bs["standard"],
+                    "description": desc.get(bs["standard"], ""),
+                    "items": 0, "points": 0.0, "topics": []})
+                e["items"] += bs["items"]
+                e["points"] += bs["points"]
+                e["topics"].append(s["topic_code"])
+        coverage[g] = sorted(std_map.values(), key=lambda x: x["standard"])
+    return {
+        "by_grade": dict(sorted(by_grade.items(), key=lambda kv: order.get(kv[0], 99))),
+        "coverage": dict(sorted(coverage.items(), key=lambda kv: order.get(kv[0], 99))),
+        "total_forms": len(forms),
+    }
+
+
+@router.get("/assessments/{form_id}")
+def get_assessment(
+    form_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """One blueprint with every item (position, standard, answer, points, stem)."""
+    f = db.get(AssessmentForm, form_id)
+    if not f or f.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Assessment not found")
+    items = db.query(AssessmentItem).filter(
+        AssessmentItem.form_id == f.id).order_by(AssessmentItem.position).all()
+    desc = _std_desc_map(db)
+    return {
+        "form": _form_summary(db, f),
+        "items": [{"position": it.position, "item_id": it.item_id,
+                   "standard": it.standard,
+                   "standard_desc": desc.get(it.standard, ""),
+                   "correct_response": it.correct_response, "points": it.points,
+                   "scored": it.scored, "stem": it.stem} for it in items],
+    }
+
+
+@router.delete("/assessments/{form_id}")
+def delete_assessment(
+    form_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    f = db.get(AssessmentForm, form_id)
+    if not f or f.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Assessment not found")
+    db.query(AssessmentItem).filter(AssessmentItem.form_id == f.id).delete()
+    name = f.test_name
+    db.delete(f)
+    db.commit()
+    audit(db, actor=user, action="delete", entity_type="assessment_form",
+          entity_id=form_id, purpose="assessment_management")
+    return {"deleted": True, "test_name": name}
 
 
 @router.post("/schedule/import")

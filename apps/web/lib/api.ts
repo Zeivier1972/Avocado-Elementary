@@ -118,6 +118,12 @@ export const api = {
   getStaff: () => req("/coach/staff"),
   importStaff: (form: FormData) =>
     req("/coach/staff/import", { method: "POST", body: form }),
+  getTopicTests: () => req("/coach/assessments"),
+  getTopicTest: (id: string) => req(`/coach/assessments/${id}`),
+  importTopicTest: (form: FormData) =>
+    req("/coach/assessments/import", { method: "POST", body: form }),
+  deleteTopicTest: (id: string) =>
+    req(`/coach/assessments/${id}`, { method: "DELETE" }),
   coachHome: () => req("/coach/home"),
   teacherNotes: (id: string) => req(`/coach/teacher/${id}/notes`),
   addTeacherNote: (id: string, body: any) =>

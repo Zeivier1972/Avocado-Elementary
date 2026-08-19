@@ -517,6 +517,14 @@ def _context_text(ctx: dict) -> str:
             lines.append(
                 f"  {star} {s['section'] or '—'} · G{s['grade']} {s['program']} · "
                 f"{s['teacher']} (Rm {s['room']}){when}{bday}")
+    az = ctx.get("assessments") or []
+    if az:
+        lines.append("\nTOPIC TESTS & STANDARDS ASSESSED (tracked all year vs "
+                     "i-Ready & FAST):")
+        for a in az:
+            lines.append(
+                f"  - G{a['grade']} {a['topic']}: {a['items']} items / "
+                f"{a['points']} pts — standards {', '.join(a['standards']) or '—'}")
     ms = ctx.get("math_schedule") or []
     if ms:
         lines.append("\nMATH & MATH-DI SCHEDULE (Math-DI runs during Science/Social "
