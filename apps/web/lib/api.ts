@@ -115,6 +115,8 @@ export const api = {
     ),
   importSchedule: (form: FormData) =>
     req("/coach/schedule/import", { method: "POST", body: form }),
+  getTier2: (grade = "") =>
+    req(`/coach/tier2${grade ? `?grade=${encodeURIComponent(grade)}` : ""}`),
   getStaff: () => req("/coach/staff"),
   importStaff: (form: FormData) =>
     req("/coach/staff/import", { method: "POST", body: form }),

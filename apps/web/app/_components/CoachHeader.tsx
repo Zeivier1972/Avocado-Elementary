@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/teachers", label: "👩‍🏫 Teachers" },
   { href: "/coach", label: "🗂 Planning" },
   { href: "/framework", label: "🧭 Framework" },
+  { href: "/tier2", label: "🔤 Tier 2" },
   { href: "/schedule", label: "⏰ Schedule" },
   { href: "/staff", label: "🧑‍🏫 Staff" },
   { href: "/calendar", label: "📅 Calendar" },

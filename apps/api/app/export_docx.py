@@ -144,6 +144,19 @@ def guide_to_docx(guide: dict) -> bytes:
         _heading(doc, "Success Criteria", 12)
         _bullets(doc, guide["success_criteria"])
 
+    # Tier 2 academic vocabulary (this year's focus) — mined from the standards.
+    if guide.get("tier2_vocabulary"):
+        _heading(doc, "Tier 2 Academic Vocabulary (focus — words in the "
+                      "question stems)", 12)
+        table = doc.add_table(rows=1, cols=2)
+        table.style = "Light Grid Accent 1"
+        for i, h in enumerate(["Word", "What it means (kid words)"]):
+            table.rows[0].cells[i].text = h
+        for w in guide["tier2_vocabulary"]:
+            cells = table.add_row().cells
+            cells[0].text = str(w.get("word", ""))
+            cells[1].text = str(w.get("meaning", ""))
+
     if guide.get("benchmark_clarifications"):
         _heading(doc, "Benchmark Clarifications", 12)
         for c in guide["benchmark_clarifications"]:

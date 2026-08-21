@@ -241,6 +241,12 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
     for s in standards:
         for row in _parse_misconceptions(s.get("misconceptions", "")):
             misconceptions.append({"code": s["code"], **row})
+    # Tier 2 academic vocabulary mined from THIS topic's standards (the school's
+    # focus this year — cross-curricular words like determine/explain/justify
+    # that appear in the question stems).
+    from app.tier2_vocab import tier2_for_standards
+    tier2_vocab = tier2_for_standards(standards)
+
     base = {
         "title": f"Grade {topic.get('grade_level','')} Collaborative Planning Guide — "
                  f"{topic['topic_code']}: {topic['name']}",
@@ -251,6 +257,7 @@ def generate_planning_guide(topic: dict, standards: list[dict]) -> dict:
         "success_criteria": topic.get("success_criteria", []),
         "benchmark_clarifications": clarifications,
         "common_misconceptions": misconceptions,
+        "tier2_vocabulary": tier2_vocab,
     }
 
     if settings.ai_provider == "anthropic" and settings.ai_api_key:
@@ -517,18 +524,49 @@ def ask_assistant(message: str, history: list[dict], context: dict) -> dict:
     system = (
         "You are the Avocado AI Coach — an expert instructional coach, data "
         "analyst, and assistant for a K-3 elementary school (Miami-Dade / Florida "
-        "B.E.S.T.). You have a LIVE SNAPSHOT of this coach's whole system below: "
-        "the school goal and progress, every teacher's standing, pacing, saved "
-        "planning guides, the coach's own notes and follow-ups, and upcoming "
-        "calendar dates. Answer the coach's questions directly FROM this snapshot "
-        "— name specific teachers, grades, percentages, and dates when they are "
-        "in the data. If something isn't in the snapshot, say so plainly and "
-        "point to where in the app it lives (Reports, a teacher's page, Key "
-        "Dates, Planning) rather than guessing. Be concise, practical, and "
-        "action-oriented. Never invent individual student names or scores — "
-        "student data here is aggregate/teacher-level by design; for a single "
-        "student, direct the coach to that teacher's tracker. When asked, draft "
-        "teacher emails with a clear subject line and a body ready to send.\n"
+        "B.E.S.T.). You have a LIVE SNAPSHOT of this coach's whole system below. "
+        "Answer the coach's questions directly FROM this snapshot — name specific "
+        "teachers, grades, percentages, section codes, and dates when they are in "
+        "the data.\n\n"
+        "WHAT THIS PLATFORM DOES (know this so you answer about the tools too):\n"
+        "• Collaborative Planning Guides — generated per grade/topic, grounded in "
+        "the B1G-M (B.E.S.T.) benchmark content (clarifications, common "
+        "misconceptions, instructional strategies, and the FLDOE Achievement Level "
+        "Descriptors for what Level 3 looks like) PLUS the district pacing guide "
+        "(lesson sequence, vocabulary, materials). Lessons are scripted in the "
+        "ACES gradual-release model (I Do/Assemble → We Do/Connect → Y'all "
+        "Do/Explore → You Do/Solo) with CPA (Concrete-Pictorial-Abstract) and "
+        "CUBS. Review/test days are skipped.\n"
+        "• Coach One-Pager — a short 'how to present it' distillation of a guide.\n"
+        "• Weekly Planning Template (teacher walkout) — a one-page, 5-lesson "
+        "gradual-release grid with Tier 2 / Tier 3 vocabulary that teachers fill "
+        "in; a filled Example version is available.\n"
+        "• TIER 2 ACADEMIC VOCABULARY is the school's FOCUS THIS YEAR: "
+        "cross-curricular academic words (determine, explain, justify, represent, "
+        "compare, model …) mined from each grade's standards and woven into the "
+        "guides and templates. Tier 3 = subject-specific math terms. The Tier 2 "
+        "words per grade are in the snapshot below.\n"
+        "• Framework of Effective Instruction — 6 components with a weekly coaching "
+        "lens; the coach plans a WEEK AHEAD.\n"
+        "• Master schedule — each teacher's Math time and Math-DI window (DI runs "
+        "during Science/Social Studies), plus a conflict-free visit planner.\n"
+        "• Staff/Section directory — maps every class code (K01, 101, A13 …) to its "
+        "teacher, room, program (Gen Ed/ASD), and birthday; ASD schedule rows are "
+        "resolved to the real teacher.\n"
+        "• Collaborative Planning A/B rotation with a host per meeting.\n"
+        "• Math Goal Setting Rubric — crosswalks FAST → level → topic goal %, and "
+        "color-codes results L1 Red, L2 Yellow, L3 Green, L4 Blue, L5 Orange.\n"
+        "• Assessments — topic-test blueprints (which standard each item assesses), "
+        "and uploaded class results scored per standard and per student, with the "
+        "most-missed questions per class for DI packets. Tracked all year vs "
+        "i-Ready and FAST.\n\n"
+        "If something isn't in the snapshot, say so plainly and point to where in "
+        "the app it lives (Reports, Assessments, Schedule, Staff, Planning, Key "
+        "Dates, a teacher's page) rather than guessing. Be concise, practical, and "
+        "action-oriented. Never invent individual student names or scores — student "
+        "data here is aggregate/teacher-level by design; for a single student, "
+        "direct the coach to that teacher's tracker. When asked, draft teacher "
+        "emails with a clear subject line and a body ready to send.\n"
         + _PLAIN + "\n\n"
         f"TODAY: {context.get('today','')}   COACH: {context.get('coach','')}\n\n"
         f"LIVE SYSTEM SNAPSHOT:\n{_context_text(context)}"
@@ -625,6 +663,14 @@ def _context_text(ctx: dict) -> str:
                     mm = ", ".join(f"Q{m['q']} ({m['standard']}, {m['miss_pct']}% missed)"
                                    for m in r["most_missed"])
                     lines.append(f"      Most-missed: {mm}")
+    t2 = ctx.get("tier2_by_grade") or {}
+    if any(t2.values()):
+        lines.append("\nTIER 2 ACADEMIC VOCABULARY per grade (THIS YEAR'S FOCUS — "
+                     "cross-curricular words from the standards' question stems; "
+                     "built into guides & lesson templates):")
+        for g in ("K", "1", "2", "3"):
+            if t2.get(g):
+                lines.append(f"  - Grade {g}: {', '.join(t2[g])}")
     ms = ctx.get("math_schedule") or []
     if ms:
         lines.append("\nMATH & MATH-DI SCHEDULE (Math-DI runs during Science/Social "
@@ -1121,6 +1167,12 @@ _LESSON_RULES = (
     "a Level 3 (proficient) student does for THIS lesson — never vague.\n"
     "- vocabulary from the pacing guide + how to teach those exact terms here; a "
     "3-column misconceptions table (misconception, a real example error, the fix).\n"
+    "- TIER 2 ACADEMIC VOCABULARY (this year's focus): the benchmark text lists "
+    "cross-curricular academic words (e.g. determine, explain, justify, represent, "
+    "compare, model). Weave these SAME words into the teacher's questions ('say') "
+    "and into the sentence frames students must use, so students hear and use the "
+    "exact academic words they will meet in the test questions. Prefer the academic "
+    "verb the standard uses.\n"
     "Do not invent standards or student data. Output ONLY the JSON array.\n"
     + _PLAIN
 )

@@ -440,6 +440,7 @@ def _school_context(db: Session, user: User) -> dict:
             for f in db.query(AssessmentForm).filter(
                 AssessmentForm.tenant_id == tenant_id).order_by(
                 AssessmentForm.grade, AssessmentForm.topic_code).all()],
+        "tier2_by_grade": _tier2_context(db),
     }
 
 
@@ -447,6 +448,16 @@ def _goal_rubric_context() -> dict:
     """The Math Goal Setting Rubric crosswalk (Level-3 thresholds) for the AI."""
     from app.goal_rubric import level3_thresholds
     return {"level3": level3_thresholds()}
+
+
+def _tier2_context(db) -> dict:
+    """Top Tier 2 academic words per K-3 grade (from the standards) for the AI."""
+    from app.tier2_vocab import tier2_for_standards
+    out = {}
+    for g in ("K", "1", "2", "3"):
+        words = tier2_for_standards(_standards_as_dicts(db, g))
+        out[g] = [e["word"] for e in words[:14]]
+    return out
 
 
 def _ab_week(db, tenant_id) -> str:
@@ -1315,18 +1326,27 @@ def _build_template(db, g: SavedGuide) -> dict:
     from app.ai import classify_vocabulary
     from app.planning_template import build_planning_template
 
+    from app.tier2_vocab import tier2_for_standards
+
     summary = build_coach_summary(g.content)
     standards = _resolve_standards(db, [b.get("code", "")
                                         for b in summary.get("benchmarks", [])])
     # _resolve_standards returns dicts (not ORM rows).
     std_ctx = [{"code": s.get("code", ""), "description": s.get("description", "")}
                for s in standards]
-    # use_ai=False: the template is a direct Word DOWNLOAD, so it must return
-    # immediately. A live AI call here would risk the edge proxy dropping the
-    # connection ("Failed to fetch"). The Tier 2/3 split is deterministic; the
-    # teacher fills in the word meanings.
-    tiers = classify_vocabulary(summary.get("vocabulary", []), std_ctx,
-                                g.grade_level, use_ai=False)
+    # Tier 2 = the academic words mined from THIS topic's standards (the year's
+    # focus). Tier 3 = the subject-specific words from the lesson vocabulary.
+    # use_ai=False so this stays an instant Word download (no edge-proxy timeout).
+    t2 = tier2_for_standards(standards)
+    lesson_tiers = classify_vocabulary(summary.get("vocabulary", []), std_ctx,
+                                       g.grade_level, use_ai=False)
+    tiers = {
+        "tier2": [{"word": e["word"], "meaning": e["meaning"],
+                   "why": "appears in the test questions for "
+                          + ", ".join(e["standards"][:3])} for e in t2],
+        "tier3": lesson_tiers.get("tier3", []),
+        "ai_generated": False,
+    }
     return build_planning_template(g.content, summary, tiers)
 
 
@@ -1374,6 +1394,36 @@ def guide_planning_template_docx(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+# --- Tier 2 academic vocabulary (this year's focus) ---------------------------
+
+def _standards_as_dicts(db, grade: str) -> list[dict]:
+    """All MATH standards for a grade as dicts (code + B1G-M details) for the
+    Tier 2 miner."""
+    rows = db.query(Standard).filter(
+        Standard.subject == "MATH", Standard.grade_level == grade).all()
+    return [{"code": s.code, "description": s.description, **(s.details or {})}
+            for s in rows]
+
+
+@router.get("/tier2")
+def tier2_vocabulary(
+    grade: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Tier 2 academic vocabulary mined from the STANDARDS, per grade — the
+    cross-curricular words (determine, explain, justify …) that appear in the
+    question stems. This year's focus; integrated into guides and templates."""
+    from app.tier2_vocab import tier2_for_standards
+    grades = [grade] if grade else ["K", "1", "2", "3"]
+    out = {}
+    for g in grades:
+        out[g] = tier2_for_standards(_standards_as_dicts(db, g))
+    return {"by_grade": out,
+            "note": "Tier 2 = academic words used across every subject (the "
+                    "school's focus this year). Tier 3 = subject-specific."}
 
 
 # --- Master schedule: math times & Math-DI windows ---------------------------
