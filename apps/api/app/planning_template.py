@@ -84,28 +84,51 @@ def _phase_strategies(key: str, has_cpa: bool, has_cubs: bool) -> list[str]:
     return out
 
 
+_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+
+def _exit_text(et) -> str:
+    if isinstance(et, dict):
+        p, a = et.get("problem", ""), et.get("answer", "")
+        return f"{p} → {a}" if a else p
+    return str(et or "")
+
+
+def _day_slots(lessons: list[dict]) -> list[dict]:
+    """Five weekday slots (Mon–Fri). Each is pre-labeled with that day's lesson
+    from the guide (code / title / goal) so the teacher plans the actual lesson;
+    the phase cells are theirs to fill. Extra lessons roll to a next-week print."""
+    slots = []
+    for i, day in enumerate(_WEEKDAYS):
+        L = lessons[i] if i < len(lessons) else None
+        slots.append({
+            "day": day,
+            "lesson_code": (L or {}).get("code", ""),
+            "title": (L or {}).get("title", ""),
+            "learning_goal": (L or {}).get("learning_goal", "") if L else "",
+            "exit": _exit_text((L or {}).get("exit_ticket")) if L else "",
+        })
+    return slots
+
+
 def build_planning_template(guide: dict, summary: dict, vocab_tiers: dict) -> dict:
-    """Assemble the fillable planning template from the guide + coach summary +
-    Tier 2/3 vocabulary."""
+    """Assemble the weekly (5-day) fillable planning one-pager from the guide +
+    coach summary + Tier 2/3 vocabulary."""
     lessons = guide.get("lessons", []) or []
     strat_names = [s.get("name", "") for s in summary.get("strategies", [])]
     has_cpa = any("CPA" in n for n in strat_names)
     has_cubs = any("CUBS" in n for n in strat_names)
 
+    # Phase definitions drive the grid's row labels + a one-line "what to plan".
     phases = []
     for key, gr, aces, essence in _PHASES:
-        model = _phase_model(lessons, key)
+        strategies = _phase_strategies(key, has_cpa, has_cubs)
         phases.append({
             "key": key, "gradual_release": gr, "aces": aces, "essence": essence,
-            "model": model,
-            "strategies_suggested": _phase_strategies(key, has_cpa, has_cubs),
-            # Prompts the teacher completes to internalize the guide.
-            "prompts": {
-                "teacher_do": "What will I do / model in this phase? (exact moves)",
-                "questions": "What questions will I ask? (at least 2)",
-                "strategies": "Which strategy/routine will I use here?",
-                "students_do": "What will students be doing? (and how I'll know)",
-            },
+            "plan_prompt": "What you'll do · questions you'll ask · what students do",
+            "strategies_suggested": strategies,
+            # A tiny worked reference from the guide (kept short for the grid).
+            "model": _phase_model(lessons, key),
         })
 
     misc = summary.get("misconceptions", []) or []
@@ -123,13 +146,9 @@ def build_planning_template(guide: dict, summary: dict, vocab_tiers: dict) -> di
         },
         "sentence_frames": summary.get("sentence_frames", []),
         "phases": phases,
+        "days": _day_slots(lessons),
+        "lesson_count": len(lessons),
         "misconception": misc[0] if misc else None,
         "level3": summary.get("level3"),
-        "reflection_prompts": [
-            "The ONE thing every student must be able to do by the exit ticket:",
-            "My exit ticket (problem + what a correct answer shows):",
-            "The misconception I expect, and how I'll respond in the moment:",
-            "Which students will I watch for DI, and what's my next step for them?",
-        ],
         "ai_vocab": vocab_tiers.get("ai_generated", False),
     }

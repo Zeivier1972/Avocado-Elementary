@@ -4,6 +4,7 @@ import io
 import os
 
 from docx import Document
+from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt, RGBColor
 
@@ -342,132 +343,142 @@ def coach_summary_to_docx(summary: dict, narrative: dict,
     return buf.getvalue()
 
 
-def _fill_lines(doc, n=2):
-    """Blank underline rows for the teacher to write on."""
-    for _ in range(n):
-        p = doc.add_paragraph("_" * 88)
-        p.runs[0].font.color.rgb = RGBColor(0xBB, 0xBB, 0xBB)
-        p.runs[0].font.size = Pt(9)
+def _cell(cell, text, size=8, bold=False, italic=False, color=None):
+    """Write compact text into a table cell (first paragraph)."""
+    cell.text = ""
+    p = cell.paragraphs[0]
+    r = p.add_run(str(text) if text is not None else "")
+    r.font.size = Pt(size)
+    r.bold = bold
+    r.italic = italic
+    if color:
+        r.font.color.rgb = RGBColor(*color)
+    return cell
+
+
+def _vocab_line(words, cap=8):
+    """'word (meaning); …' compact for the weekly one-pager strip."""
+    parts = []
+    for w in (words or [])[:cap]:
+        term = str(w.get("word", "")).strip()
+        mean = str(w.get("meaning", "")).strip()
+        parts.append(f"{term} ({mean})" if mean else term)
+    return " · ".join(parts)
 
 
 def template_to_docx(t: dict) -> bytes:
-    """Render the teacher WALKOUT: a fillable gradual-release planning template
-    with Tier 2 / Tier 3 vocabulary. Each phase shows what the guide models and
-    leaves prompts + blank lines for the teacher to write their own plan."""
+    """Render the WEEKLY teacher walkout: a one-page landscape grid — 5 day slots
+    (Mon–Fri) across, the gradual-release phases down — with a Tier 2 / Tier 3
+    vocabulary strip. Each day is pre-labeled with that day's lesson; the phase
+    cells are the teacher's to fill (what they do · questions · what students do)."""
     doc = Document()
-    _add_logo(doc)
-    _heading(doc, "Collaborative Planning — My Lesson Plan", 16)
+    sec = doc.sections[0]
+    sec.orientation = WD_ORIENT.LANDSCAPE
+    sec.page_width, sec.page_height = sec.page_height, sec.page_width
+    for m in ("left_margin", "right_margin", "top_margin", "bottom_margin"):
+        setattr(sec, m, Inches(0.4))
+
+    # Compact header.
+    h = doc.add_paragraph()
+    hr = h.add_run("Weekly Collaborative Planning — My Lesson Plan")
+    hr.bold = True
+    hr.font.size = Pt(14)
+    hr.font.color.rgb = RGBColor(0x38, 0x60, 0x1F)
     meta = doc.add_paragraph()
-    m = meta.add_run(
-        f"Grade {t.get('grade_level','')} {t.get('subject','')}  ·  "
-        f"{t.get('title','')}")
-    m.italic = True
-    m.font.size = Pt(9)
-    doc.add_paragraph("Teacher: ______________________    Lesson / Date: "
-                      "______________________")
-
+    mr = meta.add_run(
+        f"Grade {t.get('grade_level','')} {t.get('subject','')}  ·  {t.get('title','')}"
+        f"  ·  Standard(s): "
+        + ", ".join(b.get("code", "") for b in t.get("benchmarks", []))
+        + "      Teacher: __________________   Week of: __________________")
+    mr.font.size = Pt(9)
     if t.get("learning_goal"):
-        _label(doc, "Learning goal", t["learning_goal"])
-    if t.get("benchmarks"):
-        _label(doc, "Standard(s)",
-               ", ".join(b.get("code", "") for b in t["benchmarks"]))
-    if t.get("success_criteria"):
-        _heading(doc, "Success criteria — students can…", 11)
-        _bullets(doc, t["success_criteria"])
+        lg = doc.add_paragraph()
+        lgr = lg.add_run(f"Learning goal: {t['learning_goal']}")
+        lgr.font.size = Pt(9)
+        lgr.italic = True
 
-    # Vocabulary — Tier 2 (academic) and Tier 3 (subject-specific).
+    # Vocabulary strip (Tier 2 / Tier 3) — the week's focus.
     voc = t.get("vocabulary", {}) or {}
-    _heading(doc, "Vocabulary", 13)
-    doc.add_paragraph(
-        "Tier 2 = academic words students read in the question stems (they appear "
-        "across grades). Tier 3 = subject-specific math words.").runs[0].italic = True
-    if voc.get("tier2"):
-        _heading(doc, "Tier 2 — academic (words on the test questions)", 11,
-                 color=(0x2E, 0x86, 0xC1))
-        table = doc.add_table(rows=1, cols=3)
-        table.style = "Light Grid Accent 1"
-        for i, h in enumerate(["Word", "What it means (kid words)",
-                               "Why it matters on the test"]):
-            table.rows[0].cells[i].text = h
-        for w in voc["tier2"]:
-            c = table.add_row().cells
-            c[0].text = str(w.get("word", ""))
-            c[1].text = str(w.get("meaning", ""))
-            c[2].text = str(w.get("why", ""))
-    if voc.get("tier3"):
-        _heading(doc, "Tier 3 — subject-specific math terms", 11,
-                 color=(0xE6, 0x7E, 0x22))
-        table = doc.add_table(rows=1, cols=2)
-        table.style = "Light Grid Accent 1"
-        for i, h in enumerate(["Word", "What it means (kid words)"]):
-            table.rows[0].cells[i].text = h
-        for w in voc["tier3"]:
-            c = table.add_row().cells
-            c[0].text = str(w.get("word", ""))
-            c[1].text = str(w.get("meaning", ""))
+    vt = doc.add_table(rows=2, cols=2)
+    vt.style = "Light Grid Accent 1"
+    _cell(vt.rows[0].cells[0], "Tier 2 — academic (words in the questions)", 8,
+          bold=True, color=(0x2E, 0x86, 0xC1))
+    _cell(vt.rows[0].cells[1], _vocab_line(voc.get("tier2")), 8)
+    _cell(vt.rows[1].cells[0], "Tier 3 — subject-specific math words", 8,
+          bold=True, color=(0xE6, 0x7E, 0x22))
+    _cell(vt.rows[1].cells[1], _vocab_line(voc.get("tier3")), 8)
+    vt.columns[0].width = Inches(2.4)
+    vt.columns[1].width = Inches(7.6)
 
+    doc.add_paragraph().add_run("").font.size = Pt(2)
+
+    # The weekly grid: rows = section labels, cols = the 5 days.
+    days = t.get("days", [])
+    phases = t.get("phases", [])
+    ncols = 1 + len(days)
+    # Row plan: header, learning goal, one row per phase, exit check.
+    row_defs = [("Learning goal / focus", "goal")]
+    for ph in phases:
+        row_defs.append((f"{ph['gradual_release']} ({ph['aces']})", ph["key"]))
+    row_defs.append(("Exit check (CFU)", "exit"))
+
+    table = doc.add_table(rows=len(row_defs) + 1, cols=ncols)
+    table.style = "Table Grid"
+
+    # Header row: blank corner + each day + its lesson.
+    _cell(table.rows[0].cells[0], "", 8, bold=True)
+    for j, d in enumerate(days):
+        head = d["day"]
+        if d.get("lesson_code") or d.get("title"):
+            head += f"\n{d.get('lesson_code','')} {d.get('title','')}".rstrip()
+        _cell(table.rows[0].cells[j + 1], head, 8, bold=True,
+              color=(0x38, 0x60, 0x1F))
+
+    # Body rows.
+    phase_by_key = {ph["key"]: ph for ph in phases}
+    for i, (label, key) in enumerate(row_defs):
+        r = table.rows[i + 1]
+        # Row label cell (with the "what to plan" reminder for phases).
+        lc = r.cells[0]
+        lc.text = ""
+        p = lc.paragraphs[0]
+        run = p.add_run(label)
+        run.bold = True
+        run.font.size = Pt(8)
+        if key in phase_by_key:
+            sub = p.add_run("\nwhat you do · questions · what students do")
+            sub.italic = True
+            sub.font.size = Pt(6.5)
+            sub.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+        # Day cells.
+        for j, d in enumerate(days):
+            cell = r.cells[j + 1]
+            if key == "goal":
+                _cell(cell, d.get("learning_goal", "") or "", 7.5)
+            elif key == "exit":
+                _cell(cell, d.get("exit", "") or "", 7.5)
+            else:
+                _cell(cell, "", 8)  # blank for the teacher to plan
+
+    # Column widths: label column narrow, day columns share the rest.
+    table.columns[0].width = Inches(1.5)
+    for j in range(1, ncols):
+        table.columns[j].width = Inches(8.5 / max(1, len(days)))
+
+    # Compact footer: sentence frames + a misconception to plan for.
     if t.get("sentence_frames"):
-        _heading(doc, "Sentence frames students will use", 11)
-        _bullets(doc, [f"“{f}”" for f in t["sentence_frames"]])
-
-    # Gradual release — the heart of the walkout.
-    _heading(doc, "Gradual Release — my plan for each phase", 14)
-    for ph in t.get("phases", []):
-        _heading(doc, f"{ph['gradual_release']}  ({ph['aces']})", 13,
-                 color=(0x38, 0x60, 0x1F))
-        doc.add_paragraph(ph.get("essence", "")).runs[0].italic = True
-        model = ph.get("model", {}) or {}
-        if model.get("problem") or model.get("teacher_moves") or model.get("questions"):
-            gm = doc.add_paragraph()
-            gm.add_run("What the guide models (example): ").bold = True
-            if model.get("problem"):
-                gm.add_run(f"Problem — {model['problem']}. ")
-            if model.get("teacher_moves"):
-                doc.add_paragraph("Teacher: " + " / ".join(model["teacher_moves"][:3]),
-                                  style="List Bullet")
-            if model.get("questions"):
-                doc.add_paragraph("Questions: " + " ".join(model["questions"][:3]),
-                                  style="List Bullet")
-            if model.get("students"):
-                doc.add_paragraph("Students: " + " ".join(model["students"][:3]),
-                                  style="List Bullet")
-            cpa = model.get("cpa", {})
-            if cpa:
-                doc.add_paragraph(
-                    "Model: " + "  →  ".join(
-                        f"{k.title()}: {v}" for k, v in cpa.items()),
-                    style="List Bullet")
-        if ph.get("strategies_suggested"):
-            _label(doc, "Suggested strategy", "; ".join(ph["strategies_suggested"]))
-
-        pr = ph.get("prompts", {})
-        _label(doc, "What will I do / model", pr.get("teacher_do", ""))
-        _fill_lines(doc, 2)
-        _label(doc, "Questions I will ask", pr.get("questions", ""))
-        _fill_lines(doc, 2)
-        _label(doc, "Strategy / routine I'll use", pr.get("strategies", ""))
-        _fill_lines(doc, 1)
-        _label(doc, "What students will be doing", pr.get("students_do", ""))
-        _fill_lines(doc, 2)
-
-    # Misconception + check for understanding + reflection.
+        fp = doc.add_paragraph()
+        fr = fp.add_run("Sentence frames: "
+                        + "  |  ".join(f"“{s}”" for s in t["sentence_frames"][:3]))
+        fr.font.size = Pt(8)
     if t.get("misconception"):
-        _heading(doc, "Misconception to plan for", 12)
         mc = t["misconception"]
-        _label(doc, "Likely error", mc.get("misconception", ""))
-        _label(doc, "My response", mc.get("fix", ""))
-    if t.get("level3") and t["level3"].get("problem"):
-        _heading(doc, "What on-grade (Level 3) looks like", 12)
-        l3 = t["level3"]
-        doc.add_paragraph(
-            f"{l3.get('problem','')}  →  {l3.get('solution','')}")
-        if l3.get("student_explanation"):
-            doc.add_paragraph(f"Student explains: “{l3['student_explanation']}”")
-
-    _heading(doc, "Before I teach — my reflection", 12)
-    for q in t.get("reflection_prompts", []):
-        _label(doc, "•", q)
-        _fill_lines(doc, 1)
+        mp = doc.add_paragraph()
+        mr2 = mp.add_run(
+            f"Misconception to watch: {mc.get('misconception','')}  →  "
+            f"Fix: {mc.get('fix','')}")
+        mr2.font.size = Pt(8)
+        mr2.font.color.rgb = RGBColor(0xB0, 0x30, 0x30)
 
     buf = io.BytesIO()
     doc.save(buf)
