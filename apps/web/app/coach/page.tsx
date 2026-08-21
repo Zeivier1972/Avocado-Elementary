@@ -1112,10 +1112,23 @@ function GuideView({ guide, guideId, canSimplify, onSimplify }: any) {
                   alert("Download failed: " + (e as Error).message)
                 )
               }
-              title="Teacher walkout: a fillable gradual-release planning template with Tier 2/3 vocabulary"
+              title="Teacher walkout: a blank weekly (5-lesson) gradual-release planning template with Tier 2/3 vocabulary"
               className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-2 hover:bg-avocado/5"
             >
               📝 Planning Template
+            </button>
+          )}
+          {guideId && (
+            <button
+              onClick={() =>
+                downloadPlanningTemplateDocx(guideId, guide.title, true).catch((e) =>
+                  alert("Download failed: " + (e as Error).message)
+                )
+              }
+              title="A filled sample of the weekly template, worked from this guide"
+              className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-2 hover:bg-avocado/5"
+            >
+              📝 Example
             </button>
           )}
           <button
