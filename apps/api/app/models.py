@@ -455,6 +455,17 @@ class StaffMember(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class ChatMessage(Base, TimestampMixin):
+    """One turn of the AI Coach conversation, persisted per coach so the
+    assistant remembers prior conversations across sessions and page reloads."""
+    __tablename__ = "chat_messages"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(String, default="user")  # user | assistant
+    content: Mapped[str] = mapped_column(Text, default="")
+
+
 class AssessmentForm(Base, TimestampMixin):
     """A topic-test blueprint (from the answer key): which standards a grade's
     topic assessment covers, how many items/points. The anchor for tracking

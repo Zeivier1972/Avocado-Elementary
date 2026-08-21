@@ -219,6 +219,8 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, history }),
     }),
+  assistantHistory: () => req("/coach/assistant/history"),
+  clearAssistant: () => req("/coach/assistant/history", { method: "DELETE" }),
 };
 
 // Download the planning guide as a Word document (blob, not JSON).

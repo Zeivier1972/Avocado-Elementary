@@ -31,6 +31,7 @@ from app.models import (
     AssessmentForm,
     AssessmentItem,
     CalendarEntry,
+    ChatMessage,
     ClassRoom,
     CoachNote,
     CollabMeeting,
@@ -506,18 +507,67 @@ def _framework_context() -> dict:
     }
 
 
+_CHAT_HISTORY_TURNS = 40  # how many prior turns to feed the model
+
+
+def _load_chat_history(db, user, limit=_CHAT_HISTORY_TURNS) -> list[dict]:
+    """This coach's most recent conversation turns, oldest-first."""
+    rows = (db.query(ChatMessage)
+            .filter(ChatMessage.tenant_id == user.tenant_id,
+                    ChatMessage.user_id == user.id)
+            .order_by(ChatMessage.created_at.desc()).limit(limit).all())
+    return [{"role": m.role, "content": m.content} for m in reversed(rows)]
+
+
 @router.post("/assistant")
 def assistant(
     body: AssistantIn,
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
-    """The in-system Expert AI Coach — grounded in the live system snapshot."""
+    """The in-system Expert AI Coach — grounded in the live system snapshot and
+    the coach's OWN stored conversation history, so it remembers prior chats."""
     ctx = _school_context(db, user)
-    result = ask_assistant(body.message, body.history, ctx)
+    # The database is the source of truth for history, so the AI remembers even
+    # after a reload or a new session (the client-sent history is ignored).
+    history = _load_chat_history(db, user)
+    db.add(ChatMessage(tenant_id=user.tenant_id, user_id=user.id,
+                       role="user", content=body.message))
+    result = ask_assistant(body.message, history, ctx)
+    db.add(ChatMessage(tenant_id=user.tenant_id, user_id=user.id,
+                       role="assistant", content=result.get("reply", "")))
+    db.commit()
     audit(db, actor=user, action="chat", entity_type="ai_assistant",
           purpose="coach_assistant")
     return result
+
+
+@router.get("/assistant/history")
+def assistant_history(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Load this coach's saved AI-Coach conversation (for the page to restore)."""
+    rows = (db.query(ChatMessage)
+            .filter(ChatMessage.tenant_id == user.tenant_id,
+                    ChatMessage.user_id == user.id)
+            .order_by(ChatMessage.created_at).all())
+    return {"messages": [{"role": m.role, "content": m.content} for m in rows]}
+
+
+@router.delete("/assistant/history")
+def clear_assistant_history(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Clear this coach's saved AI-Coach conversation (start fresh)."""
+    n = (db.query(ChatMessage)
+         .filter(ChatMessage.tenant_id == user.tenant_id,
+                 ChatMessage.user_id == user.id).delete())
+    db.commit()
+    audit(db, actor=user, action="delete", entity_type="ai_assistant",
+          purpose="clear_chat_history")
+    return {"cleared": n}
 
 
 @router.post("/guide/export/docx")

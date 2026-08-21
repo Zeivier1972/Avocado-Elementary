@@ -32,12 +32,27 @@ export default function AssistantPage() {
       .me()
       .then((u) => {
         setMe(u);
+        // Restore this coach's saved conversation so the AI remembers it.
+        api
+          .assistantHistory()
+          .then((h) => setMsgs(h.messages || []))
+          .catch(() => {});
         return api.aiCheck().catch(() => null);
       })
       .then(setAiInfo)
       .catch(() => router.push("/"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function clearChat() {
+    if (!confirm("Clear the saved conversation and start fresh?")) return;
+    try {
+      await api.clearAssistant();
+      setMsgs([]);
+    } catch (err) {
+      alert("Could not clear: " + (err as Error).message);
+    }
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -79,6 +94,14 @@ export default function AssistantPage() {
           <a href="/coach" className="text-sm text-avocado-dark hover:underline">
             ← Planning
           </a>
+          {msgs.length > 0 && (
+            <button
+              onClick={clearChat}
+              className="text-sm text-gray-500 hover:text-red-600"
+            >
+              🗑 Clear chat
+            </button>
+          )}
           <button
             onClick={() => {
               clearToken();
@@ -95,7 +118,8 @@ export default function AssistantPage() {
         <h1 className="text-xl font-bold text-gray-800">Expert AI Coach</h1>
         <p className="text-sm text-gray-500 mb-2">
           It knows your live system — goal progress, every teacher&apos;s data,
-          pacing, your notes and follow-ups, and upcoming key dates. Ask a
+          pacing, standards &amp; Tier 2 vocabulary, assessments, your notes, and
+          key dates — and it <b>remembers your past conversations</b>. Ask a
           question, or have it draft a teacher email.
         </p>
         {aiInfo && !aiReady && (
