@@ -382,15 +382,17 @@ def _classify_vocabulary_fallback(words: list[str]) -> dict:
 
 
 def classify_vocabulary(words: list[str], standards: list[dict],
-                        grade: str = "") -> dict:
+                        grade: str = "", use_ai: bool = True) -> dict:
     """Split lesson vocabulary into Tier 2 (academic, cross-grade words that
     appear in the standard's question stems) and Tier 3 (subject-specific math
-    terms), each with a kid-friendly meaning. AI when configured, else a
-    word-list fallback the teacher can complete."""
+    terms), each with a kid-friendly meaning. AI when configured and use_ai is
+    set, else an instant word-list fallback the teacher can complete. Set
+    use_ai=False on a request that must return immediately (e.g. a file download
+    behind an edge proxy) so a slow AI call can't drop the connection."""
     words = [w for w in (words or []) if str(w).strip()]
     if not words:
         return {"tier2": [], "tier3": [], "ai_generated": False}
-    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+    if not use_ai or not (settings.ai_provider == "anthropic" and settings.ai_api_key):
         return _classify_vocabulary_fallback(words)
     try:
         import anthropic

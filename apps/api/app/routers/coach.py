@@ -1319,8 +1319,12 @@ def _build_template(db, g: SavedGuide) -> dict:
     standards = _resolve_standards(db, [b.get("code", "")
                                         for b in summary.get("benchmarks", [])])
     std_ctx = [{"code": s.code, "description": s.description} for s in standards]
+    # use_ai=False: the template is a direct Word DOWNLOAD, so it must return
+    # immediately. A live AI call here would risk the edge proxy dropping the
+    # connection ("Failed to fetch"). The Tier 2/3 split is deterministic; the
+    # teacher fills in the word meanings.
     tiers = classify_vocabulary(summary.get("vocabulary", []), std_ctx,
-                                g.grade_level)
+                                g.grade_level, use_ai=False)
     return build_planning_template(g.content, summary, tiers)
 
 
@@ -1357,7 +1361,11 @@ def guide_planning_template_docx(
         raise HTTPException(404, "Saved guide not found")
     if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
         raise HTTPException(409, "This guide is still generating — try again in a moment.")
-    data = template_to_docx(_build_template(db, g), filled=example)
+    try:
+        data = template_to_docx(_build_template(db, g), filled=example)
+    except Exception as e:  # a data-shape issue shouldn't hang the download
+        raise HTTPException(500, f"Could not build the template: "
+                                 f"{type(e).__name__}: {str(e)[:200]}")
     suffix = "Example" if example else ""
     fname = f"PlanningTemplate{suffix}_{(g.topic_code or 'guide').replace(' ', '')}.docx"
     return Response(
