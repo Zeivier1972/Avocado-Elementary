@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getToken, downloadResultsTemplate } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
+import DataSubnav from "@/app/_components/DataSubnav";
 
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
 
@@ -155,6 +156,7 @@ export default function AssessmentsPage() {
     <main className="min-h-screen bg-gray-50/60">
       <CoachHeader me={me} active="/assessments" build={build} />
       <div className="max-w-5xl mx-auto p-6 space-y-5">
+        <DataSubnav active="/assessments" />
         <div>
           <h1 className="text-xl font-bold text-gray-800">
             Topic Tests & Standards Assessed

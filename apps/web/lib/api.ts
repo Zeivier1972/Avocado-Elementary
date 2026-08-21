@@ -17,6 +17,25 @@ export function clearToken() {
   window.localStorage.removeItem(TOKEN_KEY);
 }
 
+// Shared grade selection so the analytics cluster (Reports · Analysis ·
+// Assessments · Goal) stays on the same grade as you move between them.
+const GRADE_KEY = "avocado_grade";
+export function getSharedGrade(fallback = "3"): string {
+  if (typeof window === "undefined") return fallback;
+  try {
+    return window.localStorage.getItem(GRADE_KEY) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+export function setSharedGrade(g: string) {
+  try {
+    window.localStorage.setItem(GRADE_KEY, g);
+  } catch {
+    /* ignore */
+  }
+}
+
 async function req(path: string, opts: RequestInit = {}) {
   const token = getToken();
   const headers: Record<string, string> = {

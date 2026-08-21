@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, clearToken, getToken } from "@/lib/api";
+import DataSubnav from "@/app/_components/DataSubnav";
 
 const FAST = ["PM1", "PM2", "PM3"];
 const IREADY = ["AP1", "AP2", "AP3"];
@@ -57,6 +58,7 @@ export default function GoalPage() {
       </header>
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <DataSubnav active="/goal" />
         {/* Headline goal */}
         <div className="bg-avocado-dark text-white rounded-2xl p-6">
           <div className="text-sm opacity-80">🎯 School Goal — {data.goal}</div>

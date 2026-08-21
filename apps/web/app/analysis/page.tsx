@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, getToken, downloadGoalAnalysisXlsx } from "@/lib/api";
+import {
+  api,
+  getToken,
+  downloadGoalAnalysisXlsx,
+  getSharedGrade,
+  setSharedGrade,
+} from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
+import DataSubnav from "@/app/_components/DataSubnav";
 
 const GRADES = ["K", "1", "2", "3", "4"];
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
@@ -32,7 +39,8 @@ export default function AnalysisPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
   const [build, setBuild] = useState<any>(null);
-  const [grade, setGrade] = useState("3");
+  const [grade, setGrade] = useState(getSharedGrade());
+  useEffect(() => setSharedGrade(grade), [grade]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -66,6 +74,7 @@ export default function AnalysisPage() {
     <main className="min-h-screen">
       <CoachHeader me={me} active="/analysis" build={build} />
       <div className="max-w-6xl mx-auto p-6 space-y-4">
+        <DataSubnav active="/analysis" />
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Goal Analysis</h1>
           <p className="text-gray-500 text-sm max-w-3xl">

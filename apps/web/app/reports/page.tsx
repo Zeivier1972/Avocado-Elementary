@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, getToken } from "@/lib/api";
+import {
+  api,
+  clearToken,
+  getToken,
+  getSharedGrade,
+  setSharedGrade,
+} from "@/lib/api";
+import DataSubnav from "@/app/_components/DataSubnav";
 
 const GRADES = ["K", "1", "2", "3"];
 const PM = ["PM1", "PM2", "PM3"];
@@ -10,7 +17,8 @@ const PM = ["PM1", "PM2", "PM3"];
 export default function ReportsPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
-  const [grade, setGrade] = useState("3");
+  const [grade, setGrade] = useState(getSharedGrade());
+  useEffect(() => setSharedGrade(grade), [grade]);
   const [report, setReport] = useState<any>(null);
   const [fast, setFast] = useState<any>(null);
   const [period, setPeriod] = useState("PM1");
@@ -126,6 +134,7 @@ export default function ReportsPage() {
       </header>
 
       <div className="max-w-6xl mx-auto p-6">
+        <DataSubnav active="/reports" />
         {/* Import area */}
         <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[220px]">
