@@ -506,7 +506,15 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                         {c.by_standard[0].standard}{" "}
                         <Chip color={c.by_standard[0].color}>
                           {c.by_standard[0].percent}%
-                        </Chip>
+                        </Chip>{" "}
+                        <a
+                          href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
+                            c.by_standard[0].standard
+                          )}&form_id=${f.id}`}
+                          className="text-avocado-dark font-semibold hover:underline"
+                        >
+                          → DI
+                        </a>
                       </span>
                     ) : (
                       "—"

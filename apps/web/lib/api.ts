@@ -136,6 +136,12 @@ export const api = {
     req("/coach/schedule/import", { method: "POST", body: form }),
   getTier2: (grade = "") =>
     req(`/coach/tier2${grade ? `?grade=${encodeURIComponent(grade)}` : ""}`),
+  diFocus: (grade: string, standard: string, formId = "") =>
+    req(
+      `/coach/di-focus?grade=${encodeURIComponent(grade)}&standard=${encodeURIComponent(
+        standard
+      )}${formId ? `&form_id=${encodeURIComponent(formId)}` : ""}`
+    ),
   getStaff: () => req("/coach/staff"),
   importStaff: (form: FormData) =>
     req("/coach/staff/import", { method: "POST", body: form }),

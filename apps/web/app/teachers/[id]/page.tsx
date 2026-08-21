@@ -250,7 +250,15 @@ export default function TeacherProfilePage() {
                           </span>{" "}
                           <ColorChip color={a.weakest_standard.color}>
                             {a.weakest_standard.percent}%
-                          </ColorChip>
+                          </ColorChip>{" "}
+                          <a
+                            href={`/di-focus?grade=${a.grade}&standard=${encodeURIComponent(
+                              a.weakest_standard.standard
+                            )}&form_id=${a.form_id}`}
+                            className="text-avocado-dark font-semibold hover:underline"
+                          >
+                            → DI plan
+                          </a>
                         </div>
                       )}
                       {a.most_missed?.length > 0 && (

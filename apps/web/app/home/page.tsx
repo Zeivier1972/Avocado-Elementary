@@ -7,6 +7,29 @@ import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
 
+const HOME_COLOR_HEX: Record<string, string> = {
+  Red: "#C0392B",
+  Yellow: "#F1C40F",
+  Green: "#27AE60",
+  Blue: "#2E86C1",
+  Orange: "#E67E22",
+};
+function HomeChip({ color, children }: { color?: string; children: any }) {
+  const hex = color ? HOME_COLOR_HEX[color] : undefined;
+  return (
+    <span
+      className="inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5"
+      style={
+        hex
+          ? { backgroundColor: hex + "22", color: hex, border: `1px solid ${hex}55` }
+          : { background: "#f3f4f6", color: "#6b7280" }
+      }
+    >
+      {children}
+    </span>
+  );
+}
+
 const CAT_META: Record<string, { label: string; cls: string }> = {
   assessment: { label: "Assessment", cls: "bg-red-50 text-red-700 border-red-200" },
   progress_report: { label: "Progress report", cls: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -74,6 +97,7 @@ export default function CoachHomePage() {
   const followups = home?.followups || [];
   const upcoming = home?.upcoming_dates || [];
   const birthdays = home?.upcoming_birthdays || [];
+  const resultsFocus = home?.results_focus || [];
   const counts = home?.counts || {};
   const dateLabel = home?.today
     ? new Date(home.today + "T00:00:00").toLocaleDateString(undefined, {
@@ -234,6 +258,62 @@ export default function CoachHomePage() {
             ))}
           </div>
         </div>
+
+        {/* Focus for DI — weakest standard per grade from the latest topic test */}
+        {resultsFocus.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-semibold text-gray-800">
+                🎯 Focus for DI — from your latest topic tests
+              </div>
+              <a
+                href="/assessments"
+                className="text-sm text-avocado-dark hover:underline"
+              >
+                Assessments →
+              </a>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              The standard to target per grade, and the class that needs it most.
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {resultsFocus.map((f: any) => (
+                <div key={f.grade} className="border border-gray-100 rounded-xl p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-gray-800 text-sm">
+                      {f.grade === "K" ? "Kindergarten" : `Grade ${f.grade}`}
+                      <span className="text-gray-400 font-normal"> · {f.topic}</span>
+                    </div>
+                    <HomeChip color={f.color}>{f.grade_avg}%</HomeChip>
+                  </div>
+                  {f.weakest_standard && (
+                    <div className="text-sm text-gray-700 mt-1">
+                      <span className="font-mono">{f.weakest_standard.standard}</span>{" "}
+                      <HomeChip color={f.weakest_standard.color}>
+                        {f.weakest_standard.percent}%
+                      </HomeChip>
+                    </div>
+                  )}
+                  {f.lowest_class && (
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Lowest class: {f.lowest_class.teacher} ({f.lowest_class.avg}%)
+                    </div>
+                  )}
+                  {f.weakest_standard && (
+                    <a
+                      href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
+                        f.weakest_standard.standard
+                      )}&form_id=${f.form_id}`}
+                      className="text-xs text-avocado-dark font-semibold hover:underline mt-1 inline-block"
+                    >
+                      → Build DI plan
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Second row: teachers to watch + follow-ups */}
         <div className="grid md:grid-cols-2 gap-4">

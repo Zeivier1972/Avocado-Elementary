@@ -1088,6 +1088,7 @@ def coach_home(
         "collab_meetings": _collab_context(db, user.tenant_id),
         "upcoming_dates": _upcoming_dates(db, user.tenant_id, within_days=45, limit=8),
         "upcoming_birthdays": _upcoming_birthdays(db, user.tenant_id, within_days=30, limit=10),
+        "results_focus": _home_results_focus(db, user.tenant_id),
         "counts": {
             "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
             "students": db.query(Student).filter(
@@ -1534,6 +1535,83 @@ def tier2_vocabulary(
     return {"by_grade": out,
             "note": "Tier 2 = academic words used across every subject (the "
                     "school's focus this year). Tier 3 = subject-specific."}
+
+
+# --- DI Focus: connect a weak standard to Tier 2, missed items & a reteach plan
+
+def _aces_scaffold(desc: str, tier2: list[str]) -> list[dict]:
+    """A plain-language ACES reteach scaffold for Red / Yellow / Green groups,
+    weaving in the standard's Tier 2 academic words. Deterministic (instant)."""
+    words = ", ".join(tier2[:5]) or "the academic words for this standard"
+    return [
+        {"tier": "Level 1 — Red", "color": "Red", "hex": "C0392B",
+         "goal": "Build the idea from scratch with hands-on models.",
+         "moves": [
+             "I Do: model the skill with manipulatives (concrete) and think aloud "
+             "using the words " + words + ".",
+             "We Do: do 2-3 together, students copy each step on whiteboards.",
+             "Post a sentence frame with the Tier 2 words and have every student "
+             "say it.",
+             "Keep numbers small; check after every step."]},
+        {"tier": "Level 2 — Yellow", "color": "Yellow", "hex": "F1C40F",
+         "goal": "Move from pictures to numbers with guided practice.",
+         "moves": [
+             "Connect concrete → pictorial → abstract for the same problem.",
+             "Guided practice with CUBS on a word problem; students explain using "
+             + words + ".",
+             "Partner practice (Rally Coach), then a quick check."]},
+        {"tier": "Level 3+ — Green (enrichment)", "color": "Green", "hex": "27AE60",
+         "goal": "Deepen and extend — reason and justify.",
+         "moves": [
+             "Multi-step / word problems at or above grade level.",
+             "Students justify and explain their reasoning out loud and in writing, "
+             "using " + words + ".",
+             "Extension: create their own problem for a partner to solve."]},
+    ]
+
+
+@router.get("/di-focus")
+def di_focus(
+    grade: str = Query(...),
+    standard: str = Query(...),
+    form_id: str = Query(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Everything to plan DI for ONE weak standard, in one place: the standard's
+    description + Level-3 ALD, its Tier 2 academic words, the most-missed
+    questions on it, and a Red/Yellow/Green ACES reteach scaffold."""
+    from app.tier2_vocab import tier2_for_standards
+
+    sd = _resolve_standards(db, [standard])
+    s = sd[0] if sd else {"code": standard, "description": ""}
+    tier2 = [e["word"] for e in tier2_for_standards([s])]
+    ald3 = (s.get("alds") or {}).get("level3", "")
+
+    # Most-missed questions on this standard (a specific test, or across the grade).
+    missed: list = []
+    forms = db.query(AssessmentForm).filter(
+        AssessmentForm.tenant_id == user.tenant_id,
+        AssessmentForm.grade == grade)
+    if form_id:
+        forms = forms.filter(AssessmentForm.id == form_id)
+    for f in forms.all():
+        a = _results_analysis(db, f)
+        for m in a.get("most_missed", []):
+            if m.get("standard") == standard:
+                missed.append({**m, "topic": f.topic_code})
+    missed.sort(key=lambda m: -m.get("miss_pct", 0))
+
+    return {
+        "grade": grade,
+        "standard": {"code": s.get("code", standard),
+                     "description": s.get("description", ""),
+                     "ald_level3": ald3,
+                     "clarifications": s.get("clarifications", [])[:3]},
+        "tier2": tier2,
+        "most_missed": missed[:6],
+        "scaffold": _aces_scaffold(s.get("description", ""), tier2),
+    }
 
 
 # --- Master schedule: math times & Math-DI windows ---------------------------
@@ -2083,6 +2161,34 @@ def _assessment_results_brief(db, f: AssessmentForm) -> dict | None:
         "most_missed": [{"q": m["position"], "standard": m["standard"],
                          "miss_pct": m["miss_pct"]} for m in a.get("most_missed", [])[:5]],
     }
+
+
+def _home_results_focus(db, tenant_id) -> list[dict]:
+    """Per grade, the most recent topic test WITH results — its grade average,
+    the weakest standard to target for DI, and the lowest class — so Home shows
+    the coach where to put DI energy this week."""
+    forms = (db.query(AssessmentForm)
+             .filter(AssessmentForm.tenant_id == tenant_id)
+             .order_by(AssessmentForm.grade, AssessmentForm.created_at.desc()).all())
+    seen, out = set(), []
+    for f in forms:
+        if f.grade in seen:
+            continue
+        brief = _assessment_results_brief(db, f)
+        if not brief:
+            continue
+        seen.add(f.grade)
+        classes = brief.get("classes", [])
+        lowest = min(classes, key=lambda c: c["avg"]) if classes else None
+        out.append({
+            "grade": f.grade, "topic": f.topic_code, "form_id": f.id,
+            "grade_avg": brief.get("grade_avg"), "color": brief.get("color"),
+            "weakest_standard": brief.get("weakest_standard"),
+            "lowest_class": lowest,
+            "most_missed": brief.get("most_missed", [])[:3]})
+    order = {"K": 0, "1": 1, "2": 2, "3": 3, "4": 4}
+    out.sort(key=lambda x: order.get(x["grade"], 99))
+    return out
 
 
 @router.get("/assessments/{form_id}/results")
