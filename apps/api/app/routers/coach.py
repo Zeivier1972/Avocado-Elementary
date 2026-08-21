@@ -47,6 +47,7 @@ from app.models import (
     StaffMember,
     Standard,
     Student,
+    StudentAssessment,
     TopicResult,
     User,
 )
@@ -1096,6 +1097,65 @@ def coach_home(
     }
 
 
+@router.get("/teacher/{teacher_id}/hub")
+def teacher_hub(
+    teacher_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The connected view for ONE teacher — pulls together their section code +
+    Math/DI times (staff directory & schedule) and their class's topic-test
+    results (average, weakest standard, most-missed) so the coach doesn't have
+    to hop between Staff, Schedule and Assessments."""
+    teacher = db.get(User, teacher_id)
+    if not teacher or teacher.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Teacher not found")
+    name = teacher.name or ""
+    ln = _last_name(name)
+
+    # Section + program + room (staff directory) and Math/DI times (schedule).
+    by_name, by_section = _staff_index(db, user.tenant_id)
+    staff = by_name.get(name.lower()) or by_name.get(ln)
+    conn = _schedule_conn(db, user.tenant_id)
+    sched = (conn.get(name.lower())
+             or (conn.get((staff["section"] or "").strip().upper()) if staff else None)
+             or {})
+
+    # This teacher's class results across topic tests (matched by name).
+    def _mine(tn: str) -> bool:
+        tn = (tn or "").lower()
+        return bool(tn) and (tn == name.lower() or _last_name(tn) == ln)
+
+    form_ids = {r.form_id for r in db.query(TopicResult).filter(
+        TopicResult.tenant_id == user.tenant_id).all() if _mine(r.teacher_name)}
+    assessments = []
+    for fid in form_ids:
+        f = db.get(AssessmentForm, fid)
+        if not f:
+            continue
+        a = _results_analysis(db, f)
+        cls = next((c for c in a.get("classes", []) if _mine(c["teacher"])), None)
+        if not cls:
+            continue
+        assessments.append({
+            "form_id": f.id, "grade": f.grade, "topic": f.topic_code,
+            "avg_percent": cls["avg_percent"], "color": cls["color"],
+            "students": cls["students"],
+            "weakest_standard": cls["by_standard"][0] if cls.get("by_standard") else None,
+            "most_missed": cls.get("most_missed", [])[:4]})
+    assessments.sort(key=lambda x: (x["grade"], x["topic"]))
+
+    return {
+        "teacher": {"id": teacher.id, "name": name},
+        "staff": staff and {
+            "section": staff.get("section"), "program": staff.get("program") or "Gen Ed",
+            "room": staff.get("room"), "birthday": staff.get("birthday")},
+        "schedule": {"math_times": sched.get("math_times", []),
+                     "di_windows": sched.get("di_windows", [])},
+        "assessments": assessments,
+    }
+
+
 @router.get("/teacher/{teacher_id}/notes")
 def list_teacher_notes(
     teacher_id: str,
@@ -1874,12 +1934,63 @@ async def import_results(
             student_name=r["student_name"], points_earned=r["points_earned"],
             points_possible=r["points_possible"], percent=pct, level=lvl,
             by_standard=r["by_standard"], missed_positions=r["missed_positions"]))
+    # Connect the results to the rest of the system: write each student's topic %
+    # into StudentAssessment so it flows into Reports and Goal Analysis next to
+    # their FAST/i-Ready (matched to a roster student by ID, then by name).
+    linked = _link_topic_results_to_students(db, user.tenant_id, f, res["rows"])
     db.commit()
     audit(db, actor=user, action="import", entity_type="topic_results",
           entity_id=f.id, purpose="topic_test_results")
     classes = sorted({r["teacher_name"] for r in res["rows"] if r["teacher_name"]})
     return {"students": len(res["rows"]), "classes": classes,
+            "linked_to_roster": linked,
             "questions_matched": res.get("detected", {}).get("questions_matched", 0)}
+
+
+def _topic_period(topic_code: str) -> str:
+    """'Topic 1' -> 'TP1'. The period key Reports/Analysis read topic scores by."""
+    import re as _re
+    m = _re.search(r"(\d+)", topic_code or "")
+    return f"TP{m.group(1)}" if m else (topic_code or "TP").replace(" ", "").upper()
+
+
+def _link_topic_results_to_students(db, tenant_id, f: AssessmentForm, rows) -> int:
+    """Upsert a StudentAssessment (source=TOPIC) per matched roster student so a
+    topic test's percents appear in Reports and Goal Analysis. Match by district
+    student id, then by full name. Percent is stored as a 0-1 fraction (the shape
+    Reports expects). Returns how many were linked."""
+    students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    by_did = {(s.district_student_id or "").strip(): s for s in students if s.district_student_id}
+    by_name = {}
+    for s in students:
+        by_name[f"{s.first_name} {s.last_name}".strip().lower()] = s
+        by_name.setdefault(f"{s.last_name} {s.first_name}".strip().lower(), s)
+    period = _topic_period(f.topic_code)
+    subject = (f.subject or "MATH").upper()
+    n = 0
+    for r in rows:
+        stu = by_did.get((r.get("student_id") or "").strip())
+        if not stu:
+            stu = by_name.get((r.get("student_name") or "").strip().lower())
+        if not stu:
+            continue
+        frac = round(r["percent"] / 100.0, 4)
+        existing = db.query(StudentAssessment).filter(
+            StudentAssessment.tenant_id == tenant_id,
+            StudentAssessment.student_id == stu.id,
+            StudentAssessment.source == "TOPIC",
+            StudentAssessment.subject == subject,
+            StudentAssessment.period == period).first()
+        if existing:
+            existing.percent = frac
+            existing.label = f.topic_code
+            db.add(existing)
+        else:
+            db.add(StudentAssessment(
+                tenant_id=tenant_id, student_id=stu.id, source="TOPIC",
+                subject=subject, period=period, percent=frac, label=f.topic_code))
+        n += 1
+    return n
 
 
 def _results_analysis(db, f: AssessmentForm) -> dict:

@@ -149,6 +149,7 @@ export const api = {
   importResults: (id: string, form: FormData) =>
     req(`/coach/assessments/${id}/results`, { method: "POST", body: form }),
   coachHome: () => req("/coach/home"),
+  teacherHub: (id: string) => req(`/coach/teacher/${id}/hub`),
   teacherNotes: (id: string) => req(`/coach/teacher/${id}/notes`),
   addTeacherNote: (id: string, body: any) =>
     req(`/coach/teacher/${id}/notes`, {

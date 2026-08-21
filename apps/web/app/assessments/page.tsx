@@ -135,7 +135,13 @@ export default function AssessmentsPage() {
       setResults(await api.getResults(id));
       alert(
         `Scored ${r.students} students across ${r.classes.length} classes ` +
-          `(${r.questions_matched} questions matched).`
+          `(${r.questions_matched} questions matched).` +
+          (r.linked_to_roster
+            ? `\n\n${r.linked_to_roster} students linked to the roster — these ` +
+              `topic scores now show in Reports, Goal Analysis, and each ` +
+              `teacher's page automatically.`
+            : `\n\n(No roster matches yet — upload your student roster so these ` +
+              `scores also flow into Reports & Analysis.)`)
       );
     } catch (err) {
       alert("Results upload failed: " + (err as Error).message);

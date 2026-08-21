@@ -20,6 +20,43 @@ function lvlCls(v: any) {
   return v >= 3 ? "text-green-700 font-semibold" : "text-red-600";
 }
 
+const COLOR_HEX: Record<string, string> = {
+  Red: "#C0392B",
+  Yellow: "#F1C40F",
+  Green: "#27AE60",
+  Blue: "#2E86C1",
+  Orange: "#E67E22",
+};
+function ColorChip({ color, children }: { color?: string; children: any }) {
+  const hex = color ? COLOR_HEX[color] : undefined;
+  return (
+    <span
+      className="inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5"
+      style={
+        hex
+          ? { backgroundColor: hex + "22", color: hex, border: `1px solid ${hex}55` }
+          : { background: "#f3f4f6", color: "#6b7280" }
+      }
+    >
+      {children}
+    </span>
+  );
+}
+function fmt(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  const hr = ((h + 11) % 12) + 1;
+  return `${hr}:${String(m).padStart(2, "0")}`;
+}
+function fmtTimes(ranges?: string[]) {
+  if (!ranges || ranges.length === 0) return "";
+  return ranges
+    .map((r) => {
+      const [a, b] = r.split("-");
+      return `${fmt(a)}–${fmt(b)}`;
+    })
+    .join(", ");
+}
+
 export default function TeacherProfilePage() {
   const router = useRouter();
   const params = useParams();
@@ -27,6 +64,7 @@ export default function TeacherProfilePage() {
   const [me, setMe] = useState<any>(null);
   const [build, setBuild] = useState<any>(null);
   const [rep, setRep] = useState<any>(null);
+  const [hub, setHub] = useState<any>(null);
   const [notes, setNotes] = useState<any[]>([]);
   const [err, setErr] = useState("");
 
@@ -53,6 +91,7 @@ export default function TeacherProfilePage() {
         setNotes(n.notes || []);
       })
       .catch((e) => setErr((e as Error).message));
+    api.teacherHub(id).then(setHub).catch(() => setHub(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -121,6 +160,119 @@ export default function TeacherProfilePage() {
         {err && (
           <div className="bg-red-50 border border-red-100 text-red-700 rounded-xl p-4 text-sm">
             {err}
+          </div>
+        )}
+
+        {/* Connected hub — section, schedule, and topic-test results in one place */}
+        {hub && (hub.staff || hub.schedule?.math_times?.length || hub.assessments?.length > 0) && (
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Class + schedule */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Class &amp; schedule
+              </div>
+              {hub.staff ? (
+                <div className="mt-1">
+                  <div className="flex items-center gap-2">
+                    {hub.staff.section && (
+                      <span className="font-mono font-bold text-gray-700 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 text-sm">
+                        {hub.staff.section}
+                      </span>
+                    )}
+                    <span className="text-sm text-gray-600">
+                      {hub.staff.program}
+                      {hub.staff.room ? ` · Rm ${hub.staff.room}` : ""}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 mt-1">
+                  Not matched in the Staff directory.
+                </p>
+              )}
+              <div className="mt-2 text-sm">
+                <div className="text-gray-700">
+                  🧮 Math:{" "}
+                  <span className="font-medium">
+                    {fmtTimes(hub.schedule?.math_times) || "—"}
+                  </span>
+                </div>
+                <div className="text-gray-700">
+                  🔬 DI window:{" "}
+                  <span className="font-medium">
+                    {fmtTimes(hub.schedule?.di_windows) || "—"}
+                  </span>
+                </div>
+              </div>
+              <a
+                href="/schedule"
+                className="text-xs text-avocado-dark hover:underline mt-2 inline-block"
+              >
+                Open schedule →
+              </a>
+            </div>
+
+            {/* Latest topic-test result + weakest standard */}
+            <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Topic-test results (this class)
+                </div>
+                <a
+                  href="/assessments"
+                  className="text-xs text-avocado-dark hover:underline"
+                >
+                  Assessments →
+                </a>
+              </div>
+              {hub.assessments?.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {hub.assessments.map((a: any) => (
+                    <div
+                      key={a.form_id}
+                      className="border border-gray-100 rounded-xl p-3"
+                    >
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <div className="font-semibold text-gray-800 text-sm">
+                          {a.topic}
+                          <span className="text-gray-400 font-normal">
+                            {" "}
+                            · {a.students} students
+                          </span>
+                        </div>
+                        <ColorChip color={a.color}>{a.avg_percent}% avg</ColorChip>
+                      </div>
+                      {a.weakest_standard && (
+                        <div className="text-sm text-gray-600 mt-1">
+                          Focus for DI:{" "}
+                          <span className="font-mono">
+                            {a.weakest_standard.standard}
+                          </span>{" "}
+                          <ColorChip color={a.weakest_standard.color}>
+                            {a.weakest_standard.percent}%
+                          </ColorChip>
+                        </div>
+                      )}
+                      {a.most_missed?.length > 0 && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Most-missed:{" "}
+                          {a.most_missed
+                            .map((m: any) => `Q${m.position} (${m.miss_pct}%)`)
+                            .join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 mt-2">
+                  No topic-test results uploaded for this class yet.{" "}
+                  <a href="/assessments" className="text-avocado-dark hover:underline">
+                    Upload results →
+                  </a>
+                </p>
+              )}
+            </div>
           </div>
         )}
 
