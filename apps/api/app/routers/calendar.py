@@ -125,6 +125,130 @@ def generate_calendar(
             "start": body.start_date, "through": d.isoformat()}
 
 
+def _place_topic(db, user, grade, subject, t, d):
+    """Lay one topic's lessons (one per weekday) + a Review day + the Topic
+    Assessment starting at date d. Returns (entries_created, next_free_date)."""
+    n = 0
+    lessons = t.lessons or []
+    if not lessons:
+        import re as _re
+        m = _re.search(r"(\d+)", getattr(t, "time_frame", "") or "")
+        days = int(m.group(1)) if m else max(4, len(t.benchmarks or []) * 3)
+        for i in range(1, min(days, 20) + 1):
+            db.add(CalendarEntry(
+                tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+                date=d.isoformat(), topic_code=t.topic_code,
+                title=f"{t.topic_code} · Instructional Day {i}", kind="lesson",
+                note="Generate the planning guide to fill in the lessons."))
+            n += 1
+            d = _next(d)
+    for L in lessons:
+        db.add(CalendarEntry(
+            tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+            date=d.isoformat(), topic_code=t.topic_code,
+            lesson_code=L.get("code", ""), title=L.get("title", ""), kind="lesson"))
+        n += 1
+        d = _next(d)
+    db.add(CalendarEntry(
+        tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+        date=d.isoformat(), topic_code=t.topic_code,
+        title=f"{t.topic_code} Review", kind="review"))
+    d = _next(d)
+    sched = assessment_lookup(grade, t.topic_code)
+    adate = (sched or {}).get("administer_by")
+    assess_day = d
+    if adate:
+        try:
+            ad = date.fromisoformat(adate)
+            assess_day = ad if ad >= d else d
+        except ValueError:
+            assess_day = d
+    db.add(CalendarEntry(
+        tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+        date=assess_day.isoformat(), topic_code=t.topic_code,
+        title=f"{t.topic_code} Assessment", kind="assessment",
+        note="District administer-by date" if adate else ""))
+    return n, _next(_weekday(assess_day))
+
+
+class AppendIn(BaseModel):
+    grade_level: str
+    subject: str = "MATH"
+    topic_code: str = ""    # which topic to place; blank = next unscheduled one
+    start_date: str = ""    # fallback start when the calendar is still empty
+
+
+@router.post("/append-topic")
+def append_topic(
+    body: AppendIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Continue the calendar: place ONE topic's lessons + review + assessment
+    on the school days right AFTER the last scheduled day for this grade —
+    without disturbing the topics already on the calendar. Use it after you add
+    Topic 2, 3, … so the dates flow on from where the previous topic ended."""
+    from sqlalchemy import func
+
+    grade = body.grade_level
+    subject = (body.subject or "MATH").upper()
+    topics = (db.query(PacingTopic)
+              .filter(PacingTopic.tenant_id == user.tenant_id,
+                      PacingTopic.grade_level == grade,
+                      PacingTopic.subject == subject)
+              .order_by(PacingTopic.week_order).all())
+    if not topics:
+        raise HTTPException(404, "No topics for this grade yet — upload a pacing "
+                                 "guide first.")
+    scheduled = {c for (c,) in db.query(CalendarEntry.topic_code)
+                 .filter(CalendarEntry.tenant_id == user.tenant_id,
+                         CalendarEntry.grade_level == grade,
+                         CalendarEntry.subject == subject).distinct()}
+    if body.topic_code:
+        t = next((x for x in topics if x.topic_code == body.topic_code), None)
+        if not t:
+            raise HTTPException(404, f"Topic {body.topic_code} not found.")
+    else:
+        t = next((x for x in topics if x.topic_code not in scheduled), None)
+        if not t:
+            raise HTTPException(400, "Every topic is already on the calendar. "
+                                     "Pass a topic_code to re-place one.")
+
+    # Start the school day after the last entry that ISN'T this topic's own, so a
+    # re-run moves this topic cleanly to the end instead of after itself.
+    last = (db.query(func.max(CalendarEntry.date))
+            .filter(CalendarEntry.tenant_id == user.tenant_id,
+                    CalendarEntry.grade_level == grade,
+                    CalendarEntry.subject == subject,
+                    CalendarEntry.topic_code != t.topic_code).scalar())
+    if last:
+        d = _next(date.fromisoformat(last))
+    elif body.start_date:
+        try:
+            d = _weekday(date.fromisoformat(body.start_date))
+        except ValueError:
+            raise HTTPException(400, "start_date must be YYYY-MM-DD")
+    else:
+        raise HTTPException(400, "The calendar is empty — give a start_date for "
+                                 "the first topic (later topics continue on their "
+                                 "own).")
+
+    # Clean re-run: clear this topic's own existing entries first.
+    db.query(CalendarEntry).filter(
+        CalendarEntry.tenant_id == user.tenant_id,
+        CalendarEntry.grade_level == grade,
+        CalendarEntry.subject == subject,
+        CalendarEntry.topic_code == t.topic_code).delete(synchronize_session=False)
+
+    first = d.isoformat()
+    n, nxt = _place_topic(db, user, grade, subject, t, d)
+    db.commit()
+    audit(db, actor=user, action="append", entity_type="calendar",
+          purpose="continue_pacing_calendar")
+    return {"created": n, "topic": t.topic_code, "topic_name": t.name,
+            "first": first, "through": (nxt - timedelta(days=1)).isoformat()}
+
+
 class FromDocIn(BaseModel):
     year_start: int | None = None
 

@@ -210,6 +210,17 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+  appendCalendarTopic: (body: {
+    grade_level: string;
+    subject?: string;
+    topic_code?: string;
+    start_date?: string;
+  }) =>
+    req("/coach/calendar/append-topic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   deleteCalendarEntry: (id: string) =>
     req(`/coach/calendar/entry/${id}`, { method: "DELETE" }),
   aiCheck: () => req("/coach/ai-check"),

@@ -761,6 +761,7 @@ function TopicPanel({ topic, busy, onGuide }: any) {
   const qf = topic.quick_facts || {};
   const [lensBusy, setLensBusy] = useState(false);
   const [lens, setLens] = useState<any>(null);
+  const [calBusy, setCalBusy] = useState(false);
 
   async function scriptLens() {
     setLensBusy(true);
@@ -774,6 +775,39 @@ function TopicPanel({ topic, busy, onGuide }: any) {
       alert("Could not script the lens: " + (e as Error).message);
     } finally {
       setLensBusy(false);
+    }
+  }
+
+  // Place THIS topic on the calendar, continuing after the last scheduled day.
+  // If the calendar is empty, ask for a start date for the first topic.
+  async function addToCalendar(startDate?: string) {
+    setCalBusy(true);
+    try {
+      const r = await api.appendCalendarTopic({
+        grade_level: topic.grade_level,
+        subject: topic.subject || "MATH",
+        topic_code: topic.topic_code,
+        ...(startDate ? { start_date: startDate } : {}),
+      });
+      alert(
+        `📅 ${r.topic} added to the calendar: ${r.first} → ${r.through} ` +
+          `(${r.created} days). Open the Calendar to see it continue from the ` +
+          `previous topic.`
+      );
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg.includes("empty")) {
+        const start = window.prompt(
+          "This is the first topic on the calendar. Enter the start date " +
+            "(YYYY-MM-DD) — later topics will continue automatically:",
+          `${new Date().getFullYear()}-08-13`
+        );
+        if (start) return addToCalendar(start);
+      } else {
+        alert("Could not add to calendar: " + msg);
+      }
+    } finally {
+      setCalBusy(false);
     }
   }
 
@@ -803,6 +837,14 @@ function TopicPanel({ topic, busy, onGuide }: any) {
             className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-1.5 hover:bg-avocado/5 disabled:opacity-60 whitespace-nowrap"
           >
             {lensBusy ? "Scripting…" : "🧭 Script coaching lens"}
+          </button>
+          <button
+            onClick={() => addToCalendar()}
+            disabled={calBusy}
+            title="Place this topic's lessons on the calendar, continuing after the last scheduled topic"
+            className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-1.5 hover:bg-avocado/5 disabled:opacity-60 whitespace-nowrap"
+          >
+            {calBusy ? "Scheduling…" : "📅 Continue on calendar"}
           </button>
         </div>
       </div>
