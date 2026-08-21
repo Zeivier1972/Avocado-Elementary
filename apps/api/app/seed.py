@@ -14,6 +14,7 @@ from app.core.security import hash_password
 from app.db.migrate import ensure_columns
 from app.db.session import Base, SessionLocal, engine
 from app.models import (
+    AppSetting,
     AssessmentDefinition,
     AssessmentResult,
     ClassRoom,
@@ -121,6 +122,34 @@ def _load_pacing(db, tenant_id):
     return n
 
 
+def _remove_sample_pacing_once(db, tenant_id) -> int:
+    """One-time cleanup: delete the bundled SAMPLE pacing topics (from
+    pacing_g3.json) that used to be auto-seeded on every startup, so they stop
+    reappearing after the coach deletes them. Guarded by a per-tenant flag so it
+    runs once and never removes topics the coach later re-adds via 'Restore
+    samples'. Matches the exact sample identity (grade + code + name)."""
+    flag = db.query(AppSetting).filter(
+        AppSetting.tenant_id == tenant_id,
+        AppSetting.key == "sample_pacing_removed").first()
+    if flag:
+        return 0
+    path = DATA / "pacing_g3.json"
+    removed = 0
+    if path.exists():
+        p = json.loads(path.read_text())
+        grade = p.get("grade", "3")
+        for t in p.get("topics", []):
+            removed += db.query(PacingTopic).filter(
+                PacingTopic.tenant_id == tenant_id,
+                PacingTopic.grade_level == grade,
+                PacingTopic.topic_code == t.get("topic_code", ""),
+                PacingTopic.name == t.get("name", "")).delete(
+                    synchronize_session=False)
+    db.add(AppSetting(tenant_id=tenant_id, key="sample_pacing_removed",
+                      value={"removed": removed}))
+    return removed
+
+
 def _load_key_dates(db, tenant_id) -> int:
     """Seed the school-calendar key dates once. Guarded by the seed source so a
     coach's later edits/deletes are never overwritten on a redeploy."""
@@ -204,7 +233,10 @@ def run():
         std_objs[code] = s
         codes.add(code)
     n_math = _load_math_standards(db, codes)
-    n_pacing = _load_pacing(db, district.id)  # idempotent per topic
+    # Do NOT auto-seed sample pacing topics on every startup — that made deleted
+    # topics reappear on each deploy. Samples are opt-in via "Restore samples".
+    # Instead, remove the old auto-seeded samples once.
+    n_pacing = -_remove_sample_pacing_once(db, district.id)
     n_dates = _load_key_dates(db, district.id)  # school calendar, seeded once
     db.flush()
 
@@ -213,7 +245,7 @@ def run():
         db.commit()
         db.close()
         print("Standards/pacing/users synced (student demo already present).")
-        print(f"  Math standards now present total; pacing topics added: {n_pacing}")
+        print(f"  Sample pacing topics removed (one-time): {-n_pacing}")
         print(f"  Coach account {'created' if coach_new else 'already existed'}: "
               "coach@avocado.edu / demo1234")
         return
