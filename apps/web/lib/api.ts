@@ -124,6 +124,9 @@ export const api = {
     req("/coach/assessments/import", { method: "POST", body: form }),
   deleteTopicTest: (id: string) =>
     req(`/coach/assessments/${id}`, { method: "DELETE" }),
+  getResults: (id: string) => req(`/coach/assessments/${id}/results`),
+  importResults: (id: string, form: FormData) =>
+    req(`/coach/assessments/${id}/results`, { method: "POST", body: form }),
   coachHome: () => req("/coach/home"),
   teacherNotes: (id: string) => req(`/coach/teacher/${id}/notes`),
   addTeacherNote: (id: string, body: any) =>
@@ -269,6 +272,25 @@ export async function downloadGoalAnalysisXlsx(grade: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = `MathGoalAnalysis_Grade${grade}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Download the ready-to-fill results template for a topic test (blob).
+export async function downloadResultsTemplate(id: string) {
+  const token = getToken();
+  const res = await fetch(
+    `${API_URL}/coach/assessments/${id}/results-template.xlsx`,
+    { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
+  );
+  if (!res.ok) throw new Error("Template download failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `results-template.xlsx`;
   document.body.appendChild(a);
   a.click();
   a.remove();

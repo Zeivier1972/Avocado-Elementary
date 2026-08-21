@@ -525,6 +525,22 @@ def _context_text(ctx: dict) -> str:
             lines.append(
                 f"  - G{a['grade']} {a['topic']}: {a['items']} items / "
                 f"{a['points']} pts — standards {', '.join(a['standards']) or '—'}")
+            r = a.get("results")
+            if r:
+                cls = "; ".join(f"{c['teacher']} {c['avg']}% ({c['color']})"
+                                for c in r.get("classes", []))
+                ws = r.get("weakest_standard")
+                lines.append(
+                    f"      RESULTS: {r['students']} students, grade avg "
+                    f"{r.get('grade_avg')}% ({r.get('color')}). Classes: {cls or '—'}.")
+                if ws:
+                    lines.append(
+                        f"      Weakest standard: {ws['standard']} at {ws['percent']}% "
+                        f"({ws['color']}) — target for DI.")
+                if r.get("most_missed"):
+                    mm = ", ".join(f"Q{m['q']} ({m['standard']}, {m['miss_pct']}% missed)"
+                                   for m in r["most_missed"])
+                    lines.append(f"      Most-missed: {mm}")
     ms = ctx.get("math_schedule") or []
     if ms:
         lines.append("\nMATH & MATH-DI SCHEDULE (Math-DI runs during Science/Social "

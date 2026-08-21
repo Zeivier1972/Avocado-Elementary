@@ -489,3 +489,26 @@ class AssessmentItem(Base, TimestampMixin):
     points: Mapped[float] = mapped_column(Float, default=0.0)
     scored: Mapped[bool] = mapped_column(Boolean, default=True)
     stem: Mapped[str] = mapped_column(Text, default="")  # question text if available
+
+
+class TopicResult(Base, TimestampMixin):
+    """One student's result on a topic test — the score, the color-coded level,
+    the per-standard breakdown, and which items they missed. One row per student
+    per test; class/grade analysis and most-missed-question analysis aggregate
+    these. Enables per-class and per-student reporting alongside FAST/i-Ready."""
+    __tablename__ = "topic_results"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    form_id: Mapped[str] = mapped_column(ForeignKey("assessment_forms.id"), index=True)
+    grade: Mapped[str] = mapped_column(String, default="", index=True)
+    teacher_name: Mapped[str] = mapped_column(String, default="", index=True)
+    section: Mapped[str] = mapped_column(String, default="")   # class code if known
+    student_id: Mapped[str] = mapped_column(String, default="")  # district id as text
+    student_name: Mapped[str] = mapped_column(String, default="")
+    points_earned: Mapped[float] = mapped_column(Float, default=0.0)
+    points_possible: Mapped[float] = mapped_column(Float, default=0.0)
+    percent: Mapped[float] = mapped_column(Float, default=0.0)
+    level: Mapped[int] = mapped_column(Integer, default=0)     # 1-5 (rubric)
+    # {standard: {"earned": n, "possible": m}} and [missed item positions].
+    by_standard: Mapped[dict] = mapped_column(JSON, default=dict)
+    missed_positions: Mapped[list] = mapped_column(JSON, default=list)

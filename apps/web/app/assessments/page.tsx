@@ -2,10 +2,34 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, downloadResultsTemplate } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
+
+const COLOR_HEX: Record<string, string> = {
+  Red: "#C0392B",
+  Yellow: "#F1C40F",
+  Green: "#27AE60",
+  Blue: "#2E86C1",
+  Orange: "#E67E22",
+};
+
+function Chip({ color, children }: { color?: string; children: any }) {
+  const hex = color ? COLOR_HEX[color] : undefined;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-semibold rounded px-1.5 py-0.5"
+      style={
+        hex
+          ? { backgroundColor: hex + "22", color: hex, border: `1px solid ${hex}55` }
+          : { background: "#f3f4f6", color: "#6b7280" }
+      }
+    >
+      {children}
+    </span>
+  );
+}
 
 export default function AssessmentsPage() {
   const router = useRouter();
@@ -13,7 +37,9 @@ export default function AssessmentsPage() {
   const [build, setBuild] = useState<any>(null);
   const [data, setData] = useState<any>(null);
   const [detail, setDetail] = useState<any>(null);
+  const [results, setResults] = useState<any>(null); // {form, analysis}
   const [busy, setBusy] = useState(false);
+  const [resBusy, setResBusy] = useState("");
   const [msg, setMsg] = useState("");
   const akRef = useRef<HTMLInputElement>(null);
   const testRef = useRef<HTMLInputElement>(null);
@@ -81,7 +107,41 @@ export default function AssessmentsPage() {
     if (!confirm("Remove this test blueprint?")) return;
     await api.deleteTopicTest(id);
     if (detail?.form?.id === id) setDetail(null);
+    if (results?.form?.id === id) setResults(null);
     await load();
+  }
+
+  async function openResults(id: string) {
+    try {
+      setDetail(null);
+      setResults(await api.getResults(id));
+    } catch (err) {
+      alert("Could not load results: " + (err as Error).message);
+    }
+  }
+
+  async function uploadResults(
+    e: React.ChangeEvent<HTMLInputElement>,
+    id: string
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResBusy(id);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const r = await api.importResults(id, form);
+      setResults(await api.getResults(id));
+      alert(
+        `Scored ${r.students} students across ${r.classes.length} classes ` +
+          `(${r.questions_matched} questions matched).`
+      );
+    } catch (err) {
+      alert("Results upload failed: " + (err as Error).message);
+    } finally {
+      setResBusy("");
+      e.target.value = "";
+    }
   }
 
   if (!me) return <div className="p-10 text-gray-500">Loading…</div>;
@@ -217,6 +277,41 @@ export default function AssessmentsPage() {
                     </button>
                   </div>
                 </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-gray-50 pt-3">
+                  <span className="text-xs font-semibold text-gray-500">
+                    Class results:
+                  </span>
+                  <label
+                    className={`cursor-pointer text-sm font-semibold text-white bg-avocado hover:bg-avocado-dark rounded-lg px-3 py-1.5 ${
+                      resBusy === f.id ? "opacity-60 pointer-events-none" : ""
+                    }`}
+                  >
+                    {resBusy === f.id ? "Scoring…" : "⬆ Upload results (Excel)"}
+                    <input
+                      type="file"
+                      accept=".xlsx,.csv"
+                      className="hidden"
+                      onChange={(e) => uploadResults(e, f.id)}
+                    />
+                  </label>
+                  <button
+                    onClick={() =>
+                      downloadResultsTemplate(f.id).catch((err) =>
+                        alert((err as Error).message)
+                      )
+                    }
+                    className="text-sm font-semibold text-avocado-dark hover:underline"
+                  >
+                    ⬇ Template
+                  </button>
+                  <button
+                    onClick={() => openResults(f.id)}
+                    className="text-sm font-semibold text-avocado-dark hover:underline"
+                  >
+                    View analysis
+                  </button>
+                </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {f.by_standard.map((bs: any) => (
                     <span
@@ -295,6 +390,9 @@ export default function AssessmentsPage() {
           </div>
         )}
 
+        {/* Results analysis */}
+        {results && <ResultsPanel data={results} onClose={() => setResults(null)} />}
+
         {hasData && (
           <p className="text-xs text-gray-400">
             Field-test items with no standard (0 pts) are shown greyed out and don&apos;t
@@ -305,5 +403,199 @@ export default function AssessmentsPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
+  const f = data.form;
+  const a = data.analysis;
+  if (!a || a.students === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-avocado/30 p-5">
+        <div className="flex items-center justify-between">
+          <div className="font-bold text-gray-800">
+            {GRADE_LABEL(f.grade)} · {f.topic_code} — results
+          </div>
+          <button
+            onClick={onClose}
+            className="text-sm text-gray-400 hover:text-gray-700"
+          >
+            Close ✕
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mt-2">
+          No results uploaded yet. Use “Upload results (Excel)” on this test.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-avocado/30 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-bold text-gray-800">
+            {GRADE_LABEL(f.grade)} · {f.topic_code} — results analysis
+          </div>
+          <div className="text-xs text-gray-500">
+            {a.students} students · grade average{" "}
+            <Chip color={a.color}>{a.grade_avg}%</Chip>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-sm text-gray-400 hover:text-gray-700"
+        >
+          Close ✕
+        </button>
+      </div>
+
+      {/* Standards — which to focus on (grade) */}
+      <div>
+        <div className="font-semibold text-gray-800 text-sm mb-1">
+          Standards — lowest first (focus for DI)
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {a.by_standard.map((s: any) => (
+            <div
+              key={s.standard}
+              title={s.description}
+              className="border border-gray-100 rounded-lg px-2.5 py-1.5"
+            >
+              <div className="text-sm font-mono font-bold text-gray-700">
+                {s.standard}
+              </div>
+              <Chip color={s.color}>{s.percent}%</Chip>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Per class */}
+      <div>
+        <div className="font-semibold text-gray-800 text-sm mb-1">By class</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-100">
+                <th className="p-2 font-semibold">Class</th>
+                <th className="p-2 font-semibold">Students</th>
+                <th className="p-2 font-semibold">Average</th>
+                <th className="p-2 font-semibold">Weakest standard</th>
+                <th className="p-2 font-semibold">Most-missed Qs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {a.classes.map((c: any) => (
+                <tr key={c.teacher} className="border-b border-gray-50 align-top">
+                  <td className="p-2 font-semibold text-gray-800">{c.teacher}</td>
+                  <td className="p-2 text-gray-500">{c.students}</td>
+                  <td className="p-2">
+                    <Chip color={c.color}>{c.avg_percent}%</Chip>
+                  </td>
+                  <td className="p-2">
+                    {c.by_standard[0] ? (
+                      <span className="font-mono text-xs">
+                        {c.by_standard[0].standard}{" "}
+                        <Chip color={c.by_standard[0].color}>
+                          {c.by_standard[0].percent}%
+                        </Chip>
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="p-2 text-gray-600">
+                    {c.most_missed
+                      .map((m: any) => `Q${m.position} (${m.miss_pct}%)`)
+                      .join(", ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Most-missed questions (grade) */}
+      <div>
+        <div className="font-semibold text-gray-800 text-sm mb-1">
+          Most-missed questions (grade) — DI packet candidates
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-100">
+                <th className="p-2 font-semibold">Q</th>
+                <th className="p-2 font-semibold">Standard</th>
+                <th className="p-2 font-semibold">Answer</th>
+                <th className="p-2 font-semibold">% missed</th>
+                <th className="p-2 font-semibold">Question</th>
+              </tr>
+            </thead>
+            <tbody>
+              {a.most_missed.map((m: any) => (
+                <tr key={m.position} className="border-b border-gray-50 align-top">
+                  <td className="p-2 font-semibold">{m.position}</td>
+                  <td className="p-2 font-mono text-xs">{m.standard}</td>
+                  <td className="p-2 font-semibold text-avocado-dark">
+                    {m.correct_response}
+                  </td>
+                  <td className="p-2">
+                    <Chip color={m.miss_pct >= 50 ? "Red" : m.miss_pct >= 30 ? "Yellow" : "Green"}>
+                      {m.miss_pct}%
+                    </Chip>
+                  </td>
+                  <td className="p-2 text-gray-600 max-w-sm">
+                    {m.stem || (
+                      <span className="text-gray-300">
+                        (upload the test PDF to show)
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Per student */}
+      <details>
+        <summary className="cursor-pointer text-sm font-semibold text-avocado-dark">
+          Per-student scores ({a.students_list.length})
+        </summary>
+        <div className="overflow-x-auto mt-2">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-100">
+                <th className="p-2 font-semibold">Student</th>
+                <th className="p-2 font-semibold">Class</th>
+                <th className="p-2 font-semibold">Score</th>
+                <th className="p-2 font-semibold">Missed Qs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {a.students_list.map((s: any, i: number) => (
+                <tr key={i} className="border-b border-gray-50">
+                  <td className="p-2 text-gray-800">
+                    {s.student_name}
+                    {s.student_id && (
+                      <span className="text-gray-400 text-xs"> · {s.student_id}</span>
+                    )}
+                  </td>
+                  <td className="p-2 text-gray-500">{s.teacher}</td>
+                  <td className="p-2">
+                    <Chip color={s.color}>{s.percent}%</Chip>
+                  </td>
+                  <td className="p-2 text-gray-500 text-xs">
+                    {(s.missed || []).map((q: number) => `Q${q}`).join(", ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
   );
 }

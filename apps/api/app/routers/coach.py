@@ -1,4 +1,6 @@
 """Coach section — collaborative planning: pacing calendar + PLC agendas."""
+import io
+
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -44,6 +46,7 @@ from app.models import (
     StaffMember,
     Standard,
     Student,
+    TopicResult,
     User,
 )
 from app.routers.pacing import _resolve_standards
@@ -432,7 +435,8 @@ def _school_context(db: Session, user: User) -> dict:
         "assessments": [
             {"grade": f.grade, "topic": f.topic_code, "test_name": f.test_name,
              "items": f.item_count, "points": f.total_points,
-             "standards": f.standards or []}
+             "standards": f.standards or [],
+             "results": _assessment_results_brief(db, f)}
             for f in db.query(AssessmentForm).filter(
                 AssessmentForm.tenant_id == tenant_id).order_by(
                 AssessmentForm.grade, AssessmentForm.topic_code).all()],
@@ -1651,6 +1655,202 @@ def delete_assessment(
     audit(db, actor=user, action="delete", entity_type="assessment_form",
           entity_id=form_id, purpose="assessment_management")
     return {"deleted": True, "test_name": name}
+
+
+# --- Topic-test RESULTS: score, color-code, most-missed, per class/student ----
+
+def _color_for(grade: str, pct: float | None) -> dict:
+    """Level (1-5) + color name/hex for a percent, via the Math Goal rubric."""
+    from app.goal_rubric import topic_color
+    tc = topic_color(grade, pct) if pct is not None else None
+    return tc or {"level": 0, "color": "", "hex": ""}
+
+
+@router.post("/assessments/{form_id}/results")
+async def import_results(
+    form_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Upload a grade-wide RESULTS spreadsheet (one row per student, one column
+    per question) for this topic test. Scores each student against the answer
+    key, color-codes by the Math Goal rubric, and stores per student/class.
+    Re-uploading replaces the results for this test."""
+    from app.topic_results_import import parse_results
+
+    f = db.get(AssessmentForm, form_id)
+    if not f or f.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Assessment not found")
+    data = await file.read()
+    if len(data) > _MAX_DOC_BYTES:
+        raise HTTPException(400, "File is larger than the 25 MB limit.")
+    items = [{"position": it.position, "item_id": it.item_id,
+              "standard": it.standard, "correct_response": it.correct_response,
+              "points": it.points, "scored": it.scored}
+             for it in db.query(AssessmentItem).filter(
+                 AssessmentItem.form_id == f.id).all()]
+    res = parse_results(data, items)
+    if not res["rows"]:
+        raise HTTPException(
+            400, f"Could not read the results: {res.get('reason')}. Upload the "
+                 "grade Excel with a Student column and one column per question "
+                 "(Q1, Q2 …).")
+    db.query(TopicResult).filter(TopicResult.form_id == f.id).delete()
+    for r in res["rows"]:
+        pct = r["percent"]
+        lvl = _color_for(f.grade, pct)["level"]
+        db.add(TopicResult(
+            tenant_id=user.tenant_id, form_id=f.id, grade=f.grade,
+            teacher_name=r["teacher_name"], student_id=r["student_id"],
+            student_name=r["student_name"], points_earned=r["points_earned"],
+            points_possible=r["points_possible"], percent=pct, level=lvl,
+            by_standard=r["by_standard"], missed_positions=r["missed_positions"]))
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="topic_results",
+          entity_id=f.id, purpose="topic_test_results")
+    classes = sorted({r["teacher_name"] for r in res["rows"] if r["teacher_name"]})
+    return {"students": len(res["rows"]), "classes": classes,
+            "questions_matched": res.get("detected", {}).get("questions_matched", 0)}
+
+
+def _results_analysis(db, f: AssessmentForm) -> dict:
+    """Class averages, per-standard mastery, and most-missed questions — grade
+    wide and by class — all color-coded, from stored TopicResult rows."""
+    rows = db.query(TopicResult).filter(TopicResult.form_id == f.id).all()
+    if not rows:
+        return {"students": 0, "classes": [], "by_standard": [],
+                "most_missed": [], "students_list": []}
+    items = {it.position: it for it in db.query(AssessmentItem).filter(
+        AssessmentItem.form_id == f.id).all()}
+    desc = _std_desc_map(db)
+
+    def std_block(subset):
+        agg: dict = {}
+        for r in subset:
+            for std, v in (r.by_standard or {}).items():
+                e = agg.setdefault(std, {"earned": 0.0, "possible": 0.0})
+                e["earned"] += v.get("earned", 0.0)
+                e["possible"] += v.get("possible", 0.0)
+        out = []
+        for std, v in agg.items():
+            pct = round(100.0 * v["earned"] / v["possible"], 1) if v["possible"] else None
+            out.append({"standard": std, "description": desc.get(std, ""),
+                        "percent": pct, **_color_for(f.grade, pct)})
+        return sorted(out, key=lambda x: (x["percent"] if x["percent"] is not None else 999))
+
+    def missed_block(subset, n):
+        cnt: dict = {}
+        for r in subset:
+            for pos in (r.missed_positions or []):
+                cnt[pos] = cnt.get(pos, 0) + 1
+        out = []
+        for pos, c in cnt.items():
+            it = items.get(pos)
+            out.append({
+                "position": pos, "missed": c,
+                "miss_pct": round(100.0 * c / n, 1) if n else 0,
+                "standard": it.standard if it else "",
+                "correct_response": it.correct_response if it else "",
+                "stem": (it.stem if it else "")[:240]})
+        return sorted(out, key=lambda x: -x["missed"])
+
+    # By class.
+    by_class: dict = {}
+    for r in rows:
+        by_class.setdefault(r.teacher_name or "—", []).append(r)
+    classes = []
+    for cls, subset in sorted(by_class.items()):
+        avg = round(sum(r.percent for r in subset) / len(subset), 1)
+        classes.append({
+            "teacher": cls, "students": len(subset), "avg_percent": avg,
+            **_color_for(f.grade, avg),
+            "by_standard": std_block(subset),
+            "most_missed": missed_block(subset, len(subset))[:5]})
+
+    grade_avg = round(sum(r.percent for r in rows) / len(rows), 1)
+    students_list = sorted(
+        [{"student_name": r.student_name, "student_id": r.student_id,
+          "teacher": r.teacher_name, "percent": r.percent,
+          **_color_for(f.grade, r.percent),
+          "missed": r.missed_positions or []} for r in rows],
+        key=lambda x: (x["teacher"], -x["percent"]))
+    return {
+        "students": len(rows), "grade_avg": grade_avg,
+        **_color_for(f.grade, grade_avg),
+        "classes": classes,
+        "by_standard": std_block(rows),
+        "most_missed": missed_block(rows, len(rows))[:10],
+        "students_list": students_list,
+    }
+
+
+def _assessment_results_brief(db, f: AssessmentForm) -> dict | None:
+    """A compact results snapshot for the AI Coach: grade avg, per-class avgs,
+    the weakest standard, and the most-missed questions. None if no results."""
+    n = db.query(TopicResult).filter(TopicResult.form_id == f.id).count()
+    if not n:
+        return None
+    a = _results_analysis(db, f)
+    weakest = a["by_standard"][0] if a.get("by_standard") else None
+    return {
+        "students": a["students"], "grade_avg": a.get("grade_avg"),
+        "color": a.get("color"),
+        "classes": [{"teacher": c["teacher"], "avg": c["avg_percent"],
+                     "color": c["color"]} for c in a.get("classes", [])],
+        "weakest_standard": weakest and {
+            "standard": weakest["standard"], "percent": weakest["percent"],
+            "color": weakest["color"]},
+        "most_missed": [{"q": m["position"], "standard": m["standard"],
+                         "miss_pct": m["miss_pct"]} for m in a.get("most_missed", [])[:5]],
+    }
+
+
+@router.get("/assessments/{form_id}/results")
+def get_results(
+    form_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Scored analysis for a topic test — class averages, per-standard mastery,
+    most-missed questions, and the per-student list, all color-coded."""
+    f = db.get(AssessmentForm, form_id)
+    if not f or f.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Assessment not found")
+    return {"form": _form_summary(db, f), "analysis": _results_analysis(db, f)}
+
+
+@router.get("/assessments/{form_id}/results-template.xlsx")
+def results_template(
+    form_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Download a ready-to-fill results template for this test: Student Name,
+    Student ID, Teacher, then Q1..Qn. Fill the letter each student chose."""
+    import openpyxl as _oxl
+    from fastapi.responses import StreamingResponse
+
+    f = db.get(AssessmentForm, form_id)
+    if not f or f.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Assessment not found")
+    positions = [it.position for it in db.query(AssessmentItem).filter(
+        AssessmentItem.form_id == f.id).order_by(AssessmentItem.position).all()]
+    wb = _oxl.Workbook()
+    ws = wb.active
+    ws.title = "Results"
+    ws.append(["Student Name", "Student ID", "Teacher"]
+              + [f"Q{p}" for p in positions])
+    ws.append(["Example, Student", "1234567", "Teacher Name"]
+              + ["" for _ in positions])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fn = f"{(f.test_name or 'topic-test')}-results-template.xlsx"
+    return StreamingResponse(
+        buf, media_type="application/vnd.openxmlformats-officedocument."
+                        "spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{fn}"'})
 
 
 @router.post("/schedule/import")
