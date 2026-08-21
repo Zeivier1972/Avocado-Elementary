@@ -84,9 +84,6 @@ def _phase_strategies(key: str, has_cpa: bool, has_cubs: bool) -> list[str]:
     return out
 
 
-_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-
-
 def _exit_text(et) -> str:
     if isinstance(et, dict):
         p, a = et.get("problem", ""), et.get("answer", "")
@@ -94,19 +91,53 @@ def _exit_text(et) -> str:
     return str(et or "")
 
 
+def _phase_cell(L: dict, key: str) -> str:
+    """A compact, filled example for one lesson's phase — what the teacher does,
+    a question to ask, and what students do — used for the 'filled example'
+    version. Kept short so it reads inside a grid cell."""
+    ph = L.get(key)
+    if not isinstance(ph, dict):
+        return ""
+    questions, moves = _split_questions(ph.get("say"))
+    move = (moves[0] if moves else "") or (
+        f"Model: {ph['problem']}" if ph.get("problem") else "") or \
+        (" ".join(_as_list(ph.get("do"))[:1]))
+    q = questions[0] if questions else ""
+    if key == "explore_yall_do":
+        students = ph.get("structure", "") or "Work in pairs/groups"
+        if ph.get("roles"):
+            students += f" — {ph['roles']}"
+    elif key == "you_do":
+        students = ("CUBS: " + ph["cubs"]) if ph.get("cubs") else "Work independently"
+    else:
+        students = ph.get("look_for", "") or "Try it with support"
+    parts = []
+    if move:
+        parts.append(f"You: {move}")
+    if q:
+        parts.append(f"Ask: {q}")
+    if students:
+        parts.append(f"Students: {students}")
+    return "\n".join(parts)
+
+
 def _day_slots(lessons: list[dict]) -> list[dict]:
-    """Five weekday slots (Mon–Fri). Each is pre-labeled with that day's lesson
-    from the guide (code / title / goal) so the teacher plans the actual lesson;
-    the phase cells are theirs to fill. Extra lessons roll to a next-week print."""
+    """Five lesson slots for the week — a DATE blank, not a weekday, since the
+    coach doesn't know which lesson lands on which day. Each slot is pre-labeled
+    with its lesson (code / title / goal) and carries a filled example for each
+    gradual-release phase (used by the example version). Extra lessons roll to a
+    next-week print."""
     slots = []
-    for i, day in enumerate(_WEEKDAYS):
+    for i in range(5):
         L = lessons[i] if i < len(lessons) else None
         slots.append({
-            "day": day,
-            "lesson_code": (L or {}).get("code", ""),
-            "title": (L or {}).get("title", ""),
+            "slot": i + 1,
+            "lesson_code": (L or {}).get("code", "") if L else "",
+            "title": (L or {}).get("title", "") if L else "",
             "learning_goal": (L or {}).get("learning_goal", "") if L else "",
             "exit": _exit_text((L or {}).get("exit_ticket")) if L else "",
+            "phase_example": {k: _phase_cell(L, k) for (k, *_ ) in _PHASES}
+                             if L else {},
         })
     return slots
 

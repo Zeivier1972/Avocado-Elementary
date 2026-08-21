@@ -366,11 +366,12 @@ def _vocab_line(words, cap=8):
     return " · ".join(parts)
 
 
-def template_to_docx(t: dict) -> bytes:
-    """Render the WEEKLY teacher walkout: a one-page landscape grid — 5 day slots
-    (Mon–Fri) across, the gradual-release phases down — with a Tier 2 / Tier 3
-    vocabulary strip. Each day is pre-labeled with that day's lesson; the phase
-    cells are the teacher's to fill (what they do · questions · what students do)."""
+def template_to_docx(t: dict, filled: bool = False) -> bytes:
+    """Render the WEEKLY teacher walkout: a one-page landscape grid — 5 lesson
+    slots (each with a DATE blank, not a weekday) across, the gradual-release
+    phases down — with a Tier 2 / Tier 3 vocabulary strip. Phase cells are blank
+    for the teacher to fill; when `filled` is True they carry a worked example
+    from the guide so the coach can show what a completed plan looks like."""
     doc = Document()
     sec = doc.sections[0]
     sec.orientation = WD_ORIENT.LANDSCAPE
@@ -380,7 +381,8 @@ def template_to_docx(t: dict) -> bytes:
 
     # Compact header.
     h = doc.add_paragraph()
-    hr = h.add_run("Weekly Collaborative Planning — My Lesson Plan")
+    hr = h.add_run("Weekly Collaborative Planning — My Lesson Plan"
+                   + ("  (EXAMPLE)" if filled else ""))
     hr.bold = True
     hr.font.size = Pt(14)
     hr.font.color.rgb = RGBColor(0x38, 0x60, 0x1F)
@@ -425,12 +427,12 @@ def template_to_docx(t: dict) -> bytes:
     table = doc.add_table(rows=len(row_defs) + 1, cols=ncols)
     table.style = "Table Grid"
 
-    # Header row: blank corner + each day + its lesson.
-    _cell(table.rows[0].cells[0], "", 8, bold=True)
+    # Header row: blank corner + each lesson slot with a DATE blank (no weekday).
+    _cell(table.rows[0].cells[0], "Date →", 8, bold=True)
     for j, d in enumerate(days):
-        head = d["day"]
-        if d.get("lesson_code") or d.get("title"):
-            head += f"\n{d.get('lesson_code','')} {d.get('title','')}".rstrip()
+        lesson = f"{d.get('lesson_code','')} {d.get('title','')}".strip()
+        head = (f"Lesson {lesson}" if lesson else f"Lesson {d.get('slot','')}")
+        head += "\nDate: ____________"
         _cell(table.rows[0].cells[j + 1], head, 8, bold=True,
               color=(0x38, 0x60, 0x1F))
 
@@ -457,6 +459,8 @@ def template_to_docx(t: dict) -> bytes:
                 _cell(cell, d.get("learning_goal", "") or "", 7.5)
             elif key == "exit":
                 _cell(cell, d.get("exit", "") or "", 7.5)
+            elif filled:
+                _cell(cell, (d.get("phase_example", {}) or {}).get(key, ""), 7)
             else:
                 _cell(cell, "", 8)  # blank for the teacher to plan
 

@@ -84,10 +84,21 @@ export default function GuideSummaryPage() {
                   alert("Download failed: " + (e as Error).message)
                 )
               }
-              title="Teacher walkout: a fillable gradual-release planning template with Tier 2/3 vocabulary"
+              title="Teacher walkout: a blank weekly (5-lesson) gradual-release planning template with Tier 2/3 vocabulary"
               className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-3 py-1.5"
             >
               ⬇ Planning Template
+            </button>
+            <button
+              onClick={() =>
+                downloadPlanningTemplateDocx(id, data?.title, true).catch((e) =>
+                  alert("Download failed: " + (e as Error).message)
+                )
+              }
+              title="A filled sample of the weekly template, worked from this guide"
+              className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-1.5 hover:bg-avocado/5"
+            >
+              ⬇ Example
             </button>
           </div>
         </div>

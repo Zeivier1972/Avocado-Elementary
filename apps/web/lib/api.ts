@@ -261,18 +261,25 @@ export async function downloadGuideSummaryDocx(id: string, title?: string) {
 }
 
 // Download the teacher planning-template walkout for a saved guide (Word blob).
-export async function downloadPlanningTemplateDocx(id: string, title?: string) {
+// Pass example=true for a filled sample.
+export async function downloadPlanningTemplateDocx(
+  id: string,
+  title?: string,
+  example = false
+) {
   const token = getToken();
-  const res = await fetch(`${API_URL}/coach/guides/${id}/template.docx`, {
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
+  const res = await fetch(
+    `${API_URL}/coach/guides/${id}/template.docx${example ? "?example=1" : ""}`,
+    { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
+  );
   if (!res.ok) throw new Error("Export failed");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download =
-    ((title || "planning-template").replace(/[^\w]+/g, "_")) + "_PlanningTemplate.docx";
+    ((title || "planning-template").replace(/[^\w]+/g, "_")) +
+    (example ? "_PlanningTemplate_Example.docx" : "_PlanningTemplate.docx");
   document.body.appendChild(a);
   a.click();
   a.remove();

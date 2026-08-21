@@ -1344,10 +1344,12 @@ def guide_planning_template(
 @router.get("/guides/{guide_id}/template.docx")
 def guide_planning_template_docx(
     guide_id: str,
+    example: bool = Query(False),
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
-    """Download the teacher planning-template walkout as a fillable Word doc."""
+    """Download the teacher planning-template walkout as a fillable Word doc.
+    Pass example=1 for a filled sample (cells worked from the guide)."""
     from app.export_docx import template_to_docx
 
     g = db.get(SavedGuide, guide_id)
@@ -1355,8 +1357,9 @@ def guide_planning_template_docx(
         raise HTTPException(404, "Saved guide not found")
     if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
         raise HTTPException(409, "This guide is still generating — try again in a moment.")
-    data = template_to_docx(_build_template(db, g))
-    fname = f"PlanningTemplate_{(g.topic_code or 'guide').replace(' ', '')}.docx"
+    data = template_to_docx(_build_template(db, g), filled=example)
+    suffix = "Example" if example else ""
+    fname = f"PlanningTemplate{suffix}_{(g.topic_code or 'guide').replace(' ', '')}.docx"
     return Response(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
