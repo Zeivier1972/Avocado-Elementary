@@ -131,8 +131,17 @@ def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
             rec.content = guide
             rec.title = guide.get("title", rec.title)
             rec.ai_generated = bool(guide.get("ai_generated"))
-            rec.status = "ready"
-            rec.error = ""
+            # An empty guide (no lessons) means generation couldn't produce the
+            # lesson-by-lesson content — surface WHY instead of a silent blank.
+            if not guide.get("lessons"):
+                rec.status = "error"
+                rec.error = guide.get("ai_status") or (
+                    "No lessons could be built from this document. Turn on the AI "
+                    "key (AI_PROVIDER=anthropic, AI_API_KEY, AI_MODEL) so the guide "
+                    "can be written from your pacing guide.")
+            else:
+                rec.status = "ready"
+                rec.error = ""
             db.add(rec)
         db.commit()
     except Exception as e:  # never let a background failure go silent
@@ -236,8 +245,15 @@ def _run_topic_guide_job(guide_id: str, topic_id: str):
             rec.content = guide
             rec.title = guide.get("title", rec.title)
             rec.ai_generated = bool(guide.get("ai_generated"))
-            rec.status = "ready"
-            rec.error = ""
+            if not guide.get("lessons"):
+                rec.status = "error"
+                rec.error = guide.get("ai_status") or (
+                    "No lessons on this topic yet. Turn on the AI key "
+                    "(AI_PROVIDER=anthropic, AI_API_KEY, AI_MODEL), or upload the "
+                    "topic's pacing guide and use 'Generate guide' on it.")
+            else:
+                rec.status = "ready"
+                rec.error = ""
             db.add(rec)
         db.commit()
     except Exception as e:

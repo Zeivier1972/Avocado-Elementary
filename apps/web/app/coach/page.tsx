@@ -17,6 +17,7 @@ export default function CoachPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
   const [dash, setDash] = useState<any>(null);
+  const [aiStatus, setAiStatus] = useState<any>(null);
   const [build, setBuild] = useState<any>(null);
   const [topic, setTopic] = useState<any>(null);
   const [guide, setGuide] = useState<any>(null);
@@ -308,6 +309,7 @@ export default function CoachPage() {
       return;
     }
     api.health().then(setBuild).catch(() => setBuild(null));
+    api.aiCheck().then(setAiStatus).catch(() => setAiStatus(null));
     api
       .me()
       .then((u) => {
@@ -449,6 +451,28 @@ export default function CoachPage() {
         <p className="text-sm text-gray-500 mb-4">
           Pacing calendar · {dash.subjects.join(" / ")} · plan the week with your teachers
         </p>
+
+        {aiStatus && aiStatus.test_call !== "ok" && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm">
+            <div className="font-semibold">
+              ⚠ AI is not working — guides can&apos;t be written right now.
+            </div>
+            <p className="mt-1">
+              Planning guides (and the one-pager &amp; lesson template that come from
+              them) need the AI turned on. In Railway → your service → Variables,
+              set <span className="font-mono">AI_PROVIDER=anthropic</span>,{" "}
+              <span className="font-mono">AI_API_KEY</span> (a valid Anthropic key),
+              and <span className="font-mono">AI_MODEL</span> (e.g.{" "}
+              <span className="font-mono">claude-sonnet-4-5</span>), then redeploy.
+            </p>
+            <p className="mt-1 text-xs text-red-600">
+              Diagnostics — provider: {String(aiStatus.provider)} · model:{" "}
+              {String(aiStatus.model)} · key present:{" "}
+              {String(aiStatus.key_present)} · test: {String(aiStatus.test_call)}
+              {aiStatus.error ? ` · ${aiStatus.error}` : ""}
+            </p>
+          </div>
+        )}
 
         {/* School roster */}
         <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 flex flex-wrap items-center gap-4">
