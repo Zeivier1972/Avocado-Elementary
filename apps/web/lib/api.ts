@@ -268,12 +268,28 @@ export async function downloadPlanningTemplateDocx(
   example = false
 ) {
   const token = getToken();
-  const res = await fetch(
-    `${API_URL}/coach/guides/${id}/template.docx${example ? "?example=1" : ""}`,
-    { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
-  );
-  if (!res.ok) throw new Error("Export failed");
+  let res: Response;
+  try {
+    res = await fetch(
+      `${API_URL}/coach/guides/${id}/template.docx${example ? "?example=1" : ""}`,
+      { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
+    );
+  } catch (e) {
+    throw new Error(
+      `Could not reach the server (${(e as Error).message}). API URL: ${API_URL}`
+    );
+  }
+  if (!res.ok) {
+    let body = "";
+    try {
+      body = await res.text();
+    } catch {
+      /* ignore */
+    }
+    throw new Error(`Server ${res.status}: ${body.slice(0, 300) || "no detail"}`);
+  }
   const blob = await res.blob();
+  if (!blob.size) throw new Error("The server returned an empty file.");
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
