@@ -1318,7 +1318,9 @@ def _build_template(db, g: SavedGuide) -> dict:
     summary = build_coach_summary(g.content)
     standards = _resolve_standards(db, [b.get("code", "")
                                         for b in summary.get("benchmarks", [])])
-    std_ctx = [{"code": s.code, "description": s.description} for s in standards]
+    # _resolve_standards returns dicts (not ORM rows).
+    std_ctx = [{"code": s.get("code", ""), "description": s.get("description", "")}
+               for s in standards]
     # use_ai=False: the template is a direct Word DOWNLOAD, so it must return
     # immediately. A live AI call here would risk the edge proxy dropping the
     # connection ("Failed to fetch"). The Tier 2/3 split is deterministic; the
