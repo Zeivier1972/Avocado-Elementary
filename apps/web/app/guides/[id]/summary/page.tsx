@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { api, getToken, downloadGuideSummaryDocx } from "@/lib/api";
+import {
+  api,
+  getToken,
+  downloadGuideSummaryDocx,
+  downloadPlanningTemplateDocx,
+} from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
 
 export default function GuideSummaryPage() {
@@ -71,7 +76,18 @@ export default function GuideSummaryPage() {
               }
               className="bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-3 py-1.5"
             >
-              ⬇ Download Word
+              ⬇ One-Pager
+            </button>
+            <button
+              onClick={() =>
+                downloadPlanningTemplateDocx(id, data?.title).catch((e) =>
+                  alert("Download failed: " + (e as Error).message)
+                )
+              }
+              title="Teacher walkout: a fillable gradual-release planning template with Tier 2/3 vocabulary"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-3 py-1.5"
+            >
+              ⬇ Planning Template
             </button>
           </div>
         </div>

@@ -260,6 +260,25 @@ export async function downloadGuideSummaryDocx(id: string, title?: string) {
   URL.revokeObjectURL(url);
 }
 
+// Download the teacher planning-template walkout for a saved guide (Word blob).
+export async function downloadPlanningTemplateDocx(id: string, title?: string) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/coach/guides/${id}/template.docx`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download =
+    ((title || "planning-template").replace(/[^\w]+/g, "_")) + "_PlanningTemplate.docx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // Download the color-coded Math Goal Analysis as an Excel report (blob).
 export async function downloadGoalAnalysisXlsx(grade: string) {
   const token = getToken();

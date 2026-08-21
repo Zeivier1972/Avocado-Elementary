@@ -7,6 +7,7 @@ import {
   clearToken,
   downloadDocument,
   downloadGuideDocx,
+  downloadPlanningTemplateDocx,
   getToken,
 } from "@/lib/api";
 
@@ -744,6 +745,7 @@ export default function CoachPage() {
             {guide && (
               <GuideView
                 guide={guide}
+                guideId={guideId}
                 canSimplify={!!guideId && !genStatus}
                 onSimplify={simplifyOpenGuide}
               />
@@ -1088,7 +1090,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function GuideView({ guide, canSimplify, onSimplify }: any) {
+function GuideView({ guide, guideId, canSimplify, onSimplify }: any) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5">
       <div className="flex items-start justify-between gap-3">
@@ -1101,6 +1103,19 @@ function GuideView({ guide, canSimplify, onSimplify }: any) {
               className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-2 hover:bg-avocado/5"
             >
               ✨ Simplify language
+            </button>
+          )}
+          {guideId && (
+            <button
+              onClick={() =>
+                downloadPlanningTemplateDocx(guideId, guide.title).catch((e) =>
+                  alert("Download failed: " + (e as Error).message)
+                )
+              }
+              title="Teacher walkout: a fillable gradual-release planning template with Tier 2/3 vocabulary"
+              className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-2 hover:bg-avocado/5"
+            >
+              📝 Planning Template
             </button>
           )}
           <button

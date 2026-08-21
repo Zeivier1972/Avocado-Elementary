@@ -1308,6 +1308,61 @@ def guide_coach_summary_docx(
         headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
+def _build_template(db, g: SavedGuide) -> dict:
+    """Assemble the teacher planning-template (walkout) for a saved guide:
+    coach summary + Tier 2/3 vocabulary + the gradual-release scaffold."""
+    from app.coach_summary import build_coach_summary
+    from app.ai import classify_vocabulary
+    from app.planning_template import build_planning_template
+
+    summary = build_coach_summary(g.content)
+    standards = _resolve_standards(db, [b.get("code", "")
+                                        for b in summary.get("benchmarks", [])])
+    std_ctx = [{"code": s.code, "description": s.description} for s in standards]
+    tiers = classify_vocabulary(summary.get("vocabulary", []), std_ctx,
+                                g.grade_level)
+    return build_planning_template(g.content, summary, tiers)
+
+
+@router.get("/guides/{guide_id}/template")
+def guide_planning_template(
+    guide_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The teacher WALKOUT for a guide: a fillable gradual-release planning
+    template with Tier 2 / Tier 3 vocabulary, so teachers internalize the guide
+    by planning their own lesson in the same frame."""
+    g = db.get(SavedGuide, guide_id)
+    if not g or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Saved guide not found")
+    if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
+        raise HTTPException(409, "This guide is still generating — try again in a moment.")
+    return {"id": g.id, "title": g.title, "template": _build_template(db, g)}
+
+
+@router.get("/guides/{guide_id}/template.docx")
+def guide_planning_template_docx(
+    guide_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Download the teacher planning-template walkout as a fillable Word doc."""
+    from app.export_docx import template_to_docx
+
+    g = db.get(SavedGuide, guide_id)
+    if not g or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Saved guide not found")
+    if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
+        raise HTTPException(409, "This guide is still generating — try again in a moment.")
+    data = template_to_docx(_build_template(db, g))
+    fname = f"PlanningTemplate_{(g.topic_code or 'guide').replace(' ', '')}.docx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
 # --- Master schedule: math times & Math-DI windows ---------------------------
 
 def _last_name(name: str) -> str:

@@ -354,6 +354,88 @@ def coach_one_pager_narrative(summary: dict) -> dict:
     return _one_pager_fallback(summary)
 
 
+# Tier 2 = high-utility ACADEMIC words that recur across grades and show up in
+# the QUESTION STEMS of many standards (the words that trip kids up on the test).
+# Tier 3 = subject-specific math terms. Used to split lesson vocabulary for the
+# planning template's Tier 2 / Tier 3 focus, with an AI pass when available.
+_TIER2_WORDS = {
+    "represent", "model", "describe", "explain", "determine", "identify",
+    "compare", "estimate", "solve", "select", "complete", "justify", "evaluate",
+    "combine", "share", "distribute", "arrange", "total", "in all", "altogether",
+    "each", "per", "equal", "equal groups", "group", "groups", "value", "amount",
+    "relationship", "pattern", "unknown", "missing", "strategy", "expression",
+    "part", "whole", "how many", "how much", "fewer", "more", "most", "least",
+    "twice", "double", "sum", "difference", "increase", "decrease", "represents",
+    "true", "matches", "shows", "reasonable", "explain your reasoning",
+}
+
+
+def _classify_vocabulary_fallback(words: list[str]) -> dict:
+    tier2, tier3 = [], []
+    for w in words:
+        key = str(w).strip().lower()
+        if not key:
+            continue
+        (tier2 if key in _TIER2_WORDS else tier3).append(
+            {"word": w, "meaning": "", "why": ""})
+    return {"tier2": tier2, "tier3": tier3, "ai_generated": False}
+
+
+def classify_vocabulary(words: list[str], standards: list[dict],
+                        grade: str = "") -> dict:
+    """Split lesson vocabulary into Tier 2 (academic, cross-grade words that
+    appear in the standard's question stems) and Tier 3 (subject-specific math
+    terms), each with a kid-friendly meaning. AI when configured, else a
+    word-list fallback the teacher can complete."""
+    words = [w for w in (words or []) if str(w).strip()]
+    if not words:
+        return {"tier2": [], "tier3": [], "ai_generated": False}
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        return _classify_vocabulary_fallback(words)
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+    except Exception:
+        return _classify_vocabulary_fallback(words)
+    codes = [f"{s.get('code','')}: {s.get('description','')}" for s in standards][:6]
+    prompt = (
+        "Split these math vocabulary words into TIER 2 and TIER 3 for a "
+        f"Grade {grade} lesson.\n"
+        "TIER 2 = high-utility ACADEMIC words that appear across grade levels and "
+        "in the QUESTION STEMS students read on this standard (e.g. represent, "
+        "compare, determine, equal groups, in all). These are the words that make "
+        "a test question hard even when a student knows the math.\n"
+        "TIER 3 = SUBJECT-SPECIFIC math terms (e.g. array, factor, product, "
+        "quotient, commutative property).\n"
+        "Give each word a short kid-friendly meaning; for Tier 2 also give a "
+        "one-line 'why it matters on the test'. Return ONLY JSON:\n"
+        '{"tier2":[{"word":"","meaning":"","why":""}],'
+        '"tier3":[{"word":"","meaning":""}]}\n\n'
+        f"STANDARDS: {codes}\n"
+        f"WORDS: {words}\n\n" + _PLAIN
+    )
+    try:
+        with client.messages.stream(
+            model=settings.ai_model, max_tokens=1500,
+            system="You output ONLY one valid JSON object, no prose or fences.",
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            msg = stream.get_final_message()
+        text = "".join(b.text for b in msg.content if b.type == "text").strip()
+        import json as _json
+        import re as _re
+        m = _re.search(r"\{.*\}", text, _re.S)
+        data = _json.loads(m.group(0)) if m else None
+        if isinstance(data, dict) and ("tier2" in data or "tier3" in data):
+            data.setdefault("tier2", [])
+            data.setdefault("tier3", [])
+            data["ai_generated"] = True
+            return data
+    except Exception:
+        pass
+    return _classify_vocabulary_fallback(words)
+
+
 def _framework_app_fallback(component: dict, grade: str, topic_name: str,
                             week_focus: str) -> dict:
     name = component.get("name", "")
