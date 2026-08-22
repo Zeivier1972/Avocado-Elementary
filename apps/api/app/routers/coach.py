@@ -1003,6 +1003,43 @@ def list_guides(
     return {"grade_level": grade_level, "folders": folders}
 
 
+def _recover_stale_guide(db, g, minutes=12) -> None:
+    """If a guide has been 'generating' far longer than any real run takes, the
+    background job was lost (usually a server restart / redeploy mid-run). Flip
+    it to error so the UI stops waiting and the coach can regenerate."""
+    if (g.status or "ready") != "generating":
+        return
+    from datetime import datetime, timezone, timedelta
+    started = g.updated_at or g.created_at
+    if not started:
+        return
+    now = datetime.now(timezone.utc)
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=timezone.utc)
+    if now - started > timedelta(minutes=minutes):
+        g.status = "error"
+        g.error = ("Generation didn't finish — the server likely restarted while "
+                   "it was running. Please click Generate again.")
+        db.add(g)
+        db.commit()
+
+
+def _guard_ready(db, g) -> None:
+    """Raise a clear error when a guide isn't a usable, ready guide (for the
+    one-pager / template endpoints). Recovers stale 'generating' guides first."""
+    _recover_stale_guide(db, g)
+    status = g.status or "ready"
+    if status == "error":
+        raise HTTPException(400, g.error or "This guide failed to generate. "
+                                            "Please generate it again.")
+    if status == "generating":
+        raise HTTPException(409, "This guide is still generating — try again in a "
+                                 "moment.")
+    if not (g.content or {}).get("lessons"):
+        raise HTTPException(400, "This guide has no lessons yet — please generate "
+                                 "it again (the AI must be on).")
+
+
 @router.get("/guides/{guide_id}")
 def get_guide(
     guide_id: str,
@@ -1012,6 +1049,7 @@ def get_guide(
     g = db.get(SavedGuide, guide_id)
     if not g or g.tenant_id != user.tenant_id:
         raise HTTPException(404, "Saved guide not found")
+    _recover_stale_guide(db, g)
     return {"id": g.id, "title": g.title, "guide": g.content,
             "status": g.status or "ready", "error": g.error or ""}
 
@@ -1396,8 +1434,7 @@ def guide_coach_summary(
     g = db.get(SavedGuide, guide_id)
     if not g or g.tenant_id != user.tenant_id:
         raise HTTPException(404, "Saved guide not found")
-    if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
-        raise HTTPException(409, "This guide is still generating — try again in a moment.")
+    _guard_ready(db, g)
     summary = build_coach_summary(g.content)
     narrative = coach_one_pager_narrative(summary)
     lens = _guide_framework_lens(db, user.tenant_id, g.grade_level, g.topic_code)
@@ -1489,8 +1526,7 @@ def guide_planning_template(
     g = db.get(SavedGuide, guide_id)
     if not g or g.tenant_id != user.tenant_id:
         raise HTTPException(404, "Saved guide not found")
-    if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
-        raise HTTPException(409, "This guide is still generating — try again in a moment.")
+    _guard_ready(db, g)
     return {"id": g.id, "title": g.title, "template": _build_template(db, g)}
 
 
@@ -1508,8 +1544,7 @@ def guide_planning_template_docx(
     g = db.get(SavedGuide, guide_id)
     if not g or g.tenant_id != user.tenant_id:
         raise HTTPException(404, "Saved guide not found")
-    if (g.status or "ready") != "ready" or not (g.content or {}).get("lessons"):
-        raise HTTPException(409, "This guide is still generating — try again in a moment.")
+    _guard_ready(db, g)
     try:
         data = template_to_docx(_build_template(db, g), filled=example)
     except Exception as e:  # a data-shape issue shouldn't hang the download
