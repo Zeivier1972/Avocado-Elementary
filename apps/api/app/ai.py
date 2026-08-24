@@ -874,6 +874,21 @@ def _ensure_lesson_extras(lesson: dict, topic_vocab: list) -> dict:
         yd["cubs"] = lesson.get("cubs") or _CUBS_DEFAULT
     if not lesson.get("cubs"):
         lesson["cubs"] = (yd.get("cubs") if isinstance(yd, dict) else None) or _CUBS_DEFAULT
+    # Guarantee at least a couple of in-lesson activities to choose from.
+    if not lesson.get("activities"):
+        skill = (lesson.get("title") or "the skill").lower()
+        lesson["activities"] = [
+            {"name": "Show Me boards", "type": "hands-on",
+             "phase": "We Do / You Do",
+             "how": f"Pose a quick problem on {skill}; students build/solve on "
+                    "whiteboards and hold them up so you see every answer at once.",
+             "why": "Fast check for understanding for every student."},
+            {"name": "Rally Coach (partners)", "type": "partner",
+             "phase": "Y'all Do",
+             "how": "Partner A solves one problem aloud while B coaches and checks, "
+                    "then they switch — each uses the sentence frame.",
+             "why": "Every student explains their thinking using the vocabulary."},
+        ]
     # Guarantee a specific "what Level 3 looks like" block on every lesson.
     l3 = lesson.get("level3_look_like")
     if not (isinstance(l3, dict) and l3.get("problem")):
@@ -1138,6 +1153,8 @@ _LESSON_SCHEMA = (
     '"concrete":"named manipulative + steps","pictorial":"the labeled drawing","abstract":"the equation","look_for":"the correct answer + what a Level-3 explanation sounds like"},'
     '"level3_look_like":{"problem":"the SPECIFIC on-grade problem a Level 3 (proficient) student solves for THIS lesson — real numbers, not vague","solution":"the fully worked solution with the answer","student_explanation":"the first-person reasoning a Level-3 student gives, using the lesson vocabulary"},'
     '"cfu":["specific check problem 1","specific check problem 2"],'
+    '"activities":[{"name":"the activity name","type":"game|hands-on|partner|station|movement|math-talk",'
+    '"phase":"which ACES phase / when in the lesson it fits","how":"exactly how to run it in 1-3 steps with the actual numbers/materials","why":"the skill it builds"}],'
     '"exit_ticket":{"problem":"one problem","answer":"the answer"}}]'
 )
 
@@ -1167,6 +1184,11 @@ _LESSON_RULES = (
     "a Level 3 (proficient) student does for THIS lesson — never vague.\n"
     "- vocabulary from the pacing guide + how to teach those exact terms here; a "
     "3-column misconceptions table (misconception, a real example error, the fix).\n"
+    "- activities: 2-3 REAL, engaging activities that can be done WITHIN this "
+    "lesson (a game, hands-on/manipulative task, partner or station activity, a "
+    "movement or a math-talk). For each, name it, say which phase it fits, and "
+    "give the exact steps with the actual numbers/materials for THIS lesson — not "
+    "generic ideas. Keep them do-able in a normal class period.\n"
     "- TIER 2 ACADEMIC VOCABULARY (this year's focus): the benchmark text lists "
     "cross-curricular academic words (e.g. determine, explain, justify, represent, "
     "compare, model). Weave these SAME words into the teacher's questions ('say') "

@@ -1364,6 +1364,41 @@ function GuideView({ guide, guideId, canSimplify, onSimplify }: any) {
                 />
               )}
               <List label="Checks for Understanding" items={L.cfu} />
+              {L.activities?.length > 0 && (
+                <div className="mt-2">
+                  <div className="font-semibold text-gray-800 text-sm">
+                    🎲 Activities (do within the lesson)
+                  </div>
+                  <div className="space-y-2 mt-1">
+                    {L.activities.map((act: any, i: number) => (
+                      <div
+                        key={i}
+                        className="rounded-lg border border-gray-100 bg-gray-50/60 p-2"
+                      >
+                        <div className="text-sm font-semibold text-gray-800">
+                          {typeof act === "object" ? act.name : String(act)}
+                          {typeof act === "object" && act.type && (
+                            <span className="ml-1 text-[10px] font-normal bg-avocado/10 text-avocado-dark border border-avocado/20 rounded px-1 py-0.5">
+                              {act.type}
+                            </span>
+                          )}
+                          {typeof act === "object" && act.phase && (
+                            <span className="ml-1 text-xs text-gray-400">
+                              · {act.phase}
+                            </span>
+                          )}
+                        </div>
+                        {typeof act === "object" && act.how && (
+                          <p className="text-sm text-gray-600 mt-0.5">{act.how}</p>
+                        )}
+                        {typeof act === "object" && act.why && (
+                          <p className="text-xs text-gray-400">Builds: {act.why}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Line
                 label="🎫 Exit Ticket"
                 value={

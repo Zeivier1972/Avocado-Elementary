@@ -244,6 +244,24 @@ def guide_to_docx(guide: dict) -> bytes:
         if L.get("cfu"):
             _heading(doc, "Checks for Understanding (CFU)", 11)
             _bullets(doc, L["cfu"])
+        if L.get("activities"):
+            _heading(doc, "Activities (do within the lesson)", 11)
+            for act in L["activities"]:
+                if isinstance(act, dict):
+                    name = act.get("name", "")
+                    tag = act.get("type", "")
+                    phase = act.get("phase", "")
+                    head = name + (f" ({tag})" if tag else "")
+                    if phase:
+                        head += f" — {phase}"
+                    p = doc.add_paragraph(style="List Bullet")
+                    p.add_run(head).bold = True
+                    if act.get("how"):
+                        doc.add_paragraph(str(act["how"]))
+                    if act.get("why"):
+                        _label(doc, "Builds", act["why"])
+                else:
+                    doc.add_paragraph(str(act), style="List Bullet")
         _label(doc, "Exit Ticket", _exit_ticket_text(L.get("exit_ticket")))
 
     buf = io.BytesIO()
