@@ -935,10 +935,14 @@ _SKIP_ROW = _re_lessons.compile(
 
 
 def _is_teaching_lesson(row: dict) -> bool:
-    """True unless the row is a review or test/assessment day. We check the code,
-    title and kind (not the free-text focus, which may mention assessment as an
-    instructional move)."""
-    text = f"{row.get('code','')} {row.get('title','')} {row.get('kind','')}".lower()
+    """True unless the row is a standalone review or test/assessment day. A row
+    that carries a real LESSON CODE (e.g. 2.4) is always kept, even if its title
+    contains a word like 'review' — only code-less review/test days are dropped,
+    so we never lose a numbered lesson."""
+    code = str(row.get("code", "")).strip()
+    if _re_lessons.search(r"\d", code):   # has a lesson number -> a real lesson
+        return True
+    text = f"{code} {row.get('title','')} {row.get('kind','')}".lower()
     return not _SKIP_ROW.search(text)
 
 

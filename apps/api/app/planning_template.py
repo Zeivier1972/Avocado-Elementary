@@ -177,13 +177,21 @@ def build_planning_template(guide: dict, summary: dict, vocab_tiers: dict) -> di
         })
 
     misc = summary.get("misconceptions", []) or []
+    # A real week-level goal: the guide's focus, unless it's just the topic name
+    # (e.g. "Topic 2") — then fall back to the first lesson's learning goal.
+    focus = (summary.get("focus", "") or "").strip()
+    first_goal = next((L.get("learning_goal", "") for L in lessons
+                       if L.get("learning_goal")), "")
+    trivial = (not focus) or focus.lower().startswith(("topic", "chapter")) \
+        or len(focus) < 12
+    learning_goal = first_goal if (trivial and first_goal) else focus
     return {
         "title": guide.get("title", "Collaborative Planning"),
         "grade_level": guide.get("grade_level", ""),
         "subject": guide.get("subject", ""),
-        "topic_focus": summary.get("focus", ""),
+        "topic_focus": focus,
         "benchmarks": summary.get("benchmarks", []),
-        "learning_goal": summary.get("focus", ""),
+        "learning_goal": learning_goal,
         "success_criteria": guide.get("success_criteria", []) or [],
         "vocabulary": {
             "tier2": vocab_tiers.get("tier2", []),

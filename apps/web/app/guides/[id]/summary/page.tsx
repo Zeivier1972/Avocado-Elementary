@@ -80,25 +80,25 @@ export default function GuideSummaryPage() {
             </button>
             <button
               onClick={() =>
-                downloadPlanningTemplateDocx(id, data?.title).catch((e) =>
-                  alert("Download failed: " + (e as Error).message)
-                )
-              }
-              title="Teacher walkout: a blank weekly (5-lesson) gradual-release planning template with Tier 2/3 vocabulary"
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-3 py-1.5"
-            >
-              ⬇ Planning Template
-            </button>
-            <button
-              onClick={() =>
                 downloadPlanningTemplateDocx(id, data?.title, true).catch((e) =>
                   alert("Download failed: " + (e as Error).message)
                 )
               }
-              title="A filled sample of the weekly template, worked from this guide"
+              title="Weekly lesson plan filled from this guide — each phase has what you do, questions, and what students do"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-3 py-1.5"
+            >
+              ⬇ Lesson Plan
+            </button>
+            <button
+              onClick={() =>
+                downloadPlanningTemplateDocx(id, data?.title).catch((e) =>
+                  alert("Download failed: " + (e as Error).message)
+                )
+              }
+              title="A blank version of the weekly template for teachers to fill in themselves"
               className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-1.5 hover:bg-avocado/5"
             >
-              ⬇ Example
+              ⬇ Blank
             </button>
           </div>
         </div>

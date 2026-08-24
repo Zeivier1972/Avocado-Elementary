@@ -1174,27 +1174,27 @@ function GuideView({ guide, guideId, canSimplify, onSimplify }: any) {
           {guideId && (
             <button
               onClick={() =>
-                downloadPlanningTemplateDocx(guideId, guide.title).catch((e) =>
+                downloadPlanningTemplateDocx(guideId, guide.title, true).catch((e) =>
                   alert("Download failed: " + (e as Error).message)
                 )
               }
-              title="Teacher walkout: a blank weekly (5-lesson) gradual-release planning template with Tier 2/3 vocabulary"
+              title="Weekly lesson plan filled from this guide — each phase has what you do, questions, and what students do"
               className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-2 hover:bg-avocado/5"
             >
-              📝 Planning Template
+              📝 Lesson Plan
             </button>
           )}
           {guideId && (
             <button
               onClick={() =>
-                downloadPlanningTemplateDocx(guideId, guide.title, true).catch((e) =>
+                downloadPlanningTemplateDocx(guideId, guide.title).catch((e) =>
                   alert("Download failed: " + (e as Error).message)
                 )
               }
-              title="A filled sample of the weekly template, worked from this guide"
+              title="A blank version for teachers to fill in themselves"
               className="text-sm font-semibold text-avocado-dark border border-avocado/40 rounded-lg px-3 py-2 hover:bg-avocado/5"
             >
-              📝 Example
+              📝 Blank
             </button>
           )}
           <button
