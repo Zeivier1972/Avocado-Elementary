@@ -121,6 +121,19 @@ def _phase_cell(L: dict, key: str) -> str:
     return "\n".join(parts)
 
 
+def _activities_text(L: dict) -> str:
+    """A short list of this lesson's in-lesson activities for the template cell."""
+    out = []
+    for a in (L.get("activities") or [])[:3]:
+        if isinstance(a, dict):
+            name = a.get("name", "")
+            phase = a.get("phase", "")
+            out.append(f"• {name}" + (f" ({phase})" if phase else ""))
+        elif a:
+            out.append(f"• {a}")
+    return "\n".join(out)
+
+
 def _day_slots(lessons: list[dict]) -> list[dict]:
     """Five lesson slots for the week — a DATE blank, not a weekday, since the
     coach doesn't know which lesson lands on which day. Each slot is pre-labeled
@@ -136,6 +149,7 @@ def _day_slots(lessons: list[dict]) -> list[dict]:
             "title": (L or {}).get("title", "") if L else "",
             "learning_goal": (L or {}).get("learning_goal", "") if L else "",
             "exit": _exit_text((L or {}).get("exit_ticket")) if L else "",
+            "activities": _activities_text(L) if L else "",
             "phase_example": {k: _phase_cell(L, k) for (k, *_ ) in _PHASES}
                              if L else {},
         })

@@ -105,7 +105,8 @@ def _lesson_stubs(guide) -> list[dict]:
 
 def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
                           grade_level: str, subject: str, topic_name: str,
-                          assessment_code: str, topic_id: str | None):
+                          assessment_code: str, topic_id: str | None,
+                          source_name: str = ""):
     """Generate a planning guide from pacing-guide text OUT OF BAND (several model
     calls, up to a couple of minutes) and write the result onto the pre-created
     SavedGuide, so the HTTP request that triggered it returns immediately. Runs in
@@ -118,6 +119,10 @@ def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
         standards = _resolve_standards(db, benchmark_codes) if benchmark_codes else []
         guide = generate_guide_from_pacing(
             text, standards, grade_level, subject or "MATH", topic_name)
+        # Record WHAT this guide was built from so a mismatch (wrong file/topic)
+        # is visible on the guide itself.
+        guide["source_document"] = source_name
+        guide["source_benchmarks"] = list(benchmark_codes or [])
         an = _assessment_note(grade_level, assessment_code)
         if an:
             guide.setdefault("quick_facts", {})["assessment_date"] = an
@@ -748,7 +753,7 @@ async def pacing_from_document(
     guide_id = _save_guide(db, user, grade_level, code, subject, placeholder,
                            status="generating")
     background.add_task(_run_pacing_guide_job, guide_id, text, benchmarks,
-                        grade_level, subject, name, code, topic.id)
+                        grade_level, subject, name, code, topic.id, file.filename)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="upload_pacing_and_generate")
     return {
@@ -956,7 +961,7 @@ def generate_guide_from_document(
                            placeholder, status="generating")
     background.add_task(_run_pacing_guide_job, guide_id, text, codes,
                         d.grade_level, d.subject or "MATH", topic_name,
-                        d.topic_code, topic.id if topic else None)
+                        d.topic_code, topic.id if topic else None, d.filename)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="guide_from_pacing_document")
     return {"topic": topic_name, "guide_id": guide_id, "status": "generating",

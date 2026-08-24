@@ -453,6 +453,7 @@ def template_to_docx(t: dict, filled: bool = False) -> bytes:
     row_defs = [("Learning goal / focus", "goal")]
     for ph in phases:
         row_defs.append((f"{ph['gradual_release']} ({ph['aces']})", ph["key"]))
+    row_defs.append(("Activities (in-lesson)", "activities"))
     row_defs.append(("Exit check (CFU)", "exit"))
 
     table = doc.add_table(rows=len(row_defs) + 1, cols=ncols)
@@ -490,6 +491,9 @@ def template_to_docx(t: dict, filled: bool = False) -> bytes:
                 _cell(cell, d.get("learning_goal", "") or "", 7.5)
             elif key == "exit":
                 _cell(cell, d.get("exit", "") or "", 7.5)
+            elif key == "activities":
+                # Always show the lesson's activities (they're a menu to pick from).
+                _cell(cell, d.get("activities", "") or "", 7)
             elif filled:
                 _cell(cell, (d.get("phase_example", {}) or {}).get(key, ""), 7)
             else:

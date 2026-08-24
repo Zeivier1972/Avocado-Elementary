@@ -1217,6 +1217,19 @@ function GuideView({ guide, guideId, canSimplify, onSimplify }: any) {
           ⚠ {guide.ai_status}
         </p>
       )}
+      {(guide.source_document || guide.source_benchmarks?.length > 0) && (
+        <p className="text-xs bg-gray-50 border border-gray-200 text-gray-600 rounded px-2 py-1 mb-3">
+          📄 Built from:{" "}
+          <span className="font-medium">{guide.source_document || "—"}</span>
+          {guide.source_benchmarks?.length > 0 && (
+            <> · standards used: {guide.source_benchmarks.join(", ")}</>
+          )}
+          <span className="block text-gray-400">
+            If this file or these standards don&apos;t match the topic you wanted,
+            regenerate from the correct pacing guide.
+          </span>
+        </p>
+      )}
 
       {/* Topic-level clarifications & misconceptions */}
       {guide.benchmark_clarifications?.length > 0 && (
