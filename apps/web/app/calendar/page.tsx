@@ -26,9 +26,20 @@ export default function CalendarPage() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [entries, setEntries] = useState<any[]>([]);
+  const [allEntries, setAllEntries] = useState<any[]>([]);
+  const [view, setView] = useState<"list" | "month">("list");
   const [schedule, setSchedule] = useState<any[]>([]);
   const [startDate, setStartDate] = useState(iso(new Date()));
   const [busy, setBusy] = useState(false);
+
+  async function loadAll() {
+    try {
+      const r = await api.getCalendar(grade, "MATH");
+      setAllEntries(r.entries || []);
+    } catch {
+      setAllEntries([]);
+    }
+  }
 
   useEffect(() => {
     if (!getToken()) {
@@ -54,6 +65,11 @@ export default function CalendarPage() {
     if (me) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, grade, cursor]);
+
+  useEffect(() => {
+    if (me) loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me, grade]);
 
   useEffect(() => {
     if (!me) return;
@@ -82,6 +98,7 @@ export default function CalendarPage() {
       const sd = new Date(startDate + "T00:00:00");
       setCursor(new Date(sd.getFullYear(), sd.getMonth(), 1));
       await load();
+      await loadAll();
       alert(`Scheduled ${r.created} days across ${r.topics} topics.`);
     } catch (err) {
       alert("Generate failed: " + (err as Error).message);
@@ -159,8 +176,8 @@ export default function CalendarPage() {
       <div className="max-w-6xl mx-auto p-6 space-y-4">
         <h1 className="text-xl font-bold text-gray-800 no-print">Pacing Calendar</h1>
 
-        {/* Grade tabs */}
-        <div className="flex gap-2 no-print">
+        {/* Grade tabs + view toggle */}
+        <div className="flex gap-2 no-print items-center flex-wrap">
           {GRADES.map((g) => (
             <button
               key={g}
@@ -174,6 +191,24 @@ export default function CalendarPage() {
               {g === "K" ? "Kindergarten" : `Grade ${g}`}
             </button>
           ))}
+          <div className="ml-auto flex rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setView("list")}
+              className={`px-3 py-2 text-sm font-semibold ${
+                view === "list" ? "bg-avocado text-white" : "bg-white text-gray-600"
+              }`}
+            >
+              ☰ List
+            </button>
+            <button
+              onClick={() => setView("month")}
+              className={`px-3 py-2 text-sm font-semibold ${
+                view === "month" ? "bg-avocado text-white" : "bg-white text-gray-600"
+              }`}
+            >
+              ▦ Month
+            </button>
+          </div>
         </div>
 
         {/* Generate control */}
@@ -201,7 +236,14 @@ export default function CalendarPage() {
           </div>
         </div>
 
+        {/* Chronological list view — date → lesson / review / test, by topic */}
+        {view === "list" && (
+          <ListView entries={allEntries} grade={grade} />
+        )}
+
         {/* Month navigation */}
+        {view === "month" && (
+        <>
         <div className="flex items-center justify-between">
           <button
             onClick={() =>
@@ -285,6 +327,8 @@ export default function CalendarPage() {
             </div>
           ))}
         </div>
+        </>
+        )}
 
         {schedule.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-100 p-4">
@@ -310,14 +354,91 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {entries.length === 0 && (
+        {allEntries.length === 0 && (
           <p className="text-sm text-gray-400">
-            No calendar for this grade/month yet. Set a start date and click
-            "Generate calendar" — it schedules each topic's lessons across school
-            days (weekends skipped), with a review and assessment after each topic.
+            No calendar for this grade yet. Two ways to fill it: (1) if your pacing
+            guide has dates, open Planning and use{" "}
+            <span className="font-semibold">📅 To calendar</span> on the document to
+            read its real dates; or (2) set a start date above and click{" "}
+            <span className="font-semibold">Generate calendar</span> — it lays each
+            topic's lessons across school days (weekends skipped), with a review and
+            assessment after each topic.
           </p>
         )}
       </div>
     </main>
+  );
+}
+
+function ListView({ entries, grade }: { entries: any[]; grade: string }) {
+  const KIND_META: Record<string, { label: string; cls: string; icon: string }> = {
+    lesson: { label: "Lesson", cls: "bg-avocado/10 text-avocado-dark border-avocado/30", icon: "📘" },
+    review: { label: "Review", cls: "bg-yellow-50 text-yellow-800 border-yellow-200", icon: "🔁" },
+    assessment: { label: "Topic Test", cls: "bg-red-50 text-red-700 border-red-200", icon: "📝" },
+    note: { label: "Note", cls: "bg-gray-100 text-gray-600 border-gray-200", icon: "•" },
+  };
+  // Group chronologically by topic, preserving date order.
+  const groups: { topic: string; rows: any[] }[] = [];
+  const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
+  for (const e of sorted) {
+    const key = e.topic_code || "—";
+    let g = groups.find((x) => x.topic === key);
+    if (!g) {
+      g = { topic: key, rows: [] };
+      groups.push(g);
+    }
+    g.rows.push(e);
+  }
+  const fmt = (d: string) =>
+    new Date(d + "T00:00:00").toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      {groups.map((g) => (
+        <div
+          key={g.topic}
+          className="bg-white rounded-xl border border-gray-100 overflow-hidden"
+        >
+          <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 font-bold text-gray-800">
+            {g.topic}
+            <span className="ml-2 text-xs font-normal text-gray-400">
+              {fmt(g.rows[0].date)} → {fmt(g.rows[g.rows.length - 1].date)}
+            </span>
+          </div>
+          <ul className="divide-y divide-gray-50">
+            {g.rows.map((e) => {
+              const meta = KIND_META[e.kind] || KIND_META.note;
+              return (
+                <li key={e.id} className="flex items-center gap-3 px-4 py-2">
+                  <div className="w-28 shrink-0 text-sm text-gray-600 tabular-nums">
+                    {fmt(e.date)}
+                  </div>
+                  <span
+                    className={`shrink-0 text-[11px] font-semibold rounded border px-1.5 py-0.5 ${meta.cls}`}
+                  >
+                    {meta.icon} {meta.label}
+                  </span>
+                  <div className="text-sm text-gray-800 min-w-0">
+                    {e.lesson_code && (
+                      <span className="font-semibold">{e.lesson_code} </span>
+                    )}
+                    {e.title}
+                    {e.note && (
+                      <span className="text-xs text-gray-400"> · {e.note}</span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
