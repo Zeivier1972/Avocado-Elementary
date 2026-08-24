@@ -125,20 +125,24 @@ def parse_pacing_schedule(pacing_text: str, year_start: int):
     try:
         client = anthropic.Anthropic(api_key=settings.ai_api_key)
         prompt = (
-            "You are reading a school PACING GUIDE. Extract the day-by-day teaching "
-            "schedule EXACTLY as written in the document. For every dated "
-            "instructional day, output what is scheduled that day.\n\n"
+            "You are reading a school PACING GUIDE (it may be laid out as a TABLE "
+            "with a Dates column next to a Lesson/Standard column). Extract the "
+            "teaching schedule EXACTLY as written. Output one row per dated entry.\n\n"
             f"School year starts in August {year_start}. Resolve dates written like "
-            f"'August 13' or '8/13' to ISO YYYY-MM-DD using this rule: months "
-            f"August-December use {year_start}; January-July use {year_start + 1}. "
-            "If the document already gives full dates, use them.\n\n"
-            "For each day return an object: {\"date\":\"YYYY-MM-DD\", "
+            f"'August 13', '8/13', or 'Aug 13' to ISO YYYY-MM-DD using this rule: "
+            f"months August-December use {year_start}; January-July use "
+            f"{year_start + 1}. If the document already gives full dates, use them.\n"
+            "DATE RANGES: if an entry spans a range (e.g. '8/13-8/15' or "
+            "'August 13 – 15'), output a SEPARATE row for EACH weekday in the range "
+            "(skip weekends) with the SAME lesson, so every school day is on the "
+            "calendar. A single-date entry is just one row.\n\n"
+            "For each row return an object: {\"date\":\"YYYY-MM-DD\", "
             "\"lesson_code\":\"e.g. 1.1 or blank\", \"title\":\"the lesson/activity "
             "as written\", \"kind\":\"lesson|review|assessment|note\"}. Use "
-            "\"assessment\" for topic/chapter assessment days, \"review\" for review "
-            "days. Only include days that have a real date in the document. Do not "
-            "invent dates or lessons.\n\n"
-            "PACING GUIDE:\n" + pacing_text.strip()[:14000]
+            "\"assessment\" for a topic/chapter assessment or test day, \"review\" "
+            "for a review day, \"lesson\" otherwise. Only include rows that have a "
+            "real date in the document. Do not invent dates or lessons.\n\n"
+            "PACING GUIDE:\n" + pacing_text.strip()[:30000]
         )
         with client.messages.stream(
             model=settings.ai_model, max_tokens=8000,
