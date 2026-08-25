@@ -8,7 +8,9 @@ import {
   downloadDocument,
   downloadGuideDocx,
   downloadPlanningTemplateDocx,
+  getSharedGrade,
   getToken,
+  setSharedGrade,
 } from "@/lib/api";
 
 const GRADES = ["K", "1", "2", "3"];
@@ -338,8 +340,12 @@ export default function CoachPage() {
       .then((d) => {
         setDash(d);
         loadSummary();
-        loadDocs(grade);
-        loadGuides(grade);
+        // Restore the grade you were last on (a refresh used to snap back to
+        // Grade 3, making another grade's uploads look like they vanished).
+        const g0 = getSharedGrade("3");
+        setGrade(g0);
+        loadDocs(g0);
+        loadGuides(g0);
       })
       .catch(() => router.push("/"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -543,6 +549,7 @@ export default function CoachPage() {
                 key={g}
                 onClick={() => {
                   setGrade(g);
+                  setSharedGrade(g);
                   setTopic(null);
                   setGuide(null);
                   loadDocs(g);
