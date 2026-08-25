@@ -99,9 +99,7 @@ def _phase_cell(L: dict, key: str) -> str:
     if not isinstance(ph, dict):
         return ""
     questions, moves = _split_questions(ph.get("say"))
-    move = (moves[0] if moves else "") or (
-        f"Model: {ph['problem']}" if ph.get("problem") else "") or \
-        (" ".join(_as_list(ph.get("do"))[:1]))
+    move = (moves[0] if moves else "") or (" ".join(_as_list(ph.get("do"))[:1]))
     q = questions[0] if questions else ""
     if key == "explore_yall_do":
         students = ph.get("structure", "") or "Work in pairs/groups"
@@ -112,6 +110,10 @@ def _phase_cell(L: dict, key: str) -> str:
     else:
         students = ph.get("look_for", "") or "Try it with support"
     parts = []
+    # Show the actual problem first, so the lesson plan uses the SAME book problem
+    # the planning guide models for this phase.
+    if ph.get("problem"):
+        parts.append(f"Problem: {ph['problem']}")
     if move:
         parts.append(f"You: {move}")
     if q:
