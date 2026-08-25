@@ -208,6 +208,25 @@ export default function CoachPage() {
     }
   }
 
+  async function genFromFolder(topicCode: string) {
+    setBusy(true);
+    setGuide(null);
+    setTopic(null);
+    try {
+      const r = await api.generateGuideCombined(grade, topicCode, "MATH");
+      if (r.files_skipped && r.files_skipped.length)
+        alert(
+          `Building from ${r.files_used.join(", ")}.\nCouldn't read: ${r.files_skipped.join("; ")}`
+        );
+      if (r.guide_id) await pollGuide(r.guide_id);
+      else if (r.guide) setGuide(r.guide);
+    } catch (err) {
+      alert("Generate failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function addDocToCalendar(id: string) {
     setBusy(true);
     try {
@@ -592,6 +611,7 @@ export default function CoachPage() {
                   onDelete={deleteDoc}
                   onGenerate={genFromDoc}
                   onCalendar={addDocToCalendar}
+                  onCombined={() => genFromFolder(w.topic_code)}
                 />
               ))}
             {/* Folders for documents whose topic was deleted — kept, not lost */}
@@ -613,6 +633,7 @@ export default function CoachPage() {
                   onDelete={deleteDoc}
                   onGenerate={genFromDoc}
                   onCalendar={addDocToCalendar}
+                  onCombined={() => genFromFolder(k)}
                 />
               ))}
           </div>
@@ -1060,6 +1081,7 @@ function DocFolder({
   onDelete,
   onGenerate,
   onCalendar,
+  onCombined,
 }: {
   label: string;
   files: any[];
@@ -1068,6 +1090,7 @@ function DocFolder({
   onDelete: (id: string) => void;
   onGenerate?: (id: string) => void;
   onCalendar?: (id: string) => void;
+  onCombined?: () => void;
 }) {
   return (
     <div className="border border-gray-100 rounded-lg">
@@ -1077,15 +1100,26 @@ function DocFolder({
             📂 {label}
             <span className="text-xs text-gray-400 ml-1">({files.length})</span>
           </span>
-          <label className="text-xs bg-gray-800 hover:bg-black text-white rounded px-2 py-1 cursor-pointer whitespace-nowrap">
-            {busy ? "Uploading…" : "Upload ⬆"}
-            <input
-              type="file"
-              className="hidden"
-              disabled={busy}
-              onChange={onUpload}
-            />
-          </label>
+          <span className="flex items-center gap-2 shrink-0">
+            {onCombined && files.length >= 2 && (
+              <button
+                onClick={onCombined}
+                title="Build ONE guide from every file in this folder — pacing guide (dates) + textbook (pages, examples) + standards, integrated together"
+                className="text-xs bg-avocado hover:bg-avocado-dark text-white rounded px-2 py-1 font-semibold whitespace-nowrap"
+              >
+                {busy ? "Working…" : "✨ Generate from all files"}
+              </button>
+            )}
+            <label className="text-xs bg-gray-800 hover:bg-black text-white rounded px-2 py-1 cursor-pointer whitespace-nowrap">
+              {busy ? "Uploading…" : "Upload ⬆"}
+              <input
+                type="file"
+                className="hidden"
+                disabled={busy}
+                onChange={onUpload}
+              />
+            </label>
+          </span>
         </summary>
         <div className="px-3 pb-2">
           {files.length === 0 ? (
@@ -1110,10 +1144,10 @@ function DocFolder({
                     {onGenerate && (
                       <button
                         onClick={() => onGenerate(f.id)}
-                        title="Generate a planning guide from this pacing document"
+                        title="Generate a guide from THIS one file only. To combine the pacing guide + textbook, use ✨ Generate from all files at the top of the folder."
                         className="text-avocado-dark font-semibold hover:underline whitespace-nowrap"
                       >
-                        ✨ Generate guide
+                        ✨ This file
                       </button>
                     )}
                     {onCalendar && (

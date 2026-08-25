@@ -209,6 +209,15 @@ export const api = {
     req(`/coach/documents/${id}`, { method: "DELETE" }),
   generateGuideFromDoc: (id: string) =>
     req(`/coach/documents/${id}/generate-guide`, { method: "POST" }),
+  generateGuideCombined: (
+    grade_level: string,
+    topic_code: string,
+    subject = "MATH",
+  ) =>
+    req(`/coach/documents/generate-guide-combined`, {
+      method: "POST",
+      body: JSON.stringify({ grade_level, topic_code, subject }),
+    }),
   pacingFromDocument: (form: FormData) =>
     req("/coach/pacing/from-document", { method: "POST", body: form }),
   listGuides: (grade: string) =>

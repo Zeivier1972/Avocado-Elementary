@@ -968,6 +968,117 @@ def generate_guide_from_document(
             "benchmarks_detected": codes, "chars_read": len(text)}
 
 
+def _doc_role(filename: str, size: int, all_sizes: list) -> str:
+    """Guess what a document is FOR so the AI knows how to use it in one guide.
+    Filename wins (AIR = pacing guide, iPE = the book, B1G-M = the standards);
+    size is the tie-breaker (the pacing guide is small, the textbook is huge)."""
+    f = (filename or "").lower()
+    if any(k in f for k in ("air", "pacing", "q1", "q2", "q3", "q4", "quarter", "scope")):
+        return "PACING GUIDE (the day-by-day sequence and dates)"
+    if any(k in f for k in ("ipe", "pupil", "textbook", "book", "student edition", "se_")):
+        return "TEXTBOOK (the real lessons — page numbers, examples, practice)"
+    if any(k in f for k in ("b1g", "big-m", "big_m", "bigm", "standard", "benchmark", "ald")):
+        return "STANDARDS (B1G-M benchmarks and ALDs)"
+    # No filename hint: the largest file in the folder is almost certainly the
+    # textbook; a small one is the pacing guide.
+    if all_sizes and size == max(all_sizes) and size > 2 * 1024 * 1024:
+        return "TEXTBOOK (the real lessons — page numbers, examples, practice)"
+    return "PACING GUIDE (the day-by-day sequence and dates)"
+
+
+class _CombinedReq(BaseModel):
+    grade_level: str
+    topic_code: str
+    subject: str = "MATH"
+
+
+@router.post("/documents/generate-guide-combined")
+def generate_guide_combined(
+    req: _CombinedReq,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Generate ONE integrated planning guide from EVERY document in a topic
+    folder — the pacing guide (AIR: sequence + dates), the textbook (iPE: real
+    lessons, pages, examples) and any standards file — plus the topic's B1G-M
+    benchmarks. Each document is labeled by its role so the AI weaves them into a
+    single guide. Runs in the BACKGROUND; the page polls GET /coach/guides/{id}."""
+    import re as _re
+    from app.doc_text import extract_document_text
+
+    docs = db.query(PlanningDocument).filter(
+        PlanningDocument.tenant_id == user.tenant_id,
+        PlanningDocument.grade_level == req.grade_level,
+        PlanningDocument.topic_code == req.topic_code,
+    ).order_by(PlanningDocument.size.asc()).all()
+    if not docs:
+        raise HTTPException(404, "No documents in this topic folder yet.")
+
+    sizes = [d.size or 0 for d in docs]
+    parts: list[str] = []
+    codes: list[str] = []
+    used: list[str] = []
+    skipped: list[str] = []
+    # Pacing guide first (short, holds the sequence), then standards, then the
+    # book last (big, gets sliced by the model's window if needed).
+    _order = {"PACING": 0, "STANDA": 1, "TEXTBO": 2}
+    tagged = []
+    for d in docs:
+        role = _doc_role(d.filename, d.size or 0, sizes)
+        tagged.append((_order.get(role[:6], 3), d, role))
+    tagged.sort(key=lambda x: x[0])
+
+    for _, d, role in tagged:
+        text, reason = extract_document_text(d.filename, d.content_type, d.data)
+        if not text:
+            skipped.append(f"{d.filename} ({reason})")
+            continue
+        # The textbook is huge — keep a generous slice; the pacing guide/standards
+        # are small and kept whole so the sequence and benchmarks are never lost.
+        if role.startswith("TEXTBOOK") and len(text) > 120_000:
+            text = text[:120_000]
+        parts.append(f"===== {role} — {d.filename} =====\n{text}")
+        used.append(d.filename)
+        for c in _re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text):
+            if c not in codes:
+                codes.append(c)
+
+    if not parts:
+        raise HTTPException(
+            400, "Could not read the text of any file in this folder. "
+                 f"Skipped: {'; '.join(skipped)}. Upload text-based PDFs/Word/Excel.")
+
+    combined = "\n\n".join(parts)
+
+    topic = db.query(PacingTopic).filter(
+        PacingTopic.tenant_id == user.tenant_id,
+        PacingTopic.topic_code == req.topic_code,
+        PacingTopic.grade_level == req.grade_level).first()
+    if topic and topic.benchmarks:
+        for c in topic.benchmarks:
+            if c not in codes:
+                codes.append(c)
+    topic_name = (topic.name if topic else None) or req.topic_code
+
+    placeholder = {
+        "title": f"Grade {req.grade_level} Collaborative Planning Guide — {topic_name}",
+        "grade_level": req.grade_level, "subject": (req.subject or "MATH").upper(),
+        "lessons": [], "ai_generated": False, "from_document": True,
+    }
+    guide_id = _save_guide(db, user, req.grade_level, req.topic_code, req.subject,
+                           placeholder, status="generating")
+    source_name = " + ".join(used)
+    background.add_task(_run_pacing_guide_job, guide_id, combined, codes,
+                        req.grade_level, (req.subject or "MATH").upper(), topic_name,
+                        req.topic_code, topic.id if topic else None, source_name)
+    audit(db, actor=user, action="generate", entity_type="planning_guide",
+          entity_id=guide_id, purpose="guide_from_combined_documents")
+    return {"topic": topic_name, "guide_id": guide_id, "status": "generating",
+            "files_used": used, "files_skipped": skipped,
+            "benchmarks_detected": codes, "chars_read": len(combined)}
+
+
 @router.delete("/documents/{doc_id}")
 def delete_document(
     doc_id: str,
