@@ -1294,7 +1294,7 @@ def _lesson_skeleton(client, topic, std_ctx, pacing_text):
     return _lessons_only(out)
 
 
-def _lesson_detail(client, topic, std_ctx, batch, pacing_text):
+def _lesson_detail(client, topic, std_ctx, batch, pacing_text, max_tokens=20000):
     """Expand a small batch of lesson stubs into full ACES detail (bounded call)."""
     stub_txt = "\n".join(
         f"- Lesson {L.get('code')}: {L.get('title')} "
@@ -1321,7 +1321,7 @@ def _lesson_detail(client, topic, std_ctx, batch, pacing_text):
     return _llm_json(
         client, prompt,
         "You output ONLY a valid JSON array, no prose or fences. Finish every "
-        "object completely — never stop mid-object.", 16000)
+        "object completely — never stop mid-object.", max_tokens)
 
 
 def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = None):
@@ -1349,18 +1349,37 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
             return None, "could not determine the lesson list from the pacing guide"
 
         # Two fully-scripted lessons per call: small enough that a richly-scripted
-        # batch never truncates, few enough calls to keep generation responsive.
+        # batch rarely truncates, few enough calls to keep generation responsive.
+        # If a batch comes back short (truncated / unparseable), we do NOT drop
+        # straight to a generic template — we RETRY each missing lesson on its own
+        # (a single lesson has plenty of token headroom), and only template-fill a
+        # lesson that still fails. This stops the "some lessons are richly scripted
+        # with book problems, others are generic filler" split.
+        def _code(x):
+            return str((x or {}).get("code", "")).strip()
+
         out, errs = [], []
         for i in range(0, len(skeleton), 2):
             batch = skeleton[i:i + 2]
             detail, err = _lesson_detail(client, topic, std_ctx, batch, pacing_text)
-            if detail:
-                out.extend(detail)
-            else:
-                errs.append(err or "batch failed")
-                mini = dict(topic)
-                mini["lessons"] = batch
-                out.extend(_template_lessons(mini, std_by_code))
+            got = [d for d in (detail or []) if isinstance(d, dict)]
+            covered = {_code(d) for d in got if _code(d)}
+            for L in batch:
+                if _code(L) and _code(L) in covered:
+                    continue
+                one, err1 = _lesson_detail(
+                    client, topic, std_ctx, [L], pacing_text, max_tokens=12000)
+                if one and isinstance(one[0], dict):
+                    got.append(one[0])
+                else:
+                    errs.append(err1 or err or "batch failed")
+                    mini = dict(topic)
+                    mini["lessons"] = [L]
+                    got.extend(_template_lessons(mini, std_by_code))
+            # Keep the skeleton's order.
+            order = {_code(L): n for n, L in enumerate(batch)}
+            got.sort(key=lambda d: order.get(_code(d), 99))
+            out.extend(got)
         return (out, None) if out else (None, "; ".join(errs) or "no lessons generated")
     except Exception as e:
         return None, f"{type(e).__name__}: {str(e)[:200]}"
