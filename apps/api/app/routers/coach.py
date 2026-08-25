@@ -845,7 +845,7 @@ def delete_pacing_topic(
 
 # --- Planning documents (grade / topic folders) -------------------------------
 
-_MAX_DOC_BYTES = 25 * 1024 * 1024  # 25 MB per file
+_MAX_DOC_BYTES = 75 * 1024 * 1024  # 75 MB per file (fits a full textbook chapter)
 
 
 @router.get("/documents")

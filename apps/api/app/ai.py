@@ -1163,6 +1163,7 @@ _LESSON_SCHEMA = (
     '"cfu":["specific check problem 1","specific check problem 2"],'
     '"activities":[{"name":"the activity name","type":"game|hands-on|partner|station|movement|math-talk",'
     '"phase":"which ACES phase / when in the lesson it fits","how":"exactly how to run it in 1-3 steps with the actual numbers/materials","why":"the skill it builds"}],'
+    '"book_reference":{"lesson":"the matching textbook lesson name/number","pages":"the page range in the book","examples":"which book Example(s) to model","practice":"which book practice/problem set to assign","from_book":true},'
     '"exit_ticket":{"problem":"one problem","answer":"the answer"}}]'
 )
 
@@ -1192,6 +1193,13 @@ _LESSON_RULES = (
     "a Level 3 (proficient) student does for THIS lesson — never vague.\n"
     "- vocabulary from the pacing guide + how to teach those exact terms here; a "
     "3-column misconceptions table (misconception, a real example error, the fix).\n"
+    "- book_reference: IF the source document is the actual TEXTBOOK / student "
+    "book (it shows lesson numbers, page numbers, worked Examples and practice "
+    "sets), MATCH each lesson to the real book lesson: give the book lesson "
+    "name/number, the exact page range, which book Example(s) to model, and which "
+    "book practice/problem set to assign, and set from_book true. If the source is "
+    "only a pacing guide with no book pages, set from_book false and leave the "
+    "book fields blank — do NOT invent page numbers.\n"
     "- activities: 2-3 REAL, engaging activities that can be done WITHIN this "
     "lesson (a game, hands-on/manipulative task, partner or station activity, a "
     "movement or a math-talk). For each, name it, say which phase it fits, and "
@@ -1228,11 +1236,12 @@ def _llm_json(client, prompt: str, system: str, max_tokens: int):
 def _lesson_skeleton(client, topic, std_ctx, pacing_text):
     """Small call: the lesson list only (code/title/benchmarks/focus)."""
     if pacing_text and pacing_text.strip():
-        source = ("From the UPLOADED PACING GUIDE below, list the actual TEACHING "
-                  "lessons in order. SKIP review days and test/assessment days "
-                  "(review, re-teach, topic/chapter/unit assessment or test, "
-                  "quiz) — the coach only wants the lessons.\n\nPACING GUIDE:\n"
-                  + pacing_text.strip()[:30000])
+        source = ("From the UPLOADED DOCUMENT below (a pacing guide or the actual "
+                  "TEXTBOOK/book chapter), list the actual TEACHING lessons in "
+                  "order — use the book's real lesson names/numbers when present. "
+                  "SKIP review days and test/assessment days (review, re-teach, "
+                  "topic/chapter/unit assessment or test, quiz).\n\nDOCUMENT:\n"
+                  + pacing_text.strip()[:45000])
     else:
         source = "Design a logical sequence of 5-7 lessons covering the benchmarks below."
     prompt = (
@@ -1261,8 +1270,10 @@ def _lesson_detail(client, topic, std_ctx, batch, pacing_text):
         f"(benchmarks {', '.join(L.get('benchmarks', []))}; focus: {L.get('focus','')})"
         for L in batch
     )
-    pacing_block = ("\n\nUse this pacing-guide content for these lessons:\n"
-                    + pacing_text.strip()[:20000]) if pacing_text else ""
+    pacing_block = ("\n\nUse this uploaded document (pacing guide and/or the actual "
+                    "TEXTBOOK chapter) for these lessons — match to the book's real "
+                    "lesson, pages, Examples and practice sets where they appear:\n"
+                    + pacing_text.strip()[:40000]) if pacing_text else ""
     prompt = (
         "You are an elementary math instructional coach writing a Collaborative "
         "Planning Guide. Expand EXACTLY these lessons (in order) into full detail.\n\n"

@@ -1376,6 +1376,40 @@ function GuideView({ guide, guideId, canSimplify, onSimplify }: any) {
                   value={L.level3_example}
                 />
               )}
+              {L.book_reference &&
+                (L.book_reference.lesson || L.book_reference.pages) && (
+                  <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2">
+                    <div className="text-sm font-semibold text-amber-800">
+                      📖 In the book
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      {L.book_reference.lesson && (
+                        <div>
+                          <span className="font-semibold">Book lesson:</span>{" "}
+                          {L.book_reference.lesson}
+                        </div>
+                      )}
+                      {L.book_reference.pages && (
+                        <div>
+                          <span className="font-semibold">Pages:</span>{" "}
+                          {L.book_reference.pages}
+                        </div>
+                      )}
+                      {L.book_reference.examples && (
+                        <div>
+                          <span className="font-semibold">Model:</span>{" "}
+                          {L.book_reference.examples}
+                        </div>
+                      )}
+                      {L.book_reference.practice && (
+                        <div>
+                          <span className="font-semibold">Practice:</span>{" "}
+                          {L.book_reference.practice}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               <List label="Checks for Understanding" items={L.cfu} />
               {L.activities?.length > 0 && (
                 <div className="mt-2">

@@ -241,6 +241,13 @@ def guide_to_docx(guide: dict) -> bytes:
         else:
             _label(doc, "Level 3 Proficiency Example (student voice)",
                    L.get("level3_example"))
+        br = L.get("book_reference")
+        if isinstance(br, dict) and (br.get("lesson") or br.get("pages")):
+            _heading(doc, "📖 In the book", 11)
+            _label(doc, "Book lesson", br.get("lesson"))
+            _label(doc, "Pages", br.get("pages"))
+            _label(doc, "Model these Examples", br.get("examples"))
+            _label(doc, "Assign practice", br.get("practice"))
         if L.get("cfu"):
             _heading(doc, "Checks for Understanding (CFU)", 11)
             _bullets(doc, L["cfu"])
