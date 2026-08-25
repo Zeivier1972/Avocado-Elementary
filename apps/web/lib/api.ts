@@ -216,6 +216,7 @@ export const api = {
   ) =>
     req(`/coach/documents/generate-guide-combined`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ grade_level, topic_code, subject }),
     }),
   pacingFromDocument: (form: FormData) =>
