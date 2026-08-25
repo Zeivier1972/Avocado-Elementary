@@ -1119,7 +1119,7 @@ def list_guides(
     return {"grade_level": grade_level, "folders": folders}
 
 
-def _recover_stale_guide(db, g, minutes=12) -> None:
+def _recover_stale_guide(db, g, minutes=25) -> None:
     """If a guide has been 'generating' far longer than any real run takes, the
     background job was lost (usually a server restart / redeploy mid-run). Flip
     it to error so the UI stops waiting and the coach can regenerate."""

@@ -39,20 +39,99 @@ def extract_document_text(filename: str, content_type: str, data: bytes) -> tupl
 
 
 def _from_pdf(data: bytes) -> tuple[str, str]:
+    """Read a PDF's text. Three passes, best-effort, in order of cost:
+    1) pypdf (fast, works on normal text PDFs);
+    2) PyMuPDF (recovers a text layer pypdf misses in many 'looks-scanned' PDFs);
+    3) Tesseract OCR page-by-page (for truly scanned/image-only PDFs like a
+       photographed textbook). OCR is slower but runs in the background job."""
+    text = ""
+    # Pass 1 — pypdf
     try:
         from pypdf import PdfReader
-    except ImportError:
-        return "", "PDF support not installed (pypdf)"
-    try:
         reader = PdfReader(io.BytesIO(data))
         parts = [(p.extract_text() or "") for p in reader.pages]
         text = "\n".join(parts).strip()
-        if not text:
-            return "", ("this PDF has no selectable text (it looks scanned/"
-                        "image-only) — upload a text-based PDF or a Word version")
+    except Exception:
+        text = ""
+    if len(text) >= 200:
         return text, ""
+
+    # Pass 2 — PyMuPDF text layer
+    mupdf_text = _pymupdf_text(data)
+    if len(mupdf_text) >= 200:
+        return mupdf_text, ""
+    text = text or mupdf_text
+
+    # Pass 3 — OCR (scanned pages)
+    ocr_text, ocr_reason = _ocr_pdf(data)
+    if len(ocr_text) >= 40:
+        return ocr_text, ""
+
+    if text:
+        return text, ""
+    return "", (ocr_reason or "this PDF has no selectable text (it looks "
+                "scanned/image-only) and OCR could not read it")
+
+
+def _pymupdf_text(data: bytes) -> str:
+    try:
+        try:
+            import pymupdf as fitz  # newer name
+        except ImportError:
+            import fitz  # older name
+    except Exception:
+        return ""
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+        parts = [page.get_text("text") or "" for page in doc]
+        doc.close()
+        return "\n".join(parts).strip()
+    except Exception:
+        return ""
+
+
+_OCR_MAX_PAGES = 80  # a full textbook chapter; keeps OCR bounded
+
+
+def _ocr_pdf(data: bytes) -> tuple[str, str]:
+    """OCR a scanned PDF with Tesseract, rendering each page via PyMuPDF (no
+    poppler needed). Returns (text, reason)."""
+    try:
+        try:
+            import pymupdf as fitz
+        except ImportError:
+            import fitz
+    except Exception:
+        return "", "OCR needs PyMuPDF (not installed)"
+    try:
+        import pytesseract
+        from PIL import Image
+    except Exception:
+        return "", "OCR needs pytesseract + Pillow (not installed)"
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
     except Exception as e:
-        return "", f"could not read PDF: {e}"
+        return "", f"could not open PDF for OCR: {e}"
+    parts: list[str] = []
+    # ~200 DPI is enough for printed textbook text and keeps each page fast.
+    zoom = fitz.Matrix(200 / 72, 200 / 72)
+    try:
+        for i, page in enumerate(doc):
+            if i >= _OCR_MAX_PAGES:
+                break
+            try:
+                pix = page.get_pixmap(matrix=zoom)
+                img = Image.open(io.BytesIO(pix.tobytes("png")))
+                parts.append(pytesseract.image_to_string(img) or "")
+            except Exception:
+                continue
+    finally:
+        doc.close()
+    text = "\n".join(parts).strip()
+    if not text:
+        return "", ("OCR ran but found no readable text — the scan may be too "
+                    "low-quality")
+    return text, ""
 
 
 def _from_docx(data: bytes) -> tuple[str, str]:
