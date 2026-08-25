@@ -80,6 +80,24 @@ def _load_math_standards(db, existing_codes):
     return n
 
 
+def sync_math_standards() -> int:
+    """Upsert the Florida B1G-M math standards on every boot (idempotent). Adds
+    any new codes and refreshes clarifications/misconceptions/strategies on
+    existing rows, so newly-loaded benchmark detail reaches the live database
+    without requiring a full SEED_ON_START re-seed. Safe to call at startup."""
+    db = SessionLocal()
+    try:
+        existing = {c for (c,) in db.query(Standard.code).all()}
+        n = _load_math_standards(db, existing)
+        db.commit()
+        return n
+    except Exception:
+        db.rollback()
+        return 0
+    finally:
+        db.close()
+
+
 def _load_pacing(db, tenant_id):
     path = DATA / "pacing_g3.json"
     if not path.exists():

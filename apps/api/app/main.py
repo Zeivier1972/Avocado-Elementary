@@ -29,6 +29,11 @@ async def lifespan(app: FastAPI):
     # MVP: create tables on startup. Production migrates via Alembic (roadmap P1).
     Base.metadata.create_all(bind=engine)
     ensure_columns(engine)  # additive column migrations for existing DBs
+    try:
+        from app.seed import sync_math_standards
+        sync_math_standards()  # upsert B1G-M standards + clarifications (idempotent)
+    except Exception as e:  # never block startup on a data refresh
+        print(f"  (standards sync skipped: {e})")
     yield
 
 
