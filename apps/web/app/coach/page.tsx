@@ -1429,6 +1429,27 @@ function GuideView({ guide, guideId, canSimplify, onSimplify }: any) {
                           {L.book_reference.pages}
                         </div>
                       )}
+                      {[
+                        ["I Do — model (Modeling Real Life)", "model_example", "model_pages"],
+                        ["We Do — guided (Try It / Show and Grow)", "guided_practice", "guided_pages"],
+                        ["Solo/You Do (In-Class Practice)", "independent_practice", "independent_pages"],
+                        ["Exit slip (In-Class Practice / Closure)", "exit_problem", "exit_pages"],
+                        ["Level 3 target problem", "level3_problem", "level3_pages"],
+                        ["Dig Deeper (stretch)", "dig_deeper", "dig_deeper_pages"],
+                      ].map(([label, key, pkey]) =>
+                        L.book_reference[key] ? (
+                          <div key={key}>
+                            <span className="font-semibold">{label}:</span>{" "}
+                            {L.book_reference[key]}
+                            {L.book_reference[pkey] ? (
+                              <span className="text-gray-500">
+                                {" "}
+                                (p. {L.book_reference[pkey]})
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null
+                      )}
                       {L.book_reference.examples && (
                         <div>
                           <span className="font-semibold">Model:</span>{" "}

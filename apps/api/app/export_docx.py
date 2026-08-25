@@ -243,9 +243,23 @@ def guide_to_docx(guide: dict) -> bytes:
                    L.get("level3_example"))
         br = L.get("book_reference")
         if isinstance(br, dict) and (br.get("lesson") or br.get("pages")):
-            _heading(doc, "📖 In the book", 11)
+            _heading(doc, "📖 In the book — where each part comes from", 11)
             _label(doc, "Book lesson", br.get("lesson"))
             _label(doc, "Pages", br.get("pages"))
+
+            def _bp(label, key, pkey):
+                val = br.get(key)
+                if not val:
+                    return
+                pg = br.get(pkey)
+                _label(doc, label, f"{val}" + (f"  (p. {pg})" if pg else ""))
+
+            _bp("I Do — model (Modeling Real Life)", "model_example", "model_pages")
+            _bp("We Do — guided (Try It / Show and Grow)", "guided_practice", "guided_pages")
+            _bp("Solo/You Do (In-Class Practice)", "independent_practice", "independent_pages")
+            _bp("Exit slip (In-Class Practice / Closure)", "exit_problem", "exit_pages")
+            _bp("Level 3 target problem", "level3_problem", "level3_pages")
+            _bp("Dig Deeper (stretch / enrichment)", "dig_deeper", "dig_deeper_pages")
             _label(doc, "Model these Examples", br.get("examples"))
             _label(doc, "Assign practice", br.get("practice"))
         if L.get("cfu"):

@@ -1163,7 +1163,14 @@ _LESSON_SCHEMA = (
     '"cfu":["specific check problem 1","specific check problem 2"],'
     '"activities":[{"name":"the activity name","type":"game|hands-on|partner|station|movement|math-talk",'
     '"phase":"which ACES phase / when in the lesson it fits","how":"exactly how to run it in 1-3 steps with the actual numbers/materials","why":"the skill it builds"}],'
-    '"book_reference":{"lesson":"the matching textbook lesson name/number","pages":"the page range in the book","examples":"which book Example(s) to model","practice":"which book practice/problem set to assign","from_book":true},'
+    '"book_reference":{"lesson":"the matching textbook lesson name/number","pages":"the page range in the book",'
+    '"model_example":"the actual book Modeling Real-Life / Think & Grow example (with its real numbers) to MODEL in the I Do","model_pages":"its page(s)",'
+    '"guided_practice":"the actual book Try It / Show and Grow problem (real numbers) for the We Do","guided_pages":"its page(s)",'
+    '"independent_practice":"the actual book In-Class Practice / Apply and Grow problems (real numbers) for the Solo (You Do)","independent_pages":"its page(s)",'
+    '"exit_problem":"one In-Class Practice problem (real numbers) that matches TODAY\'S objective — the exit slip — or the book Closure","exit_pages":"its page(s)",'
+    '"dig_deeper":"the actual book Dig Deeper higher-order question (real numbers) to infuse as a stretch/enrichment","dig_deeper_pages":"its page(s)",'
+    '"level3_problem":"the actual book problem (real numbers) that hits the Level-3 proficiency target for this lesson","level3_pages":"its page(s)",'
+    '"examples":"which book Example(s) to model","practice":"which book practice/problem set to assign","from_book":true},'
     '"exit_ticket":{"problem":"one problem","answer":"the answer"}}]'
 )
 
@@ -1193,13 +1200,37 @@ _LESSON_RULES = (
     "a Level 3 (proficient) student does for THIS lesson — never vague.\n"
     "- vocabulary from the pacing guide + how to teach those exact terms here; a "
     "3-column misconceptions table (misconception, a real example error, the fix).\n"
-    "- book_reference: IF the source document is the actual TEXTBOOK / student "
-    "book (it shows lesson numbers, page numbers, worked Examples and practice "
-    "sets), MATCH each lesson to the real book lesson: give the book lesson "
-    "name/number, the exact page range, which book Example(s) to model, and which "
-    "book practice/problem set to assign, and set from_book true. If the source is "
-    "only a pacing guide with no book pages, set from_book false and leave the "
-    "book fields blank — do NOT invent page numbers.\n"
+    "- book_reference + USE THE BOOK'S REAL PROBLEMS: IF the source includes the "
+    "actual TEXTBOOK / student book (Big Ideas Math / enVision — it shows lesson "
+    "numbers, page numbers, worked Examples and practice sets), MATCH each lesson to "
+    "the real book lesson and PULL THE ACTUAL BOOK PROBLEMS into the gradual-release "
+    "phases, using this exact map:\n"
+    "    * I DO (i_do, Assemble/model) — model the book's 'Modeling Real Life' / "
+    "'Think & Grow' example. Put that real example (its numbers) in i_do.problem and "
+    "in book_reference.model_example.\n"
+    "    * WE DO (we_do, Connect/guided) — use the book's 'Try It' / 'Show and Grow' "
+    "problem. Put it in we_do.problem and in book_reference.guided_practice.\n"
+    "    * Y'ALL DO (explore_yall_do, collaborative) — build this from the PACING "
+    "GUIDE as usual (not the book), so it stays a collaborative task.\n"
+    "    * SOLO / YOU DO (you_do, independent) — use a problem from the book's "
+    "'In-Class Practice' / 'Apply and Grow: Practice'. Put it in you_do.problem and "
+    "in book_reference.independent_practice.\n"
+    "    * EXIT SLIP (exit_ticket) — choose one 'In-Class Practice' problem that "
+    "directly addresses TODAY'S objective, or the book's Closure. Put it in "
+    "exit_ticket.problem and in book_reference.exit_problem.\n"
+    "    * LEVEL 3 (level3_look_like) — pick the real book problem that hits the "
+    "Level-3 proficiency target for this lesson and work it in level3_look_like; put "
+    "it in book_reference.level3_problem.\n"
+    "    * DIG DEEPER — put the book's 'Dig Deeper' higher-order question in "
+    "book_reference.dig_deeper AND infuse it as a stretch: add it as a challenge for "
+    "early finishers / Level-4 students inside the you_do 'do' and as one 'activities' "
+    "or 'cfu' entry, so the rigor question is actually planned into the lesson.\n"
+    "  Give the book lesson name/number, page ranges (model_pages/guided_pages/"
+    "independent_pages/exit_pages/dig_deeper_pages/level3_pages), and set from_book "
+    "true. Use the ACTUAL numbers/wording from the book — never paraphrase away the "
+    "problem. If the source is ONLY a pacing guide with no book pages, set from_book "
+    "false, leave the book fields blank, and script the phases from the pacing guide "
+    "as usual — do NOT invent page numbers or book problems.\n"
     "- activities: 2-3 REAL, engaging activities that can be done WITHIN this "
     "lesson (a game, hands-on/manipulative task, partner or station activity, a "
     "movement or a math-talk). For each, name it, say which phase it fits, and "
