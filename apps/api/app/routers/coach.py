@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from app.ai import (
     ai_diagnostics,
     ask_assistant,
+    generate_di_packets,
     generate_planning_guide,
     generate_plc_agenda,
     simplify_guide_text,
@@ -35,6 +36,7 @@ from app.models import (
     ClassRoom,
     CoachNote,
     CollabMeeting,
+    DiPacket,
     District,
     Enrollment,
     FrameworkApplication,
@@ -1780,6 +1782,180 @@ def di_focus(
         "most_missed": missed[:6],
         "scaffold": _aces_scaffold(s.get("description", ""), tier2),
     }
+
+
+# --- DI packets: three rotation tiers grounded in the B1G-M standard ---------
+
+# The school's DI Rotation Chart: score band -> tier, and the 7-day station
+# rotation (i-Ready / TLC teacher-led / IXL-Skill Trainer-Independent Practice /
+# OPM / Data Chat). tlc_sessions = how many teacher-led touches that tier gets,
+# which drives how many scripted reteach sessions its packet carries.
+_DI_ROTATION = [
+    {"name": "Intensive", "stars": 1, "band": "0-40%", "lo": 0, "hi": 40,
+     "tlc_sessions": 2,
+     "rotation": ["i-Ready", "TLC", "IXL/Skill Trainer/Independent Practice",
+                  "i-Ready", "TLC", "OPM", "Data Chat"]},
+    {"name": "Cusp", "stars": 2, "band": "40-70%", "lo": 40, "hi": 70,
+     "tlc_sessions": 2,
+     "rotation": ["TLC", "IXL/Skill Trainer/Independent Practice", "i-Ready",
+                  "TLC", "IXL/Skill Trainer/Independent Practice", "OPM", "Data Chat"]},
+    {"name": "Strategic", "stars": 3, "band": "70-100%", "lo": 70, "hi": 100,
+     "tlc_sessions": 1,
+     "rotation": ["IXL/Skill Trainer/Independent Practice", "i-Ready", "TLC",
+                  "IXL/Skill Trainer/Independent Practice", "i-Ready", "OPM", "Data Chat"]},
+]
+
+
+def _di_tier_for(pct: float):
+    for t in _DI_ROTATION:
+        if t["lo"] <= pct < t["hi"] or (t["hi"] == 100 and pct >= 100):
+            return t
+    return _DI_ROTATION[-1] if pct >= 70 else _DI_ROTATION[0]
+
+
+def _di_students_by_tier(db, f: AssessmentForm, standard: str) -> dict:
+    """Group this test's students into the three rotation tiers by their score ON
+    THE CHOSEN STANDARD (falling back to their overall topic %), so each packet
+    lists exactly who is in it and how big each group is."""
+    groups = {t["name"]: [] for t in _DI_ROTATION}
+    for r in db.query(TopicResult).filter(TopicResult.form_id == f.id).all():
+        by = (r.by_standard or {}).get(standard)
+        if by and by.get("possible"):
+            pct = round(100.0 * by.get("earned", 0.0) / by["possible"], 1)
+        else:
+            pct = r.percent
+        t = _di_tier_for(pct)
+        groups[t["name"]].append({
+            "student_name": r.student_name, "student_id": r.student_id,
+            "teacher": r.teacher_name, "percent": pct})
+    for v in groups.values():
+        v.sort(key=lambda x: x["percent"])
+    return groups
+
+
+def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str):
+    """Background generation of the three-tier DI packet (own DB session)."""
+    from app.db.session import SessionLocal
+    from app.tier2_vocab import tier2_for_standards
+
+    db = SessionLocal()
+    try:
+        rec = db.get(DiPacket, packet_id)
+        if not rec:
+            return
+        sd = _resolve_standards(db, [standard])
+        s = sd[0] if sd else {"code": standard, "description": ""}
+        tier2 = [e["word"] for e in tier2_for_standards([s])]
+
+        # Most-missed questions on this standard (from the test's results).
+        missed = []
+        f = db.get(AssessmentForm, form_id) if form_id else None
+        forms = [f] if f else db.query(AssessmentForm).filter(
+            AssessmentForm.tenant_id == rec.tenant_id,
+            AssessmentForm.grade == grade).all()
+        for form in [x for x in forms if x]:
+            a = _results_analysis(db, form)
+            for m in a.get("most_missed", []):
+                if m.get("standard") == standard:
+                    missed.append(m)
+        missed.sort(key=lambda m: -m.get("miss_pct", 0))
+
+        packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2)
+
+        # Attach the student groups (who is in each tier + counts).
+        groups = _di_students_by_tier(db, f, standard) if f else {}
+        for t in packet.get("tiers", []):
+            g = groups.get(t.get("tier"), [])
+            t["students"] = g
+            t["student_count"] = len(g)
+        packet["groups_total"] = sum(len(v) for v in groups.values()) if groups else 0
+
+        rec.content = packet
+        rec.ai_generated = bool(packet.get("ai_generated"))
+        if not packet.get("tiers"):
+            rec.status = "error"
+            rec.error = packet.get("ai_status") or "No packets could be generated."
+        else:
+            rec.status = "ready"
+            rec.error = ""
+        db.add(rec)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        rec = db.get(DiPacket, packet_id)
+        if rec:
+            rec.status = "error"
+            rec.error = f"{type(e).__name__}: {str(e)[:300]}"
+            db.add(rec)
+            db.commit()
+    finally:
+        db.close()
+
+
+class _DiPacketReq(BaseModel):
+    grade: str
+    standard: str
+    form_id: str = ""
+
+
+@router.post("/di-packets")
+def create_di_packets(
+    req: _DiPacketReq,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Start background generation of the three-tier DI packet for one benchmark.
+    Returns a packet_id the DI Focus page polls."""
+    rec = DiPacket(
+        tenant_id=user.tenant_id, grade_level=req.grade, standard=req.standard,
+        form_id=req.form_id, created_by=user.id, status="generating",
+        title=f"DI Packets — Grade {req.grade} · {req.standard}",
+        content={"standard": req.standard, "grade_level": req.grade, "tiers": []})
+    db.add(rec)
+    db.commit()
+    background.add_task(_run_di_packet_job, rec.id, req.grade, req.standard, req.form_id)
+    audit(db, actor=user, action="generate", entity_type="di_packet",
+          entity_id=rec.id, purpose="di_packets")
+    return {"packet_id": rec.id, "status": "generating"}
+
+
+@router.get("/di-packets/{packet_id}")
+def get_di_packets(
+    packet_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    rec = db.get(DiPacket, packet_id)
+    if not rec or rec.tenant_id != user.tenant_id:
+        raise HTTPException(404, "DI packet not found")
+    _recover_stale_guide(db, rec, minutes=15)
+    return {"id": rec.id, "status": rec.status, "error": rec.error,
+            "title": rec.title, "ai_generated": rec.ai_generated,
+            "content": rec.content}
+
+
+@router.get("/di-packets/{packet_id}/docx")
+def di_packets_docx(
+    packet_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    from app.export_docx import di_packets_to_docx
+    rec = db.get(DiPacket, packet_id)
+    if not rec or rec.tenant_id != user.tenant_id:
+        raise HTTPException(404, "DI packet not found")
+    if rec.status != "ready":
+        raise HTTPException(409, "Packets are not ready yet.")
+    buf = io.BytesIO()
+    di_packets_to_docx(rec.content).save(buf)
+    buf.seek(0)
+    fn = f"DI-Packets-G{rec.grade_level}-{rec.standard}.docx"
+    return Response(
+        content=buf.read(),
+        media_type="application/vnd.openxmlformats-officedocument."
+                   "wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{fn}"'})
 
 
 # --- Master schedule: math times & Math-DI windows ---------------------------

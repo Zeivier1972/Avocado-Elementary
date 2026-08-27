@@ -209,6 +209,13 @@ export const api = {
     req(`/coach/documents/${id}`, { method: "DELETE" }),
   generateGuideFromDoc: (id: string) =>
     req(`/coach/documents/${id}/generate-guide`, { method: "POST" }),
+  createDiPackets: (grade: string, standard: string, form_id = "") =>
+    req(`/coach/di-packets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grade, standard, form_id }),
+    }),
+  getDiPackets: (id: string) => req(`/coach/di-packets/${id}`),
   generateGuideCombined: (
     grade_level: string,
     topic_code: string,
@@ -402,6 +409,24 @@ export async function downloadDocument(id: string, filename: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename || "document";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Download the generated DI packets as a Word doc (blob).
+export async function downloadDiPacketsDocx(id: string, filename: string) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/coach/di-packets/${id}/docx`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error("Download failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "di-packets.docx";
   document.body.appendChild(a);
   a.click();
   a.remove();

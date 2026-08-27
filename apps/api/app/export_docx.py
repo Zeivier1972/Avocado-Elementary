@@ -543,3 +543,81 @@ def template_to_docx(t: dict, filled: bool = False) -> bytes:
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+def _di_phase(doc, label, ph):
+    """One gradual-release phase inside a teacher-led (TLC) reteach session."""
+    if not isinstance(ph, dict):
+        return
+    p = doc.add_paragraph()
+    r = p.add_run(f"{label}: ")
+    r.bold = True
+    if ph.get("problem"):
+        p.add_run(str(ph["problem"]))
+    for line in ph.get("say", []) or []:
+        doc.add_paragraph(f"“{line}”", style="List Bullet")
+    if ph.get("do"):
+        _label(doc, "Teacher", ph["do"])
+    if ph.get("answer"):
+        _label(doc, "Answer", ph["answer"])
+
+
+def di_packets_to_docx(packet: dict):
+    """Render the three-tier DI packet (Intensive / Cusp / Strategic) as a
+    printable Word doc: each tier's rotation, teacher-led reteach, independent
+    practice, and OPM progress check. Returns a python-docx Document."""
+    doc = Document()
+    _add_logo(doc)
+    _heading(doc, f"Differentiated Instruction Packets — {packet.get('standard','')}", 16)
+    _label(doc, "Grade", packet.get("grade_level", ""))
+    _label(doc, "Benchmark", packet.get("description", ""))
+    doc.add_paragraph(
+        "DI Rotation stations: i-Ready · TLC (teacher-led) · IXL/Skill Trainer/"
+        "Independent Practice · OPM · Data Chat.").italic = True
+
+    for t in packet.get("tiers", []) or []:
+        doc.add_page_break()
+        _heading(doc, f"{t.get('tier','')} — {t.get('band','')} "
+                      f"({'★' * int(t.get('stars', 0))})", 14,
+                 color=(0x2E, 0x86, 0xC1))
+        _label(doc, "Students in this group", t.get("student_count", 0))
+        _label(doc, "Teacher-led (TLC) sessions in the rotation", t.get("tlc_sessions", 0))
+        if t.get("rotation"):
+            days = "  ".join(f"D{i+1}:{st}" for i, st in enumerate(t["rotation"]))
+            _label(doc, "7-day rotation", days)
+        if t.get("focus"):
+            _label(doc, "Focus", t["focus"])
+
+        for sess in t.get("teacher_led", []) or []:
+            _heading(doc, f"Teacher-Led (TLC) Session {sess.get('session','')}: "
+                          f"{sess.get('title','')}", 12, color=(0x38, 0x60, 0x1F))
+            _di_phase(doc, "I Do (model)", sess.get("i_do"))
+            _di_phase(doc, "We Do (guided)", sess.get("we_do"))
+            _di_phase(doc, "You Do (independent)", sess.get("you_do"))
+
+        ip = t.get("independent_practice") or []
+        if ip:
+            _heading(doc, "Independent Practice (IXL / Skill Trainer station)", 12)
+            for q in ip:
+                p = doc.add_paragraph(style="List Number")
+                p.add_run(str(q.get("problem", "")))
+                if q.get("answer"):
+                    a = p.add_run(f"   (answer: {q['answer']})")
+                    a.italic = True
+
+        opm = t.get("opm") or []
+        if opm:
+            _heading(doc, "OPM — Progress Monitoring (did they grow?)", 12,
+                     color=(0xB0, 0x30, 0x30))
+            for q in opm:
+                p = doc.add_paragraph(style="List Number")
+                p.add_run(str(q.get("problem", "")))
+                if q.get("answer"):
+                    a = p.add_run(f"   (answer: {q['answer']})")
+                    a.italic = True
+
+        if t.get("students"):
+            names = ", ".join(s.get("student_name", "") for s in t["students"])
+            _label(doc, "Group roster", names)
+
+    return doc

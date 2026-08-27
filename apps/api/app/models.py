@@ -319,6 +319,25 @@ class SavedGuide(Base, TimestampMixin):
     error: Mapped[str] = mapped_column(Text, default="")
 
 
+class DiPacket(Base, TimestampMixin):
+    """A generated Differentiated-Instruction packet for ONE benchmark: the three
+    rotation tiers (Intensive / Cusp / Strategic), each with reteach grounded in
+    the B1G-M standard + most-missed questions, plus an OPM progress check.
+    Background-generated like SavedGuide (status polled by the DI Focus page)."""
+    __tablename__ = "di_packets"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("districts.id"), index=True)
+    grade_level: Mapped[str] = mapped_column(String, default="", index=True)
+    standard: Mapped[str] = mapped_column(String, default="", index=True)
+    form_id: Mapped[str] = mapped_column(String, default="", index=True)
+    title: Mapped[str] = mapped_column(String, default="")
+    content: Mapped[dict] = mapped_column(JSON, default=dict)
+    ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str] = mapped_column(String, default="")
+    status: Mapped[str] = mapped_column(String, default="ready")  # generating|ready|error
+    error: Mapped[str] = mapped_column(Text, default="")
+
+
 class PlanningDocument(Base, TimestampMixin):
     """A file the coach uploads into a grade/topic folder in the planning area
     (pacing guides, bell ringers, year-at-a-glance, resources...). Stored in the

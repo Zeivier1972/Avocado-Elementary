@@ -2,8 +2,14 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, downloadDiPacketsDocx } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
+
+const TIER_HEX: Record<string, string> = {
+  Intensive: "#C0392B",
+  Cusp: "#F1C40F",
+  Strategic: "#2E86C1",
+};
 
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
 
@@ -17,6 +23,35 @@ function DiFocusInner() {
   const [build, setBuild] = useState<any>(null);
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState("");
+  const [packets, setPackets] = useState<any>(null);
+  const [packetId, setPacketId] = useState("");
+  const [packetBusy, setPacketBusy] = useState(false);
+
+  async function generatePackets() {
+    setPacketBusy(true);
+    setPackets(null);
+    try {
+      const r = await api.createDiPackets(grade, standard, formId);
+      setPacketId(r.packet_id);
+      // Poll until ready (DI packet is one AI call, usually under a minute).
+      for (let i = 0; i < 60; i++) {
+        await new Promise((res) => setTimeout(res, 3000));
+        const p = await api.getDiPackets(r.packet_id);
+        if (p.status === "ready") {
+          setPackets(p.content);
+          break;
+        }
+        if (p.status === "error") {
+          setErr(p.error || "DI packet generation failed.");
+          break;
+        }
+      }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setPacketBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!getToken()) {
@@ -152,6 +187,133 @@ function DiFocusInner() {
                 </ul>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Generate full DI packets (Intensive / Cusp / Strategic) */}
+        {s && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div className="font-bold text-gray-800">
+                  DI Packets — Intensive · Cusp · Strategic
+                </div>
+                <p className="text-xs text-gray-500 max-w-xl">
+                  Full reteach per rotation tier, grounded in the B1G-M benchmark +
+                  the most-missed questions, with the right number of teacher-led
+                  (TLC) sessions per group and an OPM progress check.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={generatePackets}
+                  disabled={packetBusy}
+                  className="bg-avocado hover:bg-avocado-dark disabled:opacity-60 text-white text-sm font-semibold rounded-lg px-4 py-2"
+                >
+                  {packetBusy ? "Generating…" : packets ? "↻ Regenerate" : "✨ Generate DI packets"}
+                </button>
+                {packets && packetId && (
+                  <button
+                    onClick={() =>
+                      downloadDiPacketsDocx(
+                        packetId,
+                        `DI-Packets-${standard}.docx`
+                      ).catch((e) => alert("Download failed: " + (e as Error).message))
+                    }
+                    className="border border-avocado text-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
+                  >
+                    ⬇ Word
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {packetBusy && (
+              <p className="text-sm text-gray-400 mt-3">
+                Writing the three packets from the benchmark and missed questions —
+                about a minute…
+              </p>
+            )}
+
+            {packets?.tiers?.length > 0 && (
+              <div className="grid md:grid-cols-3 gap-4 mt-4">
+                {packets.tiers.map((t: any) => (
+                  <div
+                    key={t.tier}
+                    className="rounded-2xl border p-4"
+                    style={{ borderTopColor: TIER_HEX[t.tier] || "#888", borderTopWidth: 4 }}
+                  >
+                    <div className="font-bold" style={{ color: TIER_HEX[t.tier] }}>
+                      {t.tier} {"★".repeat(t.stars || 0)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {t.band} · {t.student_count ?? 0} students · {t.tlc_sessions} TLC
+                      session{t.tlc_sessions === 1 ? "" : "s"}
+                    </div>
+                    {t.focus && (
+                      <p className="text-sm text-gray-700 mt-2">{t.focus}</p>
+                    )}
+
+                    {(t.teacher_led || []).map((sess: any, i: number) => (
+                      <div key={i} className="mt-3 border-t border-gray-100 pt-2">
+                        <div className="text-xs font-bold text-gray-700">
+                          TLC Session {sess.session}: {sess.title}
+                        </div>
+                        {["i_do", "we_do", "you_do"].map((k) =>
+                          sess[k]?.problem ? (
+                            <div key={k} className="text-xs text-gray-600 mt-1">
+                              <span className="font-semibold uppercase">
+                                {k.replace("_", " ")}:
+                              </span>{" "}
+                              {sess[k].problem}
+                              {sess[k].answer ? (
+                                <span className="text-gray-400"> = {sess[k].answer}</span>
+                              ) : null}
+                            </div>
+                          ) : null
+                        )}
+                      </div>
+                    ))}
+
+                    {t.independent_practice?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-xs font-bold text-gray-700">
+                          Independent practice
+                        </div>
+                        <ol className="list-decimal ml-4 text-xs text-gray-600">
+                          {t.independent_practice.map((q: any, i: number) => (
+                            <li key={i}>
+                              {q.problem}
+                              {q.answer ? (
+                                <span className="text-gray-400"> ({q.answer})</span>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+
+                    {t.opm?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-xs font-bold text-red-700">
+                          OPM — progress check
+                        </div>
+                        <ol className="list-decimal ml-4 text-xs text-gray-600">
+                          {t.opm.map((q: any, i: number) => (
+                            <li key={i}>
+                              {q.problem}
+                              {q.answer ? (
+                                <span className="text-gray-400"> ({q.answer})</span>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1260,6 +1260,89 @@ _LESSON_RULES = (
 )
 
 
+_DI_PACKET_SCHEMA = (
+    '[{"tier":"Intensive|Cusp|Strategic","stars":1,"band":"0-40%","tlc_sessions":2,'
+    '"focus":"the standard in kid-friendly words for THIS tier",'
+    '"teacher_led":[{"session":1,"title":"...","i_do":{"problem":"real problem grounded in the B1G-M benchmark","say":["teacher think-aloud line"],"do":"what the teacher does + manipulative"},'
+    '"we_do":{"problem":"a DIFFERENT real problem","say":["guiding question"],"do":"guided step"},'
+    '"you_do":{"problem":"an independent problem","answer":"the answer"}}],'
+    '"independent_practice":[{"problem":"a target-aligned practice problem (for the IXL/Skill Trainer/Independent Practice station)","answer":"the answer"}],'
+    '"opm":[{"problem":"a progress-monitoring question on THIS standard to check growth","answer":"the answer"}]}]'
+)
+
+
+def generate_di_packets(standard: dict, most_missed: list, grade: str,
+                        tiers: list, tier2: list | None = None) -> dict:
+    """Generate the three rotation-tier DI packets (Intensive / Cusp / Strategic)
+    for ONE benchmark, grounded in the B1G-M standard (description, clarifications,
+    examples, ALDs) AND the most-missed test questions, with an OPM progress check
+    per tier. `tiers` carries each tier's band + number of teacher-led (TLC)
+    sessions so a tier with 2 TLCs gets 2 scripted reteach sessions."""
+    code = standard.get("code", "")
+    base = {"standard": code, "description": standard.get("description", ""),
+            "grade_level": grade, "tiers": [], "ai_generated": False}
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        base["ai_status"] = ("AI is off — turn on AI_PROVIDER=anthropic, AI_API_KEY, "
+                             "AI_MODEL to write the DI packets.")
+        return base
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        std_ctx = _std_context([standard])
+        missed_txt = "\n".join(
+            f"- Q{m.get('position')}: {(m.get('stem') or '').strip()[:200]} "
+            f"(answer {m.get('correct_response','')}, missed by {m.get('miss_pct','')}% )"
+            for m in (most_missed or [])[:8]) or "(no item stems captured)"
+        tier_txt = "\n".join(
+            f"- {t['name']} ({t['band']}, {t['stars']}★): {t['tlc_sessions']} "
+            f"teacher-led (TLC) session(s) in the rotation" for t in tiers)
+        prompt = (
+            f"You are an elementary math coach writing DIFFERENTIATED INSTRUCTION "
+            f"packets for Grade {grade} on ONE benchmark, for a 7-day DI rotation "
+            f"(stations: i-Ready, TLC teacher-led, IXL/Skill Trainer/Independent "
+            f"Practice, OPM, Data Chat).\n\n"
+            f"BENCHMARK (B1G-M — ground every problem in this so questions hit the "
+            f"target, not just the test):\n{std_ctx}\n\n"
+            f"MOST-MISSED QUESTIONS on this benchmark (reteach these ideas):\n{missed_txt}\n\n"
+            f"TIER 2 academic words to use: {', '.join(tier2 or [])}\n\n"
+            f"Write ONE packet per tier. Each tier gets EXACTLY as many 'teacher_led' "
+            f"sessions as its TLC count:\n{tier_txt}\n\n"
+            "Tier intent: Intensive (0-40%) = foundational reteach with concrete "
+            "manipulatives, break the skill into small steps; Cusp (40-70%) = "
+            "targeted practice on the exact missed idea to push to proficiency; "
+            "Strategic (70-100%) = enrichment / multi-step / higher-order extension. "
+            "Every problem uses REAL grade-appropriate numbers and is grounded in the "
+            "benchmark's clarifications/examples. Include an OPM section per tier: 3 "
+            "short progress-monitoring questions (with answers) on THIS standard to "
+            "check if students grew.\n\n"
+            f"{CUBS_ROUTINE}\n\n"
+            f"Return ONLY a JSON array (one object per tier, in the tier order given) "
+            f"matching:\n{_DI_PACKET_SCHEMA}\n{_PLAIN}"
+        )
+        arr, reason = _llm_json(
+            client, prompt,
+            "You output ONLY a valid JSON array, no prose or fences. Finish every "
+            "object completely.", 12000)
+        if not arr:
+            base["ai_status"] = reason or "the model did not return usable packets"
+            return base
+        # Attach the rotation metadata (bands, stars, TLC counts, day-by-day) back
+        # onto each tier so the packet shows the rotation.
+        by_name = {str(t.get("tier", "")).lower(): t for t in arr}
+        out_tiers = []
+        for t in tiers:
+            gen = by_name.get(t["name"].lower(), {})
+            out_tiers.append({**gen, "tier": t["name"], "stars": t["stars"],
+                              "band": t["band"], "tlc_sessions": t["tlc_sessions"],
+                              "rotation": t.get("rotation", [])})
+        base.update({"tiers": out_tiers, "ai_generated": True,
+                     "generated_by": settings.ai_model})
+        return base
+    except Exception as e:
+        base["ai_status"] = f"{type(e).__name__}: {str(e)[:200]}"
+        return base
+
+
 def _llm_json(client, prompt: str, system: str, max_tokens: int):
     """One streamed call returning (parsed_json_array | None, reason)."""
     with client.messages.stream(
