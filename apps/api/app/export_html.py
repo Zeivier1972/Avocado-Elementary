@@ -199,7 +199,16 @@ _CSS = """
 .practicelabel{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:8px 0 4px;}
 .opm{background:#FBEBE8;border:1px solid #EAD2CE;border-radius:20px;padding:18px 20px;margin-top:22px;border-top:8px solid #C0392B;}
 .opm h2{margin:0;font-size:20px;color:#C0392B;}.foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;}
-@media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}.tier,.opm{break-inside:avoid;}.band{border-radius:0;}@page{margin:1.3cm;}}
+@media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}
+.tier{break-inside:auto;}.prob,.example,.opm,.phase-body{break-inside:avoid;}
+.phase,.day{break-after:avoid;}.band{border-radius:0;}@page{margin:1.3cm;}}
+"""
+# For PDF rendering (WeasyPrint) the same rules apply without @media print.
+_CSS_PDF_EXTRA = """
+.tier{break-inside:auto;}.prob,.example,.opm,.phase-body{break-inside:avoid;}
+.phase,.day{break-after:avoid;}
+@page{size:Letter;margin:1.3cm;}
+body{background:#fff;}
 """
 
 
@@ -216,19 +225,24 @@ def _problem_html(model, p, show_default=True) -> str:
     return f'<div class="prob"><p class="q">{q}</p>{vis}{ans}</div>'
 
 
-def render_di_packet_html(packet: dict) -> str:
+def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     model = packet.get("model", "none")
     std = _esc(packet.get("standard"))
     desc = _esc(packet.get("description"))
     grade = _esc(packet.get("grade_level"))
     missed = packet.get("test_items") or []
 
-    out = [f'<!doctype html><html><head><meta charset="utf-8">',
-           f'<meta name="viewport" content="width=device-width, initial-scale=1">',
-           f'<title>DI Packet — {std}</title>',
-           '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
-           '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">',
-           f'<style>{_CSS}</style></head><body><div class="wrap">']
+    css = _CSS + (_CSS_PDF_EXTRA if for_pdf else "")
+    head = [f'<!doctype html><html><head><meta charset="utf-8">',
+            f'<meta name="viewport" content="width=device-width, initial-scale=1">',
+            f'<title>DI Packet — {std}</title>']
+    if not for_pdf:
+        # WeasyPrint renders with locally installed fonts, so the web font link is
+        # only useful for the browser-print path.
+        head += ['<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
+                 '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">']
+    head.append(f'<style>{css}</style></head><body><div class="wrap">')
+    out = list(head)
     out.append(f'<div class="band"><div><div class="eyebrow">Grade {grade} · Math · DI Center Packet</div>'
                f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
                f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')

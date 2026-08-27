@@ -428,6 +428,27 @@ export async function openDiPacketHtml(id: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+// Download the DI packet as a PDF (blob), with auth.
+export async function downloadDiPacketPdf(id: string, filename: string) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/coach/di-packets/${id}/pdf`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(res.status === 501 ? JSON.parse(msg).detail : "Download failed");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "di-packet.pdf";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 const COACH_ROLES = [
   "math_coach",
   "reading_coach",
