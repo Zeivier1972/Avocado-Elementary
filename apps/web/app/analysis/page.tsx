@@ -209,7 +209,12 @@ export default function AnalysisPage() {
                       <th className="p-2 font-semibold">FAST scale</th>
                       <th className="p-2 font-semibold">Level</th>
                       <th className="p-2 font-semibold">Instructional level</th>
-                      <th className="p-2 font-semibold">Topic goal</th>
+                      <th className="p-2 font-semibold" title="Each student's target topic-assessment average, set by their FAST score (Math Goal Setting Rubric)">
+                        Topic goal<br />
+                        <span className="font-normal text-[10px] text-gray-400">
+                          from FAST
+                        </span>
+                      </th>
                       <th className="p-2 font-semibold">Topic avg</th>
                       <th className="p-2 font-semibold" title="FAST / i-Ready / Topic levels side by side — ⚠ when they disagree">
                         Level check<br />

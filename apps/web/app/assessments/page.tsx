@@ -457,22 +457,49 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
         </button>
       </div>
 
-      {/* Standards — which to focus on (grade) */}
+      {/* Standards — which to focus on (grade), ranked by average proficiency */}
       <div>
-        <div className="font-semibold text-gray-800 text-sm mb-1">
-          Standards — lowest first (focus for DI)
+        <div className="font-semibold text-gray-800 text-sm">
+          Benchmarks — least proficient first (pick your DI focus)
         </div>
-        <div className="flex flex-wrap gap-2">
-          {a.by_standard.map((s: any) => (
+        <p className="text-xs text-gray-400 mb-2">
+          Ranked by the class&apos;s <b>average score</b> on each benchmark (lowest =
+          least proficient), not by how many red students it has. The weakest one is
+          at the top — click <b>Plan DI</b> to build the reteach.
+        </p>
+        <div className="space-y-1.5">
+          {a.by_standard.map((s: any, i: number) => (
             <div
               key={s.standard}
-              title={s.description}
-              className="border border-gray-100 rounded-lg px-2.5 py-1.5"
+              className={`flex items-center gap-3 border rounded-lg px-3 py-2 ${
+                i === 0 ? "border-avocado/40 bg-avocado/5" : "border-gray-100"
+              }`}
             >
-              <div className="text-sm font-mono font-bold text-gray-700">
-                {s.standard}
+              <span className="text-xs text-gray-400 w-4 tabular-nums">{i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-mono font-bold text-gray-700">
+                  {s.standard}
+                  {i === 0 && (
+                    <span className="ml-2 text-[10px] font-sans font-semibold text-avocado-dark">
+                      ← weakest
+                    </span>
+                  )}
+                </div>
+                {s.description && (
+                  <div className="text-xs text-gray-500 truncate" title={s.description}>
+                    {s.description}
+                  </div>
+                )}
               </div>
               <Chip color={s.color}>{s.percent}%</Chip>
+              <a
+                href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
+                  s.standard
+                )}&form_id=${f.id}`}
+                className="text-xs font-semibold text-white bg-avocado hover:bg-avocado-dark rounded-lg px-2.5 py-1 whitespace-nowrap"
+              >
+                Plan DI →
+              </a>
             </div>
           ))}
         </div>
