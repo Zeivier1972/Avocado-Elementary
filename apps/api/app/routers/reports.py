@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.deps import get_current_user
+from app.goal_rubric import topic_level
 from app.models import (
     ClassRoom,
     Enrollment,
@@ -288,6 +289,23 @@ def _l25_ids(db, tenant_id, grade):
         cur = best.get(a.student_id)
         if cur is None or order > cur[0]:
             best[a.student_id] = (order, metric)
+    if not best:
+        # No FAST Math for this grade yet — rank by topic-assessment average so
+        # the lowest-25% flag still works from whatever data is loaded.
+        topic_avgs: dict = {}
+        for a in db.query(StudentAssessment).filter(
+                StudentAssessment.tenant_id == tenant_id,
+                StudentAssessment.source == "TOPIC",
+                StudentAssessment.subject == "MATH").all():
+            if a.student_id not in sids or a.percent is None:
+                continue
+            topic_avgs.setdefault(a.student_id, []).append(a.percent)
+        if not topic_avgs:
+            return set()
+        ranked = sorted(((sid, sum(v) / len(v)) for sid, v in topic_avgs.items()),
+                        key=lambda kv: kv[1])
+        cutoff = max(1, round(len(ranked) * 0.25))
+        return {sid for sid, _ in ranked[:cutoff]}
     ranked = sorted(best.items(), key=lambda kv: kv[1][1])
     cutoff = max(1, round(len(ranked) * 0.25))
     return {sid for sid, _ in ranked[:cutoff]}
@@ -351,6 +369,16 @@ def teacher_report(
             if isinstance(v, int) and 1 <= v <= 5:
                 latest = v
                 break
+        # Level 3+ from the latest FAST Math when it exists; otherwise fall back
+        # to the topic-assessment average (so a class with only topic scores
+        # loaded isn't shown as 0% Level 3+ with everyone flagged).
+        if latest is not None:
+            on_track = latest >= 3
+        elif topic_avg is not None:
+            tl = topic_level(s.grade_level, topic_avg)
+            on_track = tl is not None and tl >= 3
+        else:
+            on_track = False
         roster.append({
             "student_id": s.id, "name": f"{s.first_name.title()} {s.last_name.title()}",
             "grade": s.grade_level,
@@ -358,7 +386,7 @@ def teacher_report(
             "fast_ela": d["fast_ela"], "fast_math": d["fast_math"],
             "iready_ela": d["iready_ela"], "iready_math": d["iready_math"],
             "topics": d["topics"], "topic_avg": topic_avg,
-            "on_track": latest is not None and latest >= 3,
+            "on_track": on_track,
             "l25": s.id in l25,
         })
     roster.sort(key=lambda r: r["name"])
