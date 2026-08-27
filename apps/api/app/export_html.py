@@ -142,21 +142,72 @@ def _equal_teams(a: int, b: int) -> str:
             + team(b, a * 26 + 48, "#EED9A8") + "</svg>")
 
 
+import re as _re
+
+
+def _ctx_text(spec: dict) -> str:
+    """All the words attached to one problem — used to recover model numbers the
+    AI wrote in the text but didn't pass as structured fields."""
+    return " ".join(str(spec.get(k, "")) for k in ("statement", "problem", "text"))
+
+
+def _ints(text: str) -> list:
+    return [int(n) for n in _re.findall(r"\d+", text or "")]
+
+
+def _array_dims(spec: dict) -> tuple:
+    """rows x cols for an array — structured fields first, else parsed from text
+    (e.g. '3 equal rows with 3 counters in each row' -> 3 x 3)."""
+    r, c = spec.get("rows"), spec.get("cols")
+    if r is not None and c is not None:
+        return _i(r, 1), _i(c, 1)
+    t = _ctx_text(spec)
+    rm = _re.search(r"(\d+)\s*(?:equal\s+)?rows", t, _re.I)
+    cm = (_re.search(r"(?:each row (?:has|of|with)|in each row|in one row)\s*(\d+)", t, _re.I)
+          or _re.search(r"(\d+)\s*counters?\s*(?:in each|per row|in one row|in each row)", t, _re.I))
+    rows = _i(rm.group(1), 0) if rm else 0
+    cols = _i(cm.group(1), 0) if cm else 0
+    if not rows or not cols:
+        nums = _ints(t)
+        if len(nums) >= 2:
+            rows = rows or nums[0]
+            cols = cols or nums[1]
+    return max(1, rows or 2), max(1, cols or 2)
+
+
+def _val(spec: dict, default=0) -> int:
+    """A single value for ten_frame/pairing/base_ten/number_line — structured
+    'value' first, else the first number in the problem's text."""
+    if spec.get("value") is not None:
+        return _i(spec.get("value"), default)
+    nums = _ints(_ctx_text(spec))
+    return nums[0] if nums else default
+
+
 def svg_model(model: str, spec: dict) -> str:
-    """Draw the chosen model for one problem's spec (value / rows,cols / a,b / max)."""
+    """Draw the chosen model for one problem's spec, recovering the numbers from
+    the problem text when the structured fields are missing."""
+    if not isinstance(spec, dict):
+        return ""
     try:
         if model == "ten_frame":
-            return _ten_frame(_i(spec.get("value")))
+            return _ten_frame(_val(spec))
         if model == "pairing":
-            return _pairing(_i(spec.get("value")))
+            return _pairing(_val(spec))
         if model == "base_ten":
-            return _base_ten(_i(spec.get("value")))
+            return _base_ten(_val(spec))
         if model == "array":
-            return _array(_i(spec.get("rows"), 1), _i(spec.get("cols"), 1))
+            r, c = _array_dims(spec)
+            return _array(r, c)
         if model == "number_line":
-            return _number_line(_i(spec.get("value")), _i(spec.get("max"), 20))
+            return _number_line(_val(spec), _i(spec.get("max"), 20))
         if model == "equal_teams":
-            return _equal_teams(_i(spec.get("a")), _i(spec.get("b")))
+            a, b = spec.get("a"), spec.get("b")
+            if a is None or b is None:
+                nums = _ints(_ctx_text(spec))
+                a = a if a is not None else (nums[0] if nums else 0)
+                b = b if b is not None else (nums[1] if len(nums) > 1 else 0)
+            return _equal_teams(_i(a), _i(b))
     except Exception:
         return ""
     return ""
