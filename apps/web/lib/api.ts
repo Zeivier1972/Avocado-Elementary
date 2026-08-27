@@ -421,7 +421,10 @@ export async function openDiPacketHtml(id: string) {
   const res = await fetch(`${API_URL}/coach/di-packets/${id}/html`, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
-  if (!res.ok) throw new Error("Could not open the packet");
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Could not open (${res.status}). ${body.slice(0, 200)}`);
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank");
@@ -435,7 +438,10 @@ export async function downloadDiPacketHtml(id: string, filename: string) {
   const res = await fetch(`${API_URL}/coach/di-packets/${id}/html?dl=1`, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
-  if (!res.ok) throw new Error("Download failed");
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Download failed (${res.status}). ${body.slice(0, 200)}`);
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -247,11 +247,20 @@ function DiFocusInner() {
               </p>
             )}
 
+            {packets?.tiers?.length > 0 &&
+              packets.tiers.every((t: any) => !(t.days && t.days.length)) && (
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+                  This packet was made in an older format, so it prints blank. Click{" "}
+                  <b>↻ Regenerate</b> above to rebuild it with the visual Day 1 / Day 2
+                  student pages, then Open / print or Download.
+                </div>
+              )}
+
             {packets?.tiers?.length > 0 && (
               <>
                 <div className="text-xs text-gray-500 mt-4">
                   Model: <b>{(packets.model || "").replace("_", " ")}</b> · click{" "}
-                  <b>Open printable packet</b> for the full student pages with visuals.
+                  <b>Open / print</b> for the full student pages with visuals.
                 </div>
                 <div className="grid md:grid-cols-3 gap-4 mt-2">
                   {packets.tiers.map((t: any) => (
