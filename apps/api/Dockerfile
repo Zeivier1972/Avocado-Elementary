@@ -8,13 +8,9 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Tesseract powers OCR for scanned textbook PDFs (app/doc_text.py). PyMuPDF
-# renders the pages, so poppler is not needed. Pango/Cairo/GDK-Pixbuf +
-# DejaVu fonts let WeasyPrint render DI packets to PDF (app/export_html.py).
+# renders the pages, so poppler is not needed.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        tesseract-ocr \
-        libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
-        libcairo2 libffi8 fonts-dejavu-core \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, getToken, openDiPacketHtml, downloadDiPacketPdf } from "@/lib/api";
+import { api, getToken, openDiPacketHtml, downloadDiPacketHtml } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
 
 const TIER_HEX: Record<string, string> = {
@@ -216,24 +216,24 @@ function DiFocusInner() {
                   <>
                     <button
                       onClick={() =>
-                        downloadDiPacketPdf(
-                          packetId,
-                          `DI-Packet-${standard}.pdf`
-                        ).catch((e) => alert(String((e as Error).message)))
-                      }
-                      className="bg-avocado-dark text-white border border-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
-                    >
-                      ⬇ Download PDF
-                    </button>
-                    <button
-                      onClick={() =>
                         openDiPacketHtml(packetId).catch((e) =>
                           alert("Couldn't open: " + (e as Error).message)
                         )
                       }
-                      className="border border-avocado text-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
+                      className="bg-avocado-dark text-white border border-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
                     >
                       📄 Open / print
+                    </button>
+                    <button
+                      onClick={() =>
+                        downloadDiPacketHtml(
+                          packetId,
+                          `DI-Packet-${standard}.html`
+                        ).catch((e) => alert(String((e as Error).message)))
+                      }
+                      className="border border-avocado text-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
+                    >
+                      ⬇ Download file
                     </button>
                   </>
                 )}

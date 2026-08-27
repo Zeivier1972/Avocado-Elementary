@@ -15,4 +15,3 @@ pypdf==5.1.0
 pymupdf==1.25.1
 pytesseract==0.3.13
 Pillow==11.1.0
-weasyprint==62.3

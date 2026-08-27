@@ -1939,46 +1939,25 @@ def get_di_packets(
 @router.get("/di-packets/{packet_id}/html")
 def di_packets_html(
     packet_id: str,
+    dl: int = Query(0),
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
     """The printable student packet — visual models drawn per benchmark. Opened
-    in a new tab and printed straight from the browser."""
+    in a new tab and printed straight from the browser; with dl=1 it downloads as
+    a self-contained .html file (open it, then print or Save as PDF)."""
     from app.export_html import render_di_packet_html
     rec = db.get(DiPacket, packet_id)
     if not rec or rec.tenant_id != user.tenant_id:
         raise HTTPException(404, "DI packet not found")
     if rec.status != "ready":
         raise HTTPException(409, "Packets are not ready yet.")
+    headers = {}
+    if dl:
+        fn = f"DI-Packet-G{rec.grade_level}-{rec.standard}.html"
+        headers["Content-Disposition"] = f'attachment; filename="{fn}"'
     return Response(content=render_di_packet_html(rec.content),
-                    media_type="text/html")
-
-
-@router.get("/di-packets/{packet_id}/pdf")
-def di_packets_pdf(
-    packet_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(_require_coach),
-):
-    """The printable student packet as a downloadable PDF (WeasyPrint), so it
-    prints exactly and can be saved/emailed."""
-    from app.export_html import render_di_packet_html
-    rec = db.get(DiPacket, packet_id)
-    if not rec or rec.tenant_id != user.tenant_id:
-        raise HTTPException(404, "DI packet not found")
-    if rec.status != "ready":
-        raise HTTPException(409, "Packets are not ready yet.")
-    try:
-        from weasyprint import HTML
-    except Exception:
-        raise HTTPException(
-            501, "PDF export isn't available on this server yet. Use 'Open "
-                 "printable packet' and choose 'Save as PDF' in the print dialog.")
-    html_str = render_di_packet_html(rec.content, for_pdf=True)
-    pdf = HTML(string=html_str).write_pdf()
-    fn = f"DI-Packet-G{rec.grade_level}-{rec.standard}.pdf"
-    return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{fn}"'})
+                    media_type="text/html", headers=headers)
 
 
 # --- Master schedule: math times & Math-DI windows ---------------------------

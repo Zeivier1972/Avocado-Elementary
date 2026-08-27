@@ -428,21 +428,19 @@ export async function openDiPacketHtml(id: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-// Download the DI packet as a PDF (blob), with auth.
-export async function downloadDiPacketPdf(id: string, filename: string) {
+// Download the DI packet as a self-contained .html file (open it, then print or
+// Save as PDF). Reliable — no server-side PDF rendering to fail.
+export async function downloadDiPacketHtml(id: string, filename: string) {
   const token = getToken();
-  const res = await fetch(`${API_URL}/coach/di-packets/${id}/pdf`, {
+  const res = await fetch(`${API_URL}/coach/di-packets/${id}/html?dl=1`, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(res.status === 501 ? JSON.parse(msg).detail : "Download failed");
-  }
+  if (!res.ok) throw new Error("Download failed");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename || "di-packet.pdf";
+  a.download = filename || "di-packet.html";
   document.body.appendChild(a);
   a.click();
   a.remove();
