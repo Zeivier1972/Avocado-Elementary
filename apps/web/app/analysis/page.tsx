@@ -69,6 +69,7 @@ export default function AnalysisPage() {
   const s = data?.summary;
   const students = data?.students || [];
   const coverage = data?.benchmark_coverage || [];
+  const hasTopic = students.some((r: any) => r.topic_avg != null);
 
   return (
     <main className="min-h-screen">
@@ -135,14 +136,22 @@ export default function AnalysisPage() {
 
         {loading ? (
           <div className="text-gray-400 text-sm p-6">Analyzing…</div>
-        ) : !data?.has_fast ? (
+        ) : !data?.has_fast && !hasTopic ? (
           <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-500 text-sm">
-            No FAST scale scores for {GRADE_LABEL(grade)} yet. Upload the FAST and
-            topic-assessment reports and this fills in — comparing each student's
-            topic average to their FAST-based goal and projecting end-of-year.
+            No data for {GRADE_LABEL(grade)} yet. Upload a topic-assessment or FAST
+            report and this fills in — showing each student's topic average and
+            level now, and their FAST-based goal + end-of-year projection once FAST
+            is loaded.
           </div>
         ) : (
           <>
+            {!data?.has_fast && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+                Showing <b>topic-assessment levels</b> for {GRADE_LABEL(grade)}. The
+                FAST-based goal, status, and end-of-year projection fill in once you
+                upload FAST scale scores.
+              </div>
+            )}
             {/* Summary */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {[

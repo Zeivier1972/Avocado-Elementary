@@ -149,16 +149,22 @@ def _level_entry_topic(grade: str) -> dict:
     return entry
 
 
+# Topic-assessment achievement bands (coach's scale, same for every grade):
+#   90-100 = L5 Orange, 80-89 = L4 Blue, 69-79 = L3 Green,
+#   50-68  = L2 Yellow,  0-49  = L1 Red.
+# These are the cut scores for turning ONE topic-test average into a level.
+_TOPIC_BANDS = [(90, 5), (80, 4), (69, 3), (50, 2), (0, 1)]
+
+
 def topic_level(grade: str, topic_avg_pct: float | None) -> int | None:
-    """Map a topic-assessment average (0-100) to its achievement level (1-5)."""
+    """Map a topic-assessment average (0-100) to its achievement level (1-5),
+    using the coach's fixed topic cut scores (see _TOPIC_BANDS)."""
     if topic_avg_pct is None:
         return None
-    entry = _level_entry_topic(grade)
-    lvl = 1
-    for L in (2, 3, 4, 5):
-        if L in entry and topic_avg_pct >= entry[L]:
-            lvl = L
-    return lvl
+    for cut, lvl in _TOPIC_BANDS:
+        if topic_avg_pct >= cut:
+            return lvl
+    return 1
 
 
 def topic_color(grade: str, topic_avg_pct: float | None) -> dict | None:
