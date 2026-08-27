@@ -2,8 +2,10 @@
 column per question) and score it against the test blueprint (answer key).
 
 Tolerant by design: it auto-detects the student-name, student-id and
-teacher/class columns, and the per-question columns (Q1, "1", "Item 1", or the
-bank item-id). Cell values may be the chosen letter (A/B/C/D, or "A,C,D" for
+teacher/class columns, and the per-question columns (Q1, "1", "Item 1", the
+Performance Matters "1-1".."1-19" form, or the bank item-id). Identity headers
+and question headers may sit on DIFFERENT rows (as in a Performance Matters
+export). Cell values may be the chosen letter (A/B/C/D, or "A,C,D" for
 multi-select), or right/wrong as 1/0, correct/incorrect, ✓/✗.
 """
 from __future__ import annotations
@@ -28,7 +30,10 @@ def _clean_letters(v: str) -> str:
 _NAME_HINT = re.compile(r"student|name|last|first|pupil", re.I)
 _ID_HINT = re.compile(r"\b(id|number|no\.?|mdcps|student\s*id)\b", re.I)
 _CLASS_HINT = re.compile(r"teacher|class|section|homeroom|instructor", re.I)
-_QNUM = re.compile(r"^(?:q|item|question|#)?\s*0*(\d{1,3})$", re.I)
+# Q-column header: "Q1", "1", "Item 1", "#1", or the Performance Matters
+# "1-1".."1-19" form (a leading part number then a dash) — the TRAILING number
+# is the item position.
+_QNUM = re.compile(r"^(?:q|item|question|#)?\s*(?:\d+\s*-\s*)?0*(\d{1,3})$", re.I)
 
 
 def _detect_columns(header: list[str], items: list[dict]) -> dict:
@@ -49,11 +54,12 @@ def _detect_columns(header: list[str], items: list[dict]) -> dict:
         if hs in id_by_item:  # header is the bank item-id
             qcols[id_by_item[hs]] = j
             continue
-        # Identity columns (first match wins, but prefer explicit id over name).
-        if id_col is None and _ID_HINT.search(hs) and not _NAME_HINT.search(hs):
+        # Identity columns. Check ID first so "Student ID" is not mistaken for the
+        # name column just because it contains the word "student".
+        if id_col is None and _ID_HINT.search(hs):
             id_col = j
             continue
-        if class_col is None and _CLASS_HINT.search(hs):
+        if class_col is None and _CLASS_HINT.search(hs) and not _NAME_HINT.search(hs):
             class_col = j
             continue
         if name_col is None and _NAME_HINT.search(hs):
@@ -62,16 +68,36 @@ def _detect_columns(header: list[str], items: list[dict]) -> dict:
     return {"name": name_col, "id": id_col, "class": class_col, "qcols": qcols}
 
 
-def _find_header(rows: list[list], items: list[dict]) -> tuple[int, dict]:
-    """The header row is the one that maps the most question columns."""
-    best_i, best = -1, {"qcols": {}}
-    for i, row in enumerate(rows[:12]):
-        det = _detect_columns([_norm(c) for c in row], items)
-        if len(det["qcols"]) > len(best["qcols"]):
-            best_i, best = i, det
-        if len(det["qcols"]) >= len(items):  # full match — stop early
+def _find_header(rows: list[list], items: list[dict]) -> tuple[int, dict, int]:
+    """Locate the header. The question-column header row and the identity
+    (Student ID / Name / Teacher) header row may be DIFFERENT rows — Performance
+    Matters puts the item labels ("1-1"..) on one row and "Student ID"/"Student
+    Name" on the next. Returns (question_header_row, columns, data_start_row)
+    where data begins at data_start_row + 1."""
+    n = min(15, len(rows))
+    # 1) Question header = the row that maps the most question columns.
+    qrow, qcols = -1, {}
+    for i in range(n):
+        det = _detect_columns([_norm(c) for c in rows[i]], items)
+        if len(det["qcols"]) > len(qcols):
+            qrow, qcols = i, det["qcols"]
+        if len(qcols) >= len(items):  # full match — stop early
             break
-    return best_i, best
+    if qrow < 0 or not qcols:
+        return -1, {"qcols": {}, "name": None, "id": None, "class": None}, -1
+    # 2) Identity columns may live on the question row or an adjacent header row.
+    name_col = id_col = class_col = None
+    last_hdr = qrow
+    for i in range(max(0, qrow - 1), min(n, qrow + 3)):
+        det = _detect_columns([_norm(c) for c in rows[i]], items)
+        if id_col is None and det["id"] is not None:
+            id_col, last_hdr = det["id"], max(last_hdr, i)
+        if name_col is None and det["name"] is not None:
+            name_col, last_hdr = det["name"], max(last_hdr, i)
+        if class_col is None and det["class"] is not None:
+            class_col, last_hdr = det["class"], max(last_hdr, i)
+    return qrow, {"qcols": qcols, "name": name_col, "id": id_col,
+                  "class": class_col}, last_hdr
 
 
 def _is_correct(cell: str, correct: str) -> bool | None:
@@ -105,7 +131,7 @@ def parse_results(data: bytes, items: list[dict]) -> dict:
     if not rows:
         return {"rows": [], "reason": "the spreadsheet is empty"}
 
-    hi, det = _find_header(rows, items)
+    hi, det, data_start = _find_header(rows, items)
     if hi < 0 or not det["qcols"]:
         return {"rows": [], "reason": "could not find question columns (Q1, Q2 …) "
                                       "matching the test"}
@@ -113,7 +139,7 @@ def parse_results(data: bytes, items: list[dict]) -> dict:
     qcols = det["qcols"]
 
     out = []
-    for row in rows[hi + 1:]:
+    for row in rows[data_start + 1:]:
         if not any(_norm(c) for c in row):
             continue
         def cell(j):

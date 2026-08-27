@@ -2216,7 +2216,11 @@ def _link_topic_results_to_students(db, tenant_id, f: AssessmentForm, rows) -> i
     for r in rows:
         stu = by_did.get((r.get("student_id") or "").strip())
         if not stu:
-            stu = by_name.get((r.get("student_name") or "").strip().lower())
+            # Names may arrive as "Last, First" (Performance Matters) — drop the
+            # comma so it matches the roster's "last first" key.
+            nm = (r.get("student_name") or "").replace(",", " ")
+            nm = " ".join(nm.split()).lower()
+            stu = by_name.get(nm)
         if not stu:
             continue
         frac = round(r["percent"] / 100.0, 4)
