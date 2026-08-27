@@ -35,6 +35,30 @@ function goalText(m: number | null, x: number | null) {
   return m === x ? `${m}%` : `${m}–${x}%`;
 }
 
+// One measure's level as a small color-coded chip (F=FAST, I=iReady, T=Topic).
+function LevelChip({ lvl, tag }: { lvl?: number | null; tag: string }) {
+  if (!lvl) {
+    return (
+      <span
+        title={`${tag}: no data`}
+        className="inline-flex items-center justify-center rounded text-[10px] text-gray-400 border border-gray-200 px-1"
+      >
+        {tag}·—
+      </span>
+    );
+  }
+  const c = LEVEL_COLORS[lvl];
+  return (
+    <span
+      title={`${tag}: Level ${lvl} (${c?.name})`}
+      className="inline-flex items-center justify-center rounded text-[10px] font-bold px-1"
+      style={{ backgroundColor: c.hex, color: c.dark ? "#fff" : "#000" }}
+    >
+      {tag}·{lvl}
+    </span>
+  );
+}
+
 export default function AnalysisPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
@@ -153,12 +177,13 @@ export default function AnalysisPage() {
               </div>
             )}
             {/* Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
               {[
                 ["With FAST", s.with_fast, "text-gray-800"],
                 ["Meeting/above goal", s.meeting + s.above, "text-green-700"],
                 ["Below goal", s.below, "text-red-600"],
                 ["Projected Level 3+", s.projected_goal, "text-avocado-dark"],
+                ["⚠ Level disagreements", s.disagreements ?? 0, "text-amber-600"],
                 ["Students", s.students, "text-gray-800"],
               ].map(([label, n, cls]) => (
                 <div
@@ -186,6 +211,12 @@ export default function AnalysisPage() {
                       <th className="p-2 font-semibold">Instructional level</th>
                       <th className="p-2 font-semibold">Topic goal</th>
                       <th className="p-2 font-semibold">Topic avg</th>
+                      <th className="p-2 font-semibold" title="FAST / i-Ready / Topic levels side by side — ⚠ when they disagree">
+                        Level check<br />
+                        <span className="font-normal text-[10px] text-gray-400">
+                          FAST · iReady · Topic
+                        </span>
+                      </th>
                       <th className="p-2 font-semibold">Status</th>
                       <th className="p-2 font-semibold">Trend</th>
                       <th className="p-2 font-semibold">EOY projection</th>
@@ -260,6 +291,21 @@ export default function AnalysisPage() {
                                 {r.gap})
                               </span>
                             )}
+                          </td>
+                          <td className="p-2 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1">
+                              <LevelChip lvl={r.levels?.fast} tag="F" />
+                              <LevelChip lvl={r.levels?.iready} tag="I" />
+                              <LevelChip lvl={r.levels?.topic} tag="T" />
+                              {r.level_disagree && (
+                                <span
+                                  title={`These measures disagree by ${r.level_gap} level${r.level_gap > 1 ? "s" : ""} — you decide the real level.`}
+                                  className="text-amber-600 font-bold ml-0.5"
+                                >
+                                  ⚠
+                                </span>
+                              )}
+                            </span>
                           </td>
                           <td className="p-2">
                             <span

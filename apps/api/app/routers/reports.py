@@ -650,12 +650,16 @@ def _goal_analysis_data(db, tenant_id, grade):
     order = FAST_REPORT_PERIODS  # Baseline, PM1, PM2, PM3
     per = {}
     for a in rows:
-        d = per.setdefault(a.student_id, {"scale": {}, "level": {}, "topics": []})
+        d = per.setdefault(a.student_id,
+                           {"scale": {}, "level": {}, "topics": [], "iready": {}})
         if a.source == "FAST" and a.subject == "MATH":
             if a.scale_score is not None:
                 d["scale"][a.period] = a.scale_score
             if a.level is not None and 1 <= a.level <= 5:
                 d["level"][a.period] = int(a.level)
+        elif a.source == "IREADY" and a.subject == "MATH" and a.level is not None:
+            if 1 <= a.level <= 5:
+                d["iready"][a.period] = int(a.level)
         elif a.source == "TOPIC" and a.percent is not None:
             d["topics"].append(a.percent)
 
@@ -665,11 +669,20 @@ def _goal_analysis_data(db, tenant_id, grade):
                 return m[p]
         return None
 
+    def latest_iready(m):
+        """Most recent i-Ready level (AP2 over AP1, etc.)."""
+        if not m:
+            return None
+        def ap(p):
+            mm = re.search(r"\d+", p)
+            return int(mm.group()) if mm else 0
+        return m[max(m, key=ap)]
+
     out = []
     summary = {"students": len(students), "with_fast": 0, "meeting": 0,
-               "below": 0, "above": 0, "projected_goal": 0}
+               "below": 0, "above": 0, "projected_goal": 0, "disagreements": 0}
     for s in students:
-        d = per.get(s.id, {"scale": {}, "level": {}, "topics": []})
+        d = per.get(s.id, {"scale": {}, "level": {}, "topics": [], "iready": {}})
         scale = latest(d["scale"])
         topic_avg = round(100 * sum(d["topics"]) / len(d["topics"])) if d["topics"] else None
         ev = evaluate(grade, scale, topic_avg)
@@ -677,6 +690,17 @@ def _goal_analysis_data(db, tenant_id, grade):
         tc = topic_color(grade, topic_avg)
         if scale is not None:
             summary["with_fast"] += 1
+
+        # Triangulation: each measure's own level, side by side, with a flag when
+        # they disagree (the coach establishes the "real" level from all three).
+        fast_lvl = latest(d["level"])
+        iready_lvl = latest_iready(d["iready"])
+        topic_lvl = tc["level"] if tc else None
+        present = [x for x in (fast_lvl, iready_lvl, topic_lvl) if x is not None]
+        level_gap = (max(present) - min(present)) if len(present) >= 2 else 0
+        level_disagree = level_gap >= 1
+        if level_disagree:
+            summary["disagreements"] += 1
         if ev["status"] in ("meeting", "above"):
             summary[ev["status"]] += 1
         elif ev["status"] == "below":
@@ -692,6 +716,9 @@ def _goal_analysis_data(db, tenant_id, grade):
             "topic_level": tc["level"] if tc else None,
             "topic_color": tc["color"] if tc else None,
             "topic_hex": tc["hex"] if tc else None,
+            "fast_only_level": fast_lvl, "iready_level": iready_lvl,
+            "levels": {"fast": fast_lvl, "iready": iready_lvl, "topic": topic_lvl},
+            "level_disagree": level_disagree, "level_gap": level_gap,
             "meets_school_goal": ev["meets_school_goal"],
             "trend": pr["trend"], "projected": pr["projected_level_3_plus"],
             "projection_note": pr["rationale"],
