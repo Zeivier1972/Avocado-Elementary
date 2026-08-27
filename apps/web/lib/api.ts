@@ -415,22 +415,17 @@ export async function downloadDocument(id: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-// Download the generated DI packets as a Word doc (blob).
-export async function downloadDiPacketsDocx(id: string, filename: string) {
+// Open the printable student DI packet (HTML) in a new tab, with auth.
+export async function openDiPacketHtml(id: string) {
   const token = getToken();
-  const res = await fetch(`${API_URL}/coach/di-packets/${id}/docx`, {
+  const res = await fetch(`${API_URL}/coach/di-packets/${id}/html`, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
-  if (!res.ok) throw new Error("Download failed");
+  if (!res.ok) throw new Error("Could not open the packet");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename || "di-packets.docx";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 const COACH_ROLES = [

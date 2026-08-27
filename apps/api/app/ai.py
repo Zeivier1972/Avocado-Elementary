@@ -1260,27 +1260,57 @@ _LESSON_RULES = (
 )
 
 
+# Visual models the packet renderer can draw. The AI picks ONE that fits the
+# benchmark and gives an integer "value" (or a/b, rows/cols) per modeled problem.
+_DI_MODELS = ("ten_frame", "pairing", "base_ten", "array", "number_line",
+              "equal_teams", "bar_model", "none")
+
+
+def suggest_di_model(code: str, description: str) -> str:
+    """A sensible default visual model for a benchmark, from its strand + words."""
+    c = (code or "").upper()
+    d = (description or "").lower()
+    if "NSO.1" in c or "place value" in d or "hundreds" in d or "tens and ones" in d:
+        return "base_ten"
+    if "even" in d or "odd" in d:
+        return "pairing"
+    if "array" in d or "rows" in d or "multiplication" in d or "equal groups" in d:
+        return "array"
+    if "number line" in d or "skip count" in d:
+        return "number_line"
+    if "sum" in d and ("equal" in d or "two equal" in d):
+        return "equal_teams"
+    if "within 20" in d or "sums to 20" in d or "addition facts" in d or "make a ten" in d:
+        return "ten_frame"
+    if "real-world" in d or "word problem" in d or "problems" in d:
+        return "bar_model"
+    return "ten_frame"
+
+
 _DI_PACKET_SCHEMA = (
-    '[{"tier":"Intensive|Cusp|Strategic","stars":1,"band":"0-40%","tlc_sessions":2,'
-    '"focus":"the standard in kid-friendly words for THIS tier",'
-    '"teacher_led":[{"session":1,"title":"...","i_do":{"problem":"real problem grounded in the B1G-M benchmark","say":["teacher think-aloud line"],"do":"what the teacher does + manipulative"},'
-    '"we_do":{"problem":"a DIFFERENT real problem","say":["guiding question"],"do":"guided step"},'
-    '"you_do":{"problem":"an independent problem","answer":"the answer"}}],'
-    '"independent_practice":[{"problem":"a target-aligned practice problem (for the IXL/Skill Trainer/Independent Practice station)","answer":"the answer"}],'
-    '"opm":[{"problem":"a progress-monitoring question on THIS standard to check growth","answer":"the answer"}]}]'
+    '[{"tier":"Intensive|Cusp|Strategic",'
+    '"days":[{"day":1,"title":"kid-friendly focus for the day",'
+    '"pacing":"Model 5 min · Try it 10 min · On your own 15 min",'
+    '"watch_it":{"value":6,"statement":"the worked example in kid words (e.g. \'6 is EVEN — 3 pairs, 0 left over\')"},'
+    '"try_it":{"problem":"one guided problem in student words","value":8,'
+    '"steps":["step 1 for the student","step 2","step 3"]},'
+    '"on_your_own":[{"text":"an independent problem, similar to the test","value":9,"show_model":true,"answer":"the answer"}]}],'
+    '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer"}]}]'
 )
 
 
 def generate_di_packets(standard: dict, most_missed: list, grade: str,
                         tiers: list, tier2: list | None = None) -> dict:
     """Generate the three rotation-tier DI packets (Intensive / Cusp / Strategic)
-    for ONE benchmark, grounded in the B1G-M standard (description, clarifications,
-    examples, ALDs) AND the most-missed test questions, with an OPM progress check
-    per tier. `tiers` carries each tier's band + number of teacher-led (TLC)
-    sessions so a tier with 2 TLCs gets 2 scripted reteach sessions."""
+    as STUDENT-FACING packets, grounded in the B1G-M benchmark AND the most-missed
+    test questions. Each tier is split into DAYS (its TLC count: Intensive/Cusp = 2,
+    Strategic = 1); each day runs Watch it -> Try it -> On your own with a visual
+    MODEL chosen for the standard, plenty of independent practice (~30-min center),
+    and an OPM progress check per tier."""
     code = standard.get("code", "")
+    model = suggest_di_model(code, standard.get("description", ""))
     base = {"standard": code, "description": standard.get("description", ""),
-            "grade_level": grade, "tiers": [], "ai_generated": False}
+            "grade_level": grade, "model": model, "tiers": [], "ai_generated": False}
     if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
         base["ai_status"] = ("AI is off — turn on AI_PROVIDER=anthropic, AI_API_KEY, "
                              "AI_MODEL to write the DI packets.")
@@ -1290,51 +1320,52 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
         client = anthropic.Anthropic(api_key=settings.ai_api_key)
         std_ctx = _std_context([standard])
         missed_txt = "\n".join(
-            f"- Q{m.get('position')}: {(m.get('stem') or '').strip()[:200]} "
-            f"(answer {m.get('correct_response','')}, missed by {m.get('miss_pct','')}% )"
+            f"- Q{m.get('position')}: {(m.get('stem') or '').strip()[:220]} "
+            f"(answer {m.get('correct_response','')}, missed by {m.get('miss_pct','')}%)"
             for m in (most_missed or [])[:8]) or "(no item stems captured)"
-        tier_txt = "\n".join(
-            f"- {t['name']} ({t['band']}, {t['stars']}★): {t['tlc_sessions']} "
-            f"teacher-led (TLC) session(s) in the rotation" for t in tiers)
+        day_map = "\n".join(
+            f"- {t['name']} ({t['band']}): {t['tlc_sessions']} day(s)" for t in tiers)
         prompt = (
-            f"You are an elementary math coach writing DIFFERENTIATED INSTRUCTION "
-            f"packets for Grade {grade} on ONE benchmark, for a 7-day DI rotation "
-            f"(stations: i-Ready, TLC teacher-led, IXL/Skill Trainer/Independent "
-            f"Practice, OPM, Data Chat).\n\n"
-            f"BENCHMARK (B1G-M — ground every problem in this so questions hit the "
-            f"target, not just the test):\n{std_ctx}\n\n"
-            f"MOST-MISSED QUESTIONS on this benchmark (reteach these ideas):\n{missed_txt}\n\n"
-            f"TIER 2 academic words to use: {', '.join(tier2 or [])}\n\n"
-            f"Write ONE packet per tier. Each tier gets EXACTLY as many 'teacher_led' "
-            f"sessions as its TLC count:\n{tier_txt}\n\n"
-            "Tier intent: Intensive (0-40%) = foundational reteach with concrete "
-            "manipulatives, break the skill into small steps; Cusp (40-70%) = "
-            "targeted practice on the exact missed idea to push to proficiency; "
-            "Strategic (70-100%) = enrichment / multi-step / higher-order extension. "
-            "Every problem uses REAL grade-appropriate numbers and is grounded in the "
-            "benchmark's clarifications/examples. Include an OPM section per tier: 3 "
-            "short progress-monitoring questions (with answers) on THIS standard to "
-            "check if students grew.\n\n"
-            f"{CUBS_ROUTINE}\n\n"
-            f"Return ONLY a JSON array (one object per tier, in the tier order given) "
+            f"You are an elementary math coach writing STUDENT DI PACKETS for Grade "
+            f"{grade} on ONE benchmark. Kids work these at a 30-minute teacher-led "
+            f"center. NO teacher script — write everything TO THE STUDENT.\n\n"
+            f"BENCHMARK (B1G-M — ground every problem here so it hits the target):\n{std_ctx}\n\n"
+            f"MOST-MISSED TEST QUESTIONS (mirror THESE — same idea, format and number "
+            f"range):\n{missed_txt}\n\n"
+            f"TIER 2 academic words to weave in: {', '.join(tier2 or [])}\n\n"
+            f"VISUAL MODEL for every problem: use '{model}'. Give an integer 'value' "
+            f"for each modeled problem (0-20 for ten_frame/pairing, the number for "
+            f"base_ten, etc.) so it can be drawn. For 'array' use \"rows\" and "
+            f"\"cols\"; for 'equal_teams' use \"a\" and \"b\"; for 'number_line' use "
+            f"\"value\" and \"max\".\n\n"
+            f"Split EACH tier into this many DAYS:\n{day_map}\n"
+            "Each day: watch_it (one worked example), try_it (one guided problem with "
+            "2-3 student steps), and on_your_own with ENOUGH problems to fill ~15 "
+            "minutes of independent work (Intensive & Cusp: 5-6 per day; Strategic: "
+            "4-5 plus a 'Dig Deeper' enrichment). Tier intent: Intensive = "
+            "foundational, most scaffolding, concrete model every time; Cusp = "
+            "targeted practice to reach proficiency; Strategic = practice + "
+            "higher-order enrichment. Day 2 (Intensive/Cusp) fades the scaffold "
+            "toward doing it without drawing. Include 3 OPM questions per tier.\n\n"
+            "Every number is grade-appropriate and grounded in the benchmark. Write "
+            "at an elementary reading level.\n\n"
+            f"Return ONLY a JSON array (one object per tier, in the order given) "
             f"matching:\n{_DI_PACKET_SCHEMA}\n{_PLAIN}"
         )
         arr, reason = _llm_json(
             client, prompt,
             "You output ONLY a valid JSON array, no prose or fences. Finish every "
-            "object completely.", 12000)
+            "object completely.", 14000)
         if not arr:
             base["ai_status"] = reason or "the model did not return usable packets"
             return base
-        # Attach the rotation metadata (bands, stars, TLC counts, day-by-day) back
-        # onto each tier so the packet shows the rotation.
         by_name = {str(t.get("tier", "")).lower(): t for t in arr}
         out_tiers = []
         for t in tiers:
             gen = by_name.get(t["name"].lower(), {})
-            out_tiers.append({**gen, "tier": t["name"], "stars": t["stars"],
+            out_tiers.append({"tier": t["name"], "stars": t["stars"],
                               "band": t["band"], "tlc_sessions": t["tlc_sessions"],
-                              "rotation": t.get("rotation", [])})
+                              "days": gen.get("days", []), "opm": gen.get("opm", [])})
         base.update({"tiers": out_tiers, "ai_generated": True,
                      "generated_by": settings.ai_model})
         return base

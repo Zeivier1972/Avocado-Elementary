@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, getToken, downloadDiPacketsDocx } from "@/lib/api";
+import { api, getToken, openDiPacketHtml } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
 
 const TIER_HEX: Record<string, string> = {
@@ -215,14 +215,13 @@ function DiFocusInner() {
                 {packets && packetId && (
                   <button
                     onClick={() =>
-                      downloadDiPacketsDocx(
-                        packetId,
-                        `DI-Packets-${standard}.docx`
-                      ).catch((e) => alert("Download failed: " + (e as Error).message))
+                      openDiPacketHtml(packetId).catch((e) =>
+                        alert("Couldn't open: " + (e as Error).message)
+                      )
                     }
-                    className="border border-avocado text-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
+                    className="bg-avocado-dark text-white border border-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
                   >
-                    ⬇ Word
+                    📄 Open printable packet
                   </button>
                 )}
               </div>
@@ -236,83 +235,42 @@ function DiFocusInner() {
             )}
 
             {packets?.tiers?.length > 0 && (
-              <div className="grid md:grid-cols-3 gap-4 mt-4">
-                {packets.tiers.map((t: any) => (
-                  <div
-                    key={t.tier}
-                    className="rounded-2xl border p-4"
-                    style={{ borderTopColor: TIER_HEX[t.tier] || "#888", borderTopWidth: 4 }}
-                  >
-                    <div className="font-bold" style={{ color: TIER_HEX[t.tier] }}>
-                      {t.tier} {"★".repeat(t.stars || 0)}
+              <>
+                <div className="text-xs text-gray-500 mt-4">
+                  Model: <b>{(packets.model || "").replace("_", " ")}</b> · click{" "}
+                  <b>Open printable packet</b> for the full student pages with visuals.
+                </div>
+                <div className="grid md:grid-cols-3 gap-4 mt-2">
+                  {packets.tiers.map((t: any) => (
+                    <div
+                      key={t.tier}
+                      className="rounded-2xl border p-4"
+                      style={{ borderTopColor: TIER_HEX[t.tier] || "#888", borderTopWidth: 4 }}
+                    >
+                      <div className="font-bold" style={{ color: TIER_HEX[t.tier] }}>
+                        {t.tier} {"★".repeat(t.stars || 0)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {t.band} · {t.student_count ?? 0} students ·{" "}
+                        {(t.days || []).length} day
+                        {(t.days || []).length === 1 ? "" : "s"}
+                      </div>
+                      {(t.days || []).map((d: any, i: number) => (
+                        <div key={i} className="mt-2 text-xs text-gray-600">
+                          <span className="font-semibold">Day {d.day}:</span> {d.title}
+                          <span className="text-gray-400">
+                            {" "}
+                            · {(d.on_your_own || []).length} practice
+                          </span>
+                        </div>
+                      ))}
+                      <div className="text-xs text-gray-400 mt-2">
+                        OPM check: {(t.opm || []).length} questions
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {t.band} · {t.student_count ?? 0} students · {t.tlc_sessions} TLC
-                      session{t.tlc_sessions === 1 ? "" : "s"}
-                    </div>
-                    {t.focus && (
-                      <p className="text-sm text-gray-700 mt-2">{t.focus}</p>
-                    )}
-
-                    {(t.teacher_led || []).map((sess: any, i: number) => (
-                      <div key={i} className="mt-3 border-t border-gray-100 pt-2">
-                        <div className="text-xs font-bold text-gray-700">
-                          TLC Session {sess.session}: {sess.title}
-                        </div>
-                        {["i_do", "we_do", "you_do"].map((k) =>
-                          sess[k]?.problem ? (
-                            <div key={k} className="text-xs text-gray-600 mt-1">
-                              <span className="font-semibold uppercase">
-                                {k.replace("_", " ")}:
-                              </span>{" "}
-                              {sess[k].problem}
-                              {sess[k].answer ? (
-                                <span className="text-gray-400"> = {sess[k].answer}</span>
-                              ) : null}
-                            </div>
-                          ) : null
-                        )}
-                      </div>
-                    ))}
-
-                    {t.independent_practice?.length > 0 && (
-                      <div className="mt-3">
-                        <div className="text-xs font-bold text-gray-700">
-                          Independent practice
-                        </div>
-                        <ol className="list-decimal ml-4 text-xs text-gray-600">
-                          {t.independent_practice.map((q: any, i: number) => (
-                            <li key={i}>
-                              {q.problem}
-                              {q.answer ? (
-                                <span className="text-gray-400"> ({q.answer})</span>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-
-                    {t.opm?.length > 0 && (
-                      <div className="mt-3">
-                        <div className="text-xs font-bold text-red-700">
-                          OPM — progress check
-                        </div>
-                        <ol className="list-decimal ml-4 text-xs text-gray-600">
-                          {t.opm.map((q: any, i: number) => (
-                            <li key={i}>
-                              {q.problem}
-                              {q.answer ? (
-                                <span className="text-gray-400"> ({q.answer})</span>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}

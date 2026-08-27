@@ -1861,6 +1861,7 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str):
         missed.sort(key=lambda m: -m.get("miss_pct", 0))
 
         packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2)
+        packet["test_items"] = missed[:8]  # show which missed questions we reteach
 
         # Attach the student groups (who is in each tier + counts).
         groups = _di_students_by_tier(db, f, standard) if f else {}
@@ -1935,27 +1936,22 @@ def get_di_packets(
             "content": rec.content}
 
 
-@router.get("/di-packets/{packet_id}/docx")
-def di_packets_docx(
+@router.get("/di-packets/{packet_id}/html")
+def di_packets_html(
     packet_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
-    from app.export_docx import di_packets_to_docx
+    """The printable student packet — visual models drawn per benchmark. Opened
+    in a new tab and printed straight from the browser."""
+    from app.export_html import render_di_packet_html
     rec = db.get(DiPacket, packet_id)
     if not rec or rec.tenant_id != user.tenant_id:
         raise HTTPException(404, "DI packet not found")
     if rec.status != "ready":
         raise HTTPException(409, "Packets are not ready yet.")
-    buf = io.BytesIO()
-    di_packets_to_docx(rec.content).save(buf)
-    buf.seek(0)
-    fn = f"DI-Packets-G{rec.grade_level}-{rec.standard}.docx"
-    return Response(
-        content=buf.read(),
-        media_type="application/vnd.openxmlformats-officedocument."
-                   "wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="{fn}"'})
+    return Response(content=render_di_packet_html(rec.content),
+                    media_type="text/html")
 
 
 # --- Master schedule: math times & Math-DI windows ---------------------------
