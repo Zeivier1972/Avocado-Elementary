@@ -36,6 +36,7 @@ from app.models import (
     CoachNote,
     CollabMeeting,
     District,
+    Enrollment,
     FrameworkApplication,
     KeyDate,
     PacingTopic,
@@ -2169,6 +2170,9 @@ async def import_results(
             400, f"Could not read the results: {res.get('reason')}. Upload the "
                  "grade Excel with a Student column and one column per question "
                  "(Q1, Q2 …).")
+    # If the export carries no teacher/class column, recover each student's
+    # teacher from the roster so per-class results and DI packets still work.
+    _fill_teacher_from_roster(db, user.tenant_id, res["rows"])
     db.query(TopicResult).filter(TopicResult.form_id == f.id).delete()
     for r in res["rows"]:
         pct = r["percent"]
@@ -2197,6 +2201,56 @@ def _topic_period(topic_code: str) -> str:
     import re as _re
     m = _re.search(r"(\d+)", topic_code or "")
     return f"TP{m.group(1)}" if m else (topic_code or "TP").replace(" ", "").upper()
+
+
+def _student_teacher_map(db, tenant_id) -> dict:
+    """student.id -> teacher display name, from the roster (Enrollment ->
+    ClassRoom -> teacher User). Prefers the student's MATH class, then homeroom,
+    then any class, so a topic-test result lands under the right teacher."""
+    q = (db.query(Enrollment, ClassRoom, User)
+         .join(ClassRoom, Enrollment.class_id == ClassRoom.id)
+         .join(User, ClassRoom.teacher_id == User.id)
+         .filter(ClassRoom.tenant_id == tenant_id))
+    rank = {"MATH": 0, "HOMEROOM": 1}
+    best: dict = {}
+    for en, cls, tch in q.all():
+        r = rank.get((cls.subject or "").upper(), 2)
+        name = (tch.name or "").strip() or (cls.name or "").strip()
+        if not name:
+            continue
+        cur = best.get(en.student_id)
+        if cur is None or r < cur[0]:
+            best[en.student_id] = (r, name)
+    return {sid: v[1] for sid, v in best.items()}
+
+
+def _fill_teacher_from_roster(db, tenant_id, rows) -> int:
+    """When the results file has no teacher/class column, look each student up in
+    the roster (by district id, then by name) and fill their teacher, so the
+    per-class breakdown and DI packets still work. Mutates rows; returns how many
+    teachers were filled."""
+    if not rows or all((r.get("teacher_name") or "").strip() for r in rows):
+        return 0
+    students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    by_did = {(s.district_student_id or "").strip(): s
+              for s in students if s.district_student_id}
+    by_name = {}
+    for s in students:
+        by_name[f"{s.first_name} {s.last_name}".strip().lower()] = s
+        by_name.setdefault(f"{s.last_name} {s.first_name}".strip().lower(), s)
+    tmap = _student_teacher_map(db, tenant_id)
+    filled = 0
+    for r in rows:
+        if (r.get("teacher_name") or "").strip():
+            continue
+        stu = by_did.get((r.get("student_id") or "").strip())
+        if not stu:
+            nm = " ".join((r.get("student_name") or "").replace(",", " ").split()).lower()
+            stu = by_name.get(nm)
+        if stu and tmap.get(stu.id):
+            r["teacher_name"] = tmap[stu.id]
+            filled += 1
+    return filled
 
 
 def _link_topic_results_to_students(db, tenant_id, f: AssessmentForm, rows) -> int:
