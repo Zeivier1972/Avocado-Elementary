@@ -286,14 +286,16 @@ _CSS = """
 .opm{background:#FBEBE8;border:1px solid #EAD2CE;border-radius:20px;padding:18px 20px;margin-top:22px;border-top:8px solid #C0392B;}
 .opm h2{margin:0;font-size:20px;color:#C0392B;}.foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;}
 @media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}
-.tier{break-inside:auto;}.prob,.example,.opm,.phase-body{break-inside:avoid;}
-.phase,.day{break-after:avoid;}.band{border-radius:0;}@page{margin:1.3cm;}}
+.tier,.phase-body{break-inside:auto;}.prob,.example,.opm{break-inside:avoid;}
+.phase,.day{break-after:avoid;}.band{border-radius:0;}
+.tier{margin-top:14px;padding:16px;}.day{margin:12px 0 6px;}.phase{margin:10px 0 6px;}
+.wrap{padding-bottom:0;}@page{margin:1.1cm;}}
 """
 # For PDF rendering (WeasyPrint) the same rules apply without @media print.
 _CSS_PDF_EXTRA = """
-.tier{break-inside:auto;}.prob,.example,.opm,.phase-body{break-inside:avoid;}
+.tier,.phase-body{break-inside:auto;}.prob,.example,.opm{break-inside:avoid;}
 .phase,.day{break-after:avoid;}
-@page{size:Letter;margin:1.3cm;}
+@page{size:Letter;margin:1.1cm;}
 body{background:#fff;}
 """
 
