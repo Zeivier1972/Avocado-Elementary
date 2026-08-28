@@ -289,34 +289,61 @@ function DiFocusInner() {
                   <b>Open / print</b> for the full student pages with visuals.
                 </div>
                 <div className="grid md:grid-cols-3 gap-4 mt-2">
-                  {packets.tiers.map((t: any) => (
-                    <div
-                      key={t.tier}
-                      className="rounded-2xl border p-4"
-                      style={{ borderTopColor: TIER_HEX[t.tier] || "#888", borderTopWidth: 4 }}
-                    >
-                      <div className="font-bold" style={{ color: TIER_HEX[t.tier] }}>
-                        {t.tier} {"★".repeat(t.stars || 0)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {t.band} · {t.student_count ?? 0} students ·{" "}
-                        {(t.days || []).length} day
-                        {(t.days || []).length === 1 ? "" : "s"}
-                      </div>
-                      {(t.days || []).map((d: any, i: number) => (
-                        <div key={i} className="mt-2 text-xs text-gray-600">
-                          <span className="font-semibold">Day {d.day}:</span> {d.title}
-                          <span className="text-gray-400">
-                            {" "}
-                            · {(d.on_your_own || []).length} practice
-                          </span>
+                  {packets.tiers.map((t: any) => {
+                    const hex = TIER_HEX[t.tier] || "#888";
+                    return (
+                      <div
+                        key={t.tier}
+                        className="rounded-2xl border border-gray-100 bg-white overflow-hidden flex flex-col"
+                        style={{ borderTopColor: hex, borderTopWidth: 5 }}
+                      >
+                        {/* Tier header band */}
+                        <div className="px-4 pt-3 pb-2.5" style={{ background: `${hex}0F` }}>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-extrabold text-base" style={{ color: hex }}>
+                              {t.tier}{" "}
+                              <span className="text-sm">{"★".repeat(t.stars || 0)}</span>
+                            </div>
+                            <span
+                              className="text-[11px] font-bold text-white rounded-full px-2 py-0.5"
+                              style={{ background: hex }}
+                            >
+                              {t.student_count ?? 0} kids
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-semibold text-gray-500 mt-0.5">
+                            {t.band} · {(t.days || []).length} day
+                            {(t.days || []).length === 1 ? "" : "s"}
+                          </div>
                         </div>
-                      ))}
-                      <div className="text-xs text-gray-400 mt-2">
-                        OPM check: {(t.opm || []).length} questions
+                        {/* Days */}
+                        <div className="p-4 space-y-2 flex-1">
+                          {(t.days || []).map((d: any, i: number) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <span
+                                className="shrink-0 mt-0.5 text-[10px] font-bold text-white rounded px-1.5 py-0.5"
+                                style={{ background: hex }}
+                              >
+                                D{d.day}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-gray-700 leading-snug">
+                                  {d.title}
+                                </div>
+                                <div className="text-[11px] text-gray-400">
+                                  {(d.on_your_own || []).length} practice questions
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* OPM footer */}
+                        <div className="px-4 py-2 border-t border-gray-50 text-[11px] text-gray-500 bg-gray-50/40">
+                          ✅ Quick Check · {(t.opm || []).length} questions
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
