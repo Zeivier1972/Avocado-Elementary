@@ -9,6 +9,7 @@ const TIER_HEX: Record<string, string> = {
   Intensive: "#C0392B",
   Cusp: "#F1C40F",
   Strategic: "#2E86C1",
+  Enrichment: "#117A65",
 };
 
 const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
@@ -20,6 +21,7 @@ function DiFocusInner() {
   const standard = params.get("standard") || "";
   const formId = params.get("form_id") || "";
   const teacher = params.get("teacher") || "";
+  const enrich = params.get("enrich") === "1";
   const [me, setMe] = useState<any>(null);
   const [build, setBuild] = useState<any>(null);
   const [data, setData] = useState<any>(null);
@@ -32,7 +34,7 @@ function DiFocusInner() {
     setPacketBusy(true);
     setPackets(null);
     try {
-      const r = await api.createDiPackets(grade, standard, formId, teacher);
+      const r = await api.createDiPackets(grade, standard, formId, teacher, enrich);
       setPacketId(r.packet_id);
       // Poll until ready (DI packet is one AI call, usually under a minute).
       for (let i = 0; i < 60; i++) {
@@ -84,13 +86,13 @@ function DiFocusInner() {
             ← Assessments
           </a>
           <h1 className="text-xl font-bold text-gray-800 mt-1">
-            DI Focus — {GRADE_LABEL(grade)}
+            {enrich ? "Enrichment Focus" : "DI Focus"} — {GRADE_LABEL(grade)}
             {teacher ? ` · ${teacher}'s class` : " · grade-wide"}
           </h1>
           <p className="text-sm text-gray-500">
-            One place to plan reteach for a weak standard: what it is, the Tier 2
-            words to grow, the questions students missed, and a Red / Yellow / Green
-            plan using the ACES gradual-release model.
+            {enrich
+              ? "Plan a Dig Deeper challenge for the already-proficient kids: extend both benchmarks together at above-grade rigor with the ACES gradual-release model."
+              : "One place to plan reteach for a weak standard: what it is, the Tier 2 words to grow, the questions students missed, and a Red / Yellow / Green plan using the ACES gradual-release model."}
           </p>
         </div>
 
@@ -198,14 +200,28 @@ function DiFocusInner() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="font-bold text-gray-800">
-                  DI Packets — Intensive · Cusp · Strategic
+                  {enrich
+                    ? "Enrichment — Dig Deeper (above grade)"
+                    : "DI Packets — Intensive · Cusp · Strategic"}
                 </div>
                 <p className="text-xs text-gray-500 max-w-xl">
-                  Two layers: (1) reteach the skill per tier (Watch it → Try it → On
-                  your own, by day), and (2) <b>Target the Misses</b> — matched
-                  fix-it problems for the exact questions the class missed, clustered
-                  by misconception. Grounded in the B1G-M + your test. OPM check
-                  included.
+                  {enrich ? (
+                    <>
+                      One challenge packet for the already-proficient (all-Green)
+                      kids, covering <b>both benchmarks together</b> at above-grade
+                      rigor — multi-step, explain / prove your thinking, open-ended
+                      and create-your-own tasks. Watch it → Try it → On your own,
+                      with a stretch OPM check.
+                    </>
+                  ) : (
+                    <>
+                      Two layers: (1) reteach the skill per tier (Watch it → Try it →
+                      On your own, by day), and (2) <b>Target the Misses</b> — matched
+                      fix-it problems for the exact questions the class missed,
+                      clustered by misconception. Grounded in the B1G-M + your test.
+                      OPM check included.
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -214,7 +230,13 @@ function DiFocusInner() {
                   disabled={packetBusy}
                   className="bg-avocado hover:bg-avocado-dark disabled:opacity-60 text-white text-sm font-semibold rounded-lg px-4 py-2"
                 >
-                  {packetBusy ? "Generating…" : packets ? "↻ Regenerate" : "✨ Generate DI packets"}
+                  {packetBusy
+                    ? "Generating…"
+                    : packets
+                    ? "↻ Regenerate"
+                    : enrich
+                    ? "🚀 Generate enrichment"
+                    : "✨ Generate DI packets"}
                 </button>
                 {packets && packetId && (
                   <>

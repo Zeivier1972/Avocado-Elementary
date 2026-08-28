@@ -584,9 +584,16 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                     </span>
                   )}
                 {g.kind === "enrichment" ? (
-                  <span className="ml-auto text-xs text-blue-700">
-                    No reteach — give enrichment / Dig Deeper
-                  </span>
+                  <a
+                    href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
+                      a.by_standard?.[0]?.standard || ""
+                    )}&form_id=${f.id}&teacher=${encodeURIComponent(
+                      g.teachers.join(",")
+                    )}&enrich=1`}
+                    className="ml-auto text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg px-2.5 py-1 whitespace-nowrap"
+                  >
+                    🚀 Plan enrichment →
+                  </a>
                 ) : g.kind === "unmatched" ? (
                   <span className="ml-auto text-xs text-amber-700">
                     {g.students} students didn&apos;t match the roster — re-check names/IDs
@@ -659,8 +666,18 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                         </div>
                       </span>
                     ) : (
-                      <span className="text-xs text-green-700 font-semibold">
-                        ✓ All Green — enrichment
+                      <span className="text-xs font-semibold">
+                        <span className="text-green-700">✓ All Green</span>{" "}
+                        <a
+                          href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
+                            c.di_target || a.by_standard?.[0]?.standard || ""
+                          )}&form_id=${f.id}&teacher=${encodeURIComponent(
+                            c.teacher
+                          )}&enrich=1`}
+                          className="text-teal-700 hover:underline font-sans"
+                        >
+                          🚀 Enrichment for this class →
+                        </a>
                       </span>
                     )}
                     {c.di_note && c.needs_di && (

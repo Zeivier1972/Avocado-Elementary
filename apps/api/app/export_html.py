@@ -244,6 +244,7 @@ _TIER_META = {
     "Intensive": ("red", "#C0392B", "★"),
     "Cusp": ("amber", "#C9880E", "★★"),
     "Strategic": ("blue", "#2E86C1", "★★★"),
+    "Enrichment": ("teal", "#117A65", "★★★＋"),
 }
 
 _CSS = """
@@ -321,8 +322,9 @@ def _problem_html(model, p, show_default=True) -> str:
     q = _esc(p.get("text") or p.get("problem"))
     vis = ""
     if p.get("show_model", show_default) and (p.get("value") is not None or "rows" in p or "a" in p):
-        # Practice picture — neutral, so it doesn't reveal the answer.
-        vis = svg_model(model, p, reveal=False)
+        # Practice picture — neutral, so it doesn't reveal the answer. A problem
+        # may name its own model (enrichment mixes benchmarks).
+        vis = svg_model(p.get("model", model), p, reveal=False)
     choices = _choices_html(p.get("choices"))
     if choices:
         ans = choices  # multiple choice — no write-in box needed
@@ -373,8 +375,10 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">']
     head.append(f'<style>{css}</style></head><body><div class="wrap">')
     out = list(head)
+    enrich = bool(packet.get("enrichment"))
     teacher = _esc(packet.get("teacher"))
-    eyebrow = f"Grade {grade} · Math · DI Center Packet"
+    kind = "Enrichment · Dig Deeper" if enrich else "DI Center Packet"
+    eyebrow = f"Grade {grade} · Math · {kind}"
     if teacher:
         n_classes = teacher.count(",") + 1
         eyebrow += (f" · {n_classes} classes: {teacher}" if n_classes > 1
@@ -382,7 +386,12 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     out.append(f'<div class="band"><div><div class="eyebrow">{eyebrow}</div>'
                f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
                f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')
-    if missed:
+    if enrich:
+        out.append('<div class="missed" style="border-left-color:#117A65;">'
+                   '<b>You already know this — now go deeper. 🚀</b> These challenges '
+                   'stretch you above grade level: take your time, show your thinking, '
+                   'and try more than one way.</div>')
+    if missed and not enrich:
         items = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
         out.append(f'<div class="missed"><b>We are fixing the questions the class missed most:</b> {items}. '
                    f'These packets reteach those exact ideas.</div>')
@@ -391,13 +400,16 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     tiers = packet.get("tiers", []) or []
     tcount = {t.get("tier"): t.get("student_count", 0) for t in tiers}
     total = sum(tcount.values())
-    if total:
+    who = f"{_esc(teacher)}" if teacher else "grade-wide"
+    if total and enrich:
+        out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
+                   f'<span class="cc" style="background:#117A65">Enrichment ×{total}</span></div>')
+    elif total:
         chips = "".join(
             f'<span class="cc" style="background:{_TIER_META.get(name, ("", "#888", ""))[1]}">'
             f'{label} ×{tcount.get(name,0)}</span>'
             for name, label in (("Intensive", "Red"), ("Cusp", "Yellow"),
                                 ("Strategic", "Green")))
-        who = f"{_esc(teacher)}" if teacher else "grade-wide"
         out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
                    f'{chips}<span class="cc" style="background:#38601F">Total ×{total}</span></div>')
 
@@ -412,18 +424,22 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             # Watch it
             w = day.get("watch_it") or {}
             if w:
+                wvis = (svg_model(w.get("model", model), w)
+                        if (w.get("value") is not None or "rows" in w or "a" in w) else "")
                 out.append('<div class="phase"><span class="pn" style="background:%s">1</span><h3>Watch it</h3><span class="gr">I do</span></div>' % hexc)
                 out.append('<div class="phase-body"><div class="example"><div class="tag">Study this one</div>'
-                           + svg_model(model, w)
+                           + wvis
                            + f'<div class="st">{_esc(w.get("statement"))}</div></div></div>')
             # Try it
             tr = day.get("try_it") or {}
             if tr:
+                tvis = (svg_model(tr.get("model", model), tr, reveal=False)
+                        if (tr.get("value") is not None or "rows" in tr or "a" in tr) else "")
                 out.append('<div class="phase"><span class="pn" style="background:%s">2</span><h3>Try it</h3><span class="gr">We do</span></div>' % hexc)
                 steps = "".join(f'<div class="step"><span class="n">{i+1}</span><p>{_esc(s)}</p></div>'
                                 for i, s in enumerate(tr.get("steps", [])))
                 out.append(f'<div class="phase-body"><div class="prob"><p class="q">{_esc(tr.get("problem"))}</p>'
-                           + svg_model(model, tr, reveal=False)
+                           + tvis
                            + (f'<div class="steps">{steps}</div>' if steps else "") + '</div></div>')
             # On your own
             oyo = day.get("on_your_own") or []
@@ -463,6 +479,10 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             out.append(f'<div class="phase-body"><div class="grid">{cards}</div></div>')
         out.append('</section>')
 
-    out.append(f'<div class="foot">Avocado · Grade {grade} · {std} — Reteach the skill, then Target the Misses · Red &amp; Yellow = 2 days · Green = 1 day</div>')
+    foot = (f'Avocado · Grade {grade} · {std} — Enrichment · Dig Deeper (above grade)'
+            if enrich else
+            f'Avocado · Grade {grade} · {std} — Reteach the skill, then Target the '
+            f'Misses · Red &amp; Yellow = 2 days · Green = 1 day')
+    out.append(f'<div class="foot">{foot}</div>')
     out.append('</div></body></html>')
     return "".join(out)

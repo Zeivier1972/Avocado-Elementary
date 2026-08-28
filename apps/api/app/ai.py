@@ -1386,6 +1386,88 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
         return base
 
 
+_ENRICH_SCHEMA = (
+    '[{"tier":"Enrichment",'
+    '"days":[{"day":1,"title":"kid-friendly challenge focus",'
+    '"pacing":"Study it 5 min · Try it 10 min · On your own 15 min",'
+    '"watch_it":{"statement":"a worked ABOVE-GRADE example that shows the reasoning in kid words","model":"array","value":12},'
+    '"try_it":{"problem":"one guided multi-step challenge in student words","model":"array","value":16,'
+    '"steps":["step 1","step 2","step 3"]},'
+    '"on_your_own":[{"text":"a challenge problem — multi-step, or explain/prove your thinking, or create your own","standard":"MA...","show_model":false,"answer":"the answer or a sample response"}]}],'
+    '"opm":[{"problem":"a stretch check-question","answer":"the answer"}]}]'
+)
+
+
+def generate_enrichment_packet(standards: list, grade: str,
+                               tier2: list | None = None) -> dict:
+    """Generate ONE student-facing ENRICHMENT / 'Dig Deeper' packet for the high
+    (all-Green) kids, covering ALL the given benchmarks together at ABOVE-GRADE
+    rigor — multi-step problems, explain/prove your thinking, open-ended and
+    'create your own' challenges — no reteach scaffolds. Renders through the same
+    tier/day machinery as the reteach packets (a single 'Enrichment' tier)."""
+    codes = [s.get("code", "") for s in standards if s.get("code")]
+    label = " + ".join(codes) if codes else "Enrichment"
+    model = suggest_di_model(codes[0] if codes else "",
+                             standards[0].get("description", "") if standards else "")
+    base = {"standard": label, "description": "Dig Deeper — enrichment challenge",
+            "grade_level": grade, "model": model, "enrichment": True,
+            "tiers": [], "ai_generated": False}
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        base["ai_status"] = ("AI is off — turn on AI_PROVIDER=anthropic, AI_API_KEY, "
+                             "AI_MODEL to write the enrichment packet.")
+        return base
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        std_ctx = _std_context(standards)
+        model_hint = "; ".join(
+            f"{s.get('code','')} -> {suggest_di_model(s.get('code',''), s.get('description',''))}"
+            for s in standards) or model
+        prompt = (
+            f"You are an elementary math coach writing ONE student ENRICHMENT / 'Dig "
+            f"Deeper' packet for Grade {grade} for the students who are ALREADY "
+            f"PROFICIENT (all Green). They work it at a 30-minute teacher-led "
+            f"center. NO teacher script — write everything TO THE STUDENT.\n\n"
+            f"COVER ALL of these benchmarks TOGETHER in the one packet (mix and "
+            f"connect them — do NOT reteach; extend):\n{std_ctx}\n\n"
+            f"RIGOR: ABOVE grade level. These kids have the basics, so PUSH them: "
+            f"multi-step problems, problems that combine BOTH benchmarks at once, "
+            f"'explain your thinking', 'prove it another way', 'find the mistake', "
+            f"open-ended tasks with more than one answer, and 'create your own "
+            f"problem for a friend'. Bigger numbers than the tested grade, and "
+            f"reasoning over recall. NEVER a plain recall drill.\n\n"
+            f"TIER 2 academic words to weave in: {', '.join(tier2 or [])}\n\n"
+            f"Build ONE day with gradual release: watch_it (a worked above-grade "
+            f"example showing the reasoning), try_it (one guided multi-step challenge "
+            f"with 2-3 student steps), and on_your_own with 6-8 rich challenge "
+            f"problems spanning the benchmarks (tag each with its 'standard' code). "
+            f"Most enrichment problems are constructed-response, so set "
+            f"\"show_model\": false and give an 'answer' (or a sample response for "
+            f"open-ended ones) — add a visual only where it truly helps by setting "
+            f"\"model\" and \"value\" on that problem (models: {model_hint}). For "
+            f"'array' use \"rows\"/\"cols\"; 'equal_teams' use \"a\"/\"b\"; "
+            f"'number_line' use \"value\"/\"max\". Include 2-3 stretch OPM checks.\n\n"
+            f"Return ONLY a JSON array with ONE object matching:\n{_ENRICH_SCHEMA}\n{_PLAIN}"
+        )
+        arr, reason = _llm_json(
+            client, prompt,
+            "You output ONLY a valid JSON array, no prose or fences. Finish every "
+            "object completely.", 12000)
+        if not arr:
+            base["ai_status"] = reason or "the model did not return a usable packet"
+            return base
+        gen = arr[0] if arr else {}
+        base.update({
+            "tiers": [{"tier": "Enrichment", "stars": 3, "band": "Above grade — Dig Deeper",
+                       "tlc_sessions": 1, "days": gen.get("days", []),
+                       "opm": gen.get("opm", [])}],
+            "ai_generated": True, "generated_by": settings.ai_model})
+        return base
+    except Exception as e:
+        base["ai_status"] = f"{type(e).__name__}: {str(e)[:200]}"
+        return base
+
+
 def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
                                model: str) -> list:
     """Layer 2 of DI: cluster the class's most-missed questions ON THIS BENCHMARK

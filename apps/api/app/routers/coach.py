@@ -20,6 +20,7 @@ from app.ai import (
     ai_diagnostics,
     ask_assistant,
     generate_di_packets,
+    generate_enrichment_packet,
     generate_planning_guide,
     generate_plc_agenda,
     generate_target_the_misses,
@@ -2070,11 +2071,87 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
         db.close()
 
 
+def _enrichment_standards(db, f: AssessmentForm, teacher: str = "") -> list:
+    """The evidence-backed benchmarks on this test (>= _DI_MIN_QUESTIONS questions)
+    — the 'both benchmarks' an enrichment packet extends. Scoped to a class when
+    teacher is set, else grade-wide. Returns resolved standard dicts (weakest
+    first), so a thin-evidence 1-question item is never dragged in."""
+    a = _results_analysis(db, f)
+    by_std = a.get("by_standard", [])
+    if teacher:
+        names = set(_teachers_list(teacher))
+        for c in a.get("classes", []):
+            if c.get("teacher") in names and c.get("by_standard"):
+                by_std = c["by_standard"]
+                break
+    codes = [s["standard"] for s in by_std
+             if (s.get("questions") or 0) >= _DI_MIN_QUESTIONS]
+    if not codes:  # fall back to whatever standards exist
+        codes = [s["standard"] for s in by_std]
+    return _resolve_standards(db, codes)
+
+
+def _enrichment_student_count(db, f: AssessmentForm, teacher: str = "") -> int:
+    """How many students get the enrichment packet — the class size (all Green)
+    for the teacher(s), or the whole grade when teacher is blank."""
+    q = db.query(TopicResult).filter(TopicResult.form_id == f.id)
+    if teacher:
+        q = q.filter(TopicResult.teacher_name.in_(_teachers_list(teacher)))
+    return q.count()
+
+
+def _run_enrichment_packet_job(packet_id: str, grade: str, form_id: str,
+                               teacher: str = ""):
+    """Background generation of the ENRICHMENT / Dig Deeper packet for an all-Green
+    class (or grade-wide), covering every evidence-backed benchmark on the test at
+    above-grade rigor."""
+    from app.db.session import SessionLocal
+    from app.tier2_vocab import tier2_for_standards
+
+    db = SessionLocal()
+    try:
+        rec = db.get(DiPacket, packet_id)
+        if not rec:
+            return
+        f = db.get(AssessmentForm, form_id) if form_id else None
+        standards = _enrichment_standards(db, f, teacher) if f else \
+            _resolve_standards(db, [rec.standard] if rec.standard else [])
+        tier2 = [e["word"] for e in tier2_for_standards(standards)]
+        packet = generate_enrichment_packet(standards, grade, tier2)
+        packet["teacher"] = teacher
+        n = _enrichment_student_count(db, f, teacher) if f else 0
+        for t in packet.get("tiers", []):
+            t["student_count"] = n
+        packet["groups_total"] = n
+
+        rec.content = packet
+        rec.ai_generated = bool(packet.get("ai_generated"))
+        if not packet.get("tiers"):
+            rec.status = "error"
+            rec.error = packet.get("ai_status") or "No enrichment packet could be generated."
+        else:
+            rec.status = "ready"
+            rec.error = ""
+        db.add(rec)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        rec = db.get(DiPacket, packet_id)
+        if rec:
+            rec.status = "error"
+            rec.error = f"{type(e).__name__}: {str(e)[:300]}"
+            db.add(rec)
+            db.commit()
+    finally:
+        db.close()
+
+
 class _DiPacketReq(BaseModel):
     grade: str
-    standard: str
+    standard: str = ""
     form_id: str = ""
     teacher: str = ""  # "" = grade-wide; else target this class's deficiencies
+    enrichment: bool = False  # True = Dig Deeper packet for the all-Green kids
 
 
 @router.get("/di-grouping")
@@ -2101,17 +2178,22 @@ def create_di_packets(
     """Start background generation of the three-tier DI packet for one benchmark,
     grade-wide or for a single class (teacher). Returns a packet_id to poll."""
     scope = f" · {req.teacher}" if req.teacher else ""
+    title = (f"Enrichment — Grade {req.grade} · Dig Deeper{scope}" if req.enrichment
+             else f"DI Packets — Grade {req.grade} · {req.standard}{scope}")
     rec = DiPacket(
         tenant_id=user.tenant_id, grade_level=req.grade, standard=req.standard,
         form_id=req.form_id, teacher=req.teacher, created_by=user.id,
-        status="generating",
-        title=f"DI Packets — Grade {req.grade} · {req.standard}{scope}",
+        status="generating", title=title,
         content={"standard": req.standard, "grade_level": req.grade,
-                 "teacher": req.teacher, "tiers": []})
+                 "teacher": req.teacher, "enrichment": req.enrichment, "tiers": []})
     db.add(rec)
     db.commit()
-    background.add_task(_run_di_packet_job, rec.id, req.grade, req.standard,
-                        req.form_id, req.teacher)
+    if req.enrichment:
+        background.add_task(_run_enrichment_packet_job, rec.id, req.grade,
+                            req.form_id, req.teacher)
+    else:
+        background.add_task(_run_di_packet_job, rec.id, req.grade, req.standard,
+                            req.form_id, req.teacher)
     audit(db, actor=user, action="generate", entity_type="di_packet",
           entity_id=rec.id, purpose="di_packets")
     return {"packet_id": rec.id, "status": "generating"}
