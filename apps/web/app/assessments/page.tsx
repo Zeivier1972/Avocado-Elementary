@@ -530,11 +530,11 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
 
       {/* DI grouping recommendation — who can share one packet */}
       {groups && groups.length > 0 && (
-        <div className="bg-avocado/5 border border-avocado/30 rounded-xl p-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <div className="font-semibold text-gray-800 text-sm">
             🧩 DI grouping — who can share one packet
           </div>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-gray-500 mb-3">
             Based on what each class actually missed. <b>Default to per-class</b> for
             accuracy — each class&apos;s deficiency is measured on its own students.
             Share <b>one</b> packet only where classes truly overlap (the SHARE rows
@@ -543,23 +543,29 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
               : "Give the OWN-PACKET classes their own."}
           </p>
           <div className="space-y-2">
-            {groups.map((g: any, i: number) => (
+            {groups.map((g: any, i: number) => {
+              const accent: Record<string, string> = {
+                share: "#4a7c2f",
+                own: "#9ca3af",
+                enrichment: "#117A65",
+                unmatched: "#d97706",
+              };
+              return (
               <div
                 key={i}
-                className={`flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 border ${
-                  g.shared ? "border-avocado/40 bg-white" : "border-gray-100 bg-white"
-                }`}
+                className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 border border-gray-100 border-l-4 bg-white hover:bg-gray-50/60 transition-colors"
+                style={{ borderLeftColor: accent[g.kind] || accent.own }}
               >
                 {(() => {
                   const badge: Record<string, [string, string]> = {
                     share: [`SHARE · ${g.class_count} classes`, "bg-avocado text-white"],
                     own: ["OWN PACKET", "bg-gray-100 text-gray-600"],
-                    enrichment: ["ENRICHMENT · proficient", "bg-blue-100 text-blue-700"],
+                    enrichment: ["ENRICHMENT · proficient", "bg-teal-100 text-teal-800"],
                     unmatched: ["FIX ROSTER", "bg-amber-100 text-amber-800"],
                   };
                   const [label, cls] = badge[g.kind] || badge.own;
                   return (
-                    <span className={`text-[10px] font-bold rounded px-2 py-0.5 ${cls}`}>
+                    <span className={`text-[10px] font-bold rounded-full px-2.5 py-0.5 ${cls}`}>
                       {label}
                     </span>
                   );
@@ -577,10 +583,14 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                 )}
                 {(g.kind === "share" || g.kind === "own") &&
                   (g.red > 0 || g.yellow > 0) && (
-                    <span className="text-xs font-semibold">
-                      · <span className="text-red-600">{g.red} Red</span>{" "}
-                      <span className="text-amber-600">{g.yellow} Yellow</span> to
-                      reteach
+                    <span className="flex items-center gap-1">
+                      <span className="text-[11px] font-semibold rounded-full bg-red-50 text-red-700 border border-red-100 px-2 py-0.5">
+                        🔴 {g.red}
+                      </span>
+                      <span className="text-[11px] font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5">
+                        🟡 {g.yellow}
+                      </span>
+                      <span className="text-[11px] text-gray-400">to reteach</span>
                     </span>
                   )}
                 {g.kind === "enrichment" ? (
@@ -611,7 +621,8 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                   </a>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
