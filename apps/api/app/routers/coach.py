@@ -2037,8 +2037,20 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
         for form in [x for x in forms if x]:
             all_missed.extend(_class_top_missed(db, form, teacher, limit=8))
         all_missed.sort(key=lambda m: -m.get("missed", 0))
-        packet["target_the_misses"] = generate_target_the_misses(
+        misses = generate_target_the_misses(
             s, all_missed[:8], grade, packet.get("model", "none"))
+        # Label every cluster with the ITEM BANK'S true standard for its questions
+        # (not the model's guess), so the extra-review block and the Fix-the-Misses
+        # page detect off-standard misses reliably — the deciding factor for whether
+        # a class gets extra practice on questions outside the reteach standard.
+        pos_std = {m["position"]: (m.get("standard") or "") for m in all_missed}
+        for cl in misses:
+            for q in (cl.get("questions") or []):
+                digits = "".join(ch for ch in str(q) if ch.isdigit())
+                if digits and int(digits) in pos_std and pos_std[int(digits)]:
+                    cl["standard"] = pos_std[int(digits)]
+                    break
+        packet["target_the_misses"] = misses
         packet["stems_captured"] = any((m.get("stem") or "").strip() for m in all_missed)
 
         # Attach the student groups (who is in each tier + counts), scoped to class.
