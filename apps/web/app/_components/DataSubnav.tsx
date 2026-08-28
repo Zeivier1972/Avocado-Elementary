@@ -11,9 +11,9 @@ const LINKS = [
 
 export default function DataSubnav({ active }: { active: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-4">
-      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide mr-1">
-        Data:
+    <div className="flex flex-wrap items-center gap-1.5 mb-4 rounded-2xl border border-gray-100 bg-white/70 backdrop-blur px-2 py-1.5">
+      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide px-2">
+        📊 Data &amp; DI
       </span>
       {LINKS.map((l) => {
         const on = active === l.href;
@@ -22,18 +22,18 @@ export default function DataSubnav({ active }: { active: string }) {
             key={l.href}
             href={l.href}
             title={l.hint}
-            className={`text-sm font-semibold rounded-full px-3 py-1 border ${
+            className={`text-sm font-semibold rounded-lg px-3 py-1.5 transition-colors ${
               on
-                ? "bg-avocado text-white border-avocado"
-                : "bg-white text-avocado-dark border-gray-200 hover:bg-avocado/5"
+                ? "bg-avocado text-white shadow-sm"
+                : "text-gray-600 hover:bg-avocado/10 hover:text-avocado-dark"
             }`}
           >
             {l.label}
           </a>
         );
       })}
-      <span className="text-xs text-gray-400 ml-1">
-        · same grade follows you across these
+      <span className="hidden sm:inline text-xs text-gray-400 ml-auto pr-2">
+        same grade follows you across these
       </span>
     </div>
   );

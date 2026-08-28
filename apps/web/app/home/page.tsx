@@ -111,11 +111,11 @@ export default function CoachHomePage() {
     <main className="min-h-screen">
       <CoachHeader me={me} active="/home" build={build} />
       <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
+        <div className="rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-avocado to-avocado-dark text-white shadow-sm">
+          <h1 className="text-2xl font-bold tracking-tight">
             Good to see you, {me.name?.split(" ")[0] || "Coach"}.
           </h1>
-          <p className="text-gray-500">{dateLabel} · your command center</p>
+          <p className="text-white/80 mt-0.5">{dateLabel} · your command center</p>
         </div>
 
         {err && (
