@@ -50,26 +50,48 @@ def _ten_frame(n: int, filled=True) -> str:
     return "".join(parts)
 
 
-def _pairing(n: int) -> str:
-    """A row of n counters with pair rectangles; last one dashed if odd."""
-    n = max(0, min(20, n))
+def _pairing(n: int, reveal: bool = True, per_row: int = 10) -> str:
+    """Counters for even/odd, wrapped into rows so large numbers never overflow.
+    reveal=True (worked example) colors even green / odd pink and draws the pairs +
+    the leftover, modeling the answer. reveal=False (practice) shows plain neutral
+    counters in rows — the STUDENT pairs them, so the picture doesn't give away the
+    answer. Rows wrap at `per_row` (kept even so a pair never splits a row)."""
+    n = max(0, min(30, n))
     even = n % 2 == 0
-    color = GREEN if even else PINK
-    gap, r = 30, 13
-    xs = [16 + i * gap for i in range(n)]
-    W = (xs[-1] + 20) if xs else 40
-    parts = [f'<svg width="{W}" height="60" viewBox="0 0 {W} 60" role="img" aria-label="{n} counters in pairs">']
-    # pair rectangles
-    i = 0
-    while i + 1 < n:
-        x0 = xs[i] - r - 3
-        parts.append(f'<rect x="{x0}" y="15" width="{gap+2*r+6}" height="34" rx="17" fill="none" stroke="#8a9b7f" stroke-width="2"/>')
-        i += 2
-    if not even and n:
-        x0 = xs[-1] - r - 3
-        parts.append(f'<rect x="{x0}" y="15" width="{2*r+6}" height="34" rx="16" fill="none" stroke="#c9807a" stroke-width="2" stroke-dasharray="4 4"/>')
-    for x in xs:
-        parts.append(f'<circle cx="{x}" cy="32" r="{r}" fill="{color}"/>')
+    per_row = max(2, per_row - (per_row % 2))
+    r, sp, pad, rowh = 11, 26, 8, 30
+    rows = max(1, (n + per_row - 1) // per_row)
+    ncols = min(n, per_row) if n else per_row
+    W = pad * 2 + ncols * sp
+    H = pad * 2 + rows * rowh
+    def cx(i):
+        return pad + r + (i % per_row) * sp
+    def cy(i):
+        return pad + r + (i // per_row) * rowh
+    color = (GREEN if even else PINK) if reveal else "#DDE6CE"
+    parts = [f'<svg width="100%" height="{H}" viewBox="0 0 {W} {H}" '
+             f'preserveAspectRatio="xMinYMin meet" style="max-width:{W}px" '
+             f'role="img" aria-label="{n} counters">']
+    if reveal:
+        # Outline each pair; dash the leftover on an odd count.
+        i = 0
+        while i + 1 < n:
+            if i % per_row == per_row - 1:      # pair would straddle a row — skip box
+                i += 1
+                continue
+            x0, y0 = cx(i) - r - 3, cy(i) - r - 3
+            parts.append(f'<rect x="{x0}" y="{y0}" width="{sp + 2 * r + 6}" '
+                         f'height="{2 * r + 6}" rx="{r + 3}" fill="none" '
+                         f'stroke="#8a9b7f" stroke-width="2"/>')
+            i += 2
+        if not even and n:
+            x0, y0 = cx(n - 1) - r - 3, cy(n - 1) - r - 3
+            parts.append(f'<rect x="{x0}" y="{y0}" width="{2 * r + 6}" '
+                         f'height="{2 * r + 6}" rx="{r + 2}" fill="none" '
+                         f'stroke="#c9807a" stroke-width="2" stroke-dasharray="4 4"/>')
+    for i in range(n):
+        parts.append(f'<circle cx="{cx(i)}" cy="{cy(i)}" r="{r}" fill="{color}" '
+                     f'stroke="#9aa98c" stroke-width="1"/>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -184,16 +206,21 @@ def _val(spec: dict, default=0) -> int:
     return nums[0] if nums else default
 
 
-def svg_model(model: str, spec: dict) -> str:
+def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
     """Draw the chosen model for one problem's spec, recovering the numbers from
-    the problem text when the structured fields are missing."""
+    the problem text when the structured fields are missing. reveal=False renders a
+    practice picture that does not give away the answer (used for problems the
+    student solves)."""
     if not isinstance(spec, dict):
         return ""
     try:
         if model == "ten_frame":
             return _ten_frame(_val(spec))
         if model == "pairing":
-            return _pairing(_val(spec))
+            # Vary the row width by the number so problems don't all look alike.
+            v = _val(spec)
+            per = 8 if (v % 3 == 0) else (12 if v > 14 else 10)
+            return _pairing(v, reveal=reveal, per_row=per)
         if model == "base_ten":
             return _base_ten(_val(spec))
         if model == "array":
@@ -292,7 +319,8 @@ def _problem_html(model, p, show_default=True) -> str:
     q = _esc(p.get("text") or p.get("problem"))
     vis = ""
     if p.get("show_model", show_default) and (p.get("value") is not None or "rows" in p or "a" in p):
-        vis = svg_model(model, p)
+        # Practice picture — neutral, so it doesn't reveal the answer.
+        vis = svg_model(model, p, reveal=False)
     choices = _choices_html(p.get("choices"))
     if choices:
         ans = choices  # multiple choice — no write-in box needed
@@ -301,6 +329,28 @@ def _problem_html(model, p, show_default=True) -> str:
                'Answer: <span style="border:2px dashed var(--frame);border-radius:8px;'
                'display:inline-block;width:110px;height:30px;vertical-align:middle;"></span></div>')
     return f'<div class="prob"><p class="q">{q}</p>{vis}{ans}</div>'
+
+
+def _extra_review_html(packet: dict) -> str:
+    """A few OTHER questions the class missed — on standards outside this packet's
+    reteach — added to each tier's practice so the teacher can review them too.
+    Drawn from the 'Target the Misses' clusters whose standard differs from the
+    packet's. Text + choices (no forced model). Cached on the packet."""
+    if "_extra_review" not in packet:
+        std = str(packet.get("standard", ""))
+        samples = []
+        for cl in (packet.get("target_the_misses") or []):
+            if str(cl.get("standard", "")) and str(cl.get("standard")) != std:
+                for s in (cl.get("fix_samples") or []):
+                    samples.append({**s, "_std": cl.get("standard")})
+        packet["_extra_review"] = samples[:3]
+    samples = packet.get("_extra_review") or []
+    if not samples:
+        return ""
+    cards = "".join(_problem_html("none", s) for s in samples)
+    return ('<p class="practicelabel" style="color:#8E44AD;margin-top:12px;">'
+            '⭐ Extra review — other questions the class missed</p>'
+            f'<div class="grid">{cards}</div>')
 
 
 def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
@@ -371,14 +421,16 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                 steps = "".join(f'<div class="step"><span class="n">{i+1}</span><p>{_esc(s)}</p></div>'
                                 for i, s in enumerate(tr.get("steps", [])))
                 out.append(f'<div class="phase-body"><div class="prob"><p class="q">{_esc(tr.get("problem"))}</p>'
-                           + svg_model(model, tr)
+                           + svg_model(model, tr, reveal=False)
                            + (f'<div class="steps">{steps}</div>' if steps else "") + '</div></div>')
             # On your own
             oyo = day.get("on_your_own") or []
             if oyo:
                 out.append('<div class="phase"><span class="pn" style="background:%s">3</span><h3>On your own</h3><span class="gr">You do</span></div>' % hexc)
                 cards = "".join(_problem_html(model, p) for p in oyo)
-                out.append(f'<div class="phase-body"><p class="practicelabel">Practice — keep going until time is up</p><div class="grid">{cards}</div></div>')
+                extra = _extra_review_html(packet)
+                out.append(f'<div class="phase-body"><p class="practicelabel">Practice — keep going until time is up</p>'
+                           f'<div class="grid">{cards}</div>{extra}</div>')
         # OPM
         opm = t.get("opm") or []
         if opm:
