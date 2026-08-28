@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
-  clearToken,
   getToken,
   getSharedGrade,
   setSharedGrade,
 } from "@/lib/api";
 import DataSubnav from "@/app/_components/DataSubnav";
+import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADES = ["K", "1", "2", "3"];
 const PM = ["PM1", "PM2", "PM3"];
@@ -17,6 +17,7 @@ const PM = ["PM1", "PM2", "PM3"];
 export default function ReportsPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
+  const [build, setBuild] = useState<any>(null);
   const [grade, setGrade] = useState(getSharedGrade());
   useEffect(() => setSharedGrade(grade), [grade]);
   const [report, setReport] = useState<any>(null);
@@ -68,6 +69,7 @@ export default function ReportsPage() {
       router.push("/");
       return;
     }
+    api.health().then(setBuild).catch(() => setBuild(null));
     api
       .me()
       .then((u) => {
@@ -104,34 +106,7 @@ export default function ReportsPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🥑</span>
-          <span className="font-bold text-avocado-dark">Avocado</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-sm text-gray-600">Data &amp; Reports</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="/goal" className="text-sm font-semibold text-avocado-dark hover:underline">
-            🎯 School Goal
-          </a>
-          <a href="/coach" className="text-sm text-avocado-dark hover:underline">
-            Planning
-          </a>
-          <a href="/assistant" className="text-sm text-avocado-dark hover:underline">
-            🤖 AI Coach
-          </a>
-          <button
-            onClick={() => {
-              clearToken();
-              router.push("/");
-            }}
-            className="text-sm text-gray-500 hover:text-gray-800"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <CoachHeader me={me} active="/reports" build={build} />
 
       <div className="max-w-6xl mx-auto p-6">
         <DataSubnav active="/reports" />
@@ -295,7 +270,7 @@ export default function ReportsPage() {
                 <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-white">
-                      <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                      <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                         <th className="py-1">Student</th>
                         <th className="py-1">Homeroom Teacher</th>
                         <th className="py-1">FAST Math</th>
@@ -305,7 +280,7 @@ export default function ReportsPage() {
                     </thead>
                     <tbody>
                       {report.roster.map((s: any) => (
-                        <tr key={s.student_id} className="border-b border-gray-50">
+                        <tr key={s.student_id} className="border-b border-gray-50 last:border-0 hover:bg-avocado/5 transition-colors">
                           <td className="py-1 font-medium">{s.name}</td>
                           <td className="py-1 text-gray-500">{s.teacher || "—"}</td>
                           <td className="py-1">
@@ -379,7 +354,7 @@ export default function ReportsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                      <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                         <th className="py-1">Student</th>
                         <th className="py-1">FAST Math Level</th>
                         <th className="py-1">Topic Avg</th>
@@ -387,7 +362,7 @@ export default function ReportsPage() {
                     </thead>
                     <tbody>
                       {report.watchlist.map((s: any) => (
-                        <tr key={s.student_id} className="border-b border-gray-50">
+                        <tr key={s.student_id} className="border-b border-gray-50 last:border-0 hover:bg-avocado/5 transition-colors">
                           <td className="py-1">{s.name}</td>
                           <td className="py-1">
                             {s.fast_math_level != null ? (
@@ -455,7 +430,7 @@ function TeacherView({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                   <th className="py-1">Teacher</th>
                   <th className="py-1">Grade</th>
                   <th className="py-1">Students</th>
@@ -465,7 +440,7 @@ function TeacherView({
               </thead>
               <tbody>
                 {teachers.map((t) => (
-                  <tr key={t.teacher_id} className="border-b border-gray-50">
+                  <tr key={t.teacher_id} className="border-b border-gray-50 last:border-0 hover:bg-avocado/5 transition-colors">
                     <td className="py-1 font-medium">{t.name}</td>
                     <td className="py-1 text-gray-500">
                       {t.grades.filter(Boolean).join(", ")}
@@ -542,7 +517,7 @@ function TeacherView({
               </thead>
               <tbody>
                 {report.roster.map((r: any) => (
-                  <tr key={r.student_id} className="border-b border-gray-50">
+                  <tr key={r.student_id} className="border-b border-gray-50 last:border-0 hover:bg-avocado/5 transition-colors">
                     <td className="py-1 px-2 text-left sticky left-0 bg-white">
                       {r.name}
                       {r.ell && <span className="ml-1 text-[9px] text-blue-500">ELL{r.ell}</span>}
@@ -785,7 +760,7 @@ function TargetList({ rows, showScale }: { rows: any[]; showScale?: boolean }) {
     <table className="w-full text-sm">
       <tbody>
         {rows.map((s: any) => (
-          <tr key={s.student_id} className="border-b border-gray-50">
+          <tr key={s.student_id} className="border-b border-gray-50 last:border-0 hover:bg-avocado/5 transition-colors">
             <td className="py-1">{s.name}</td>
             <td className="py-1 text-right text-gray-500">{s.percent_score}%</td>
             {showScale && (
