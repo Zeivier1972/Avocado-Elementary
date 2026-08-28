@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, getToken } from "@/lib/api";
+import { api, getToken } from "@/lib/api";
+import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADES = ["K", "1", "2", "3"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -20,6 +21,7 @@ function iso(d: Date) {
 export default function CalendarPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
+  const [build, setBuild] = useState<any>(null);
   const [grade, setGrade] = useState("3");
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -47,6 +49,7 @@ export default function CalendarPage() {
       return;
     }
     api.me().then(setMe).catch(() => router.push("/"));
+    api.health().then(setBuild).catch(() => setBuild(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -150,28 +153,9 @@ export default function CalendarPage() {
           .cal-grid { break-inside: avoid; }
         }
       `}</style>
-      <header className="no-print bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🥑</span>
-          <span className="font-bold text-avocado-dark">Avocado</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-sm text-gray-600">Pacing Calendar</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="/coach" className="text-sm text-avocado-dark hover:underline">Planning</a>
-          <a href="/reports" className="text-sm text-avocado-dark hover:underline">📊 Reports</a>
-          <a href="/goal" className="text-sm text-avocado-dark hover:underline">🎯 Goal</a>
-          <button
-            onClick={() => {
-              clearToken();
-              router.push("/");
-            }}
-            className="text-sm text-gray-500 hover:text-gray-800"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <div className="no-print">
+        <CoachHeader me={me} active="/calendar" build={build} />
+      </div>
 
       <div className="max-w-6xl mx-auto p-6 space-y-4">
         <h1 className="text-xl font-bold text-gray-800 no-print">Pacing Calendar</h1>

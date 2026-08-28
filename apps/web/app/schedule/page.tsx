@@ -340,7 +340,7 @@ export default function SchedulePage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs min-w-[760px]">
                       <thead>
-                        <tr className="text-left text-gray-500 border-b border-gray-100">
+                        <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                           <th className="p-2 font-semibold">Teacher</th>
                           {DAYS.map((d) => (
                             <th
@@ -359,7 +359,7 @@ export default function SchedulePage() {
                         {teachers.map((t) => (
                           <tr
                             key={t.room + t.teacher}
-                            className="border-b border-gray-50 align-top"
+                            className="border-b border-gray-50 last:border-0 align-top hover:bg-avocado/5 transition-colors"
                           >
                             <td className="p-2 whitespace-nowrap">
                               <div className="font-semibold text-gray-800">

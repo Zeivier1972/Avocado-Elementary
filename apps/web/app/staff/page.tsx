@@ -175,7 +175,7 @@ export default function StaffPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500 border-b border-gray-100">
+                    <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                       <th className="p-2 font-semibold">Code</th>
                       <th className="p-2 font-semibold">Teacher</th>
                       <th className="p-2 font-semibold">Program</th>
@@ -189,7 +189,7 @@ export default function StaffPage() {
                     {rows.map((s) => (
                       <tr
                         key={s.section + s.name}
-                        className="border-b border-gray-50 align-middle"
+                        className="border-b border-gray-50 last:border-0 align-middle hover:bg-avocado/5 transition-colors"
                       >
                         <td className="p-2">
                           <span className="font-mono font-bold text-gray-700 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5">
