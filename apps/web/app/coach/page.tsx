@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
-  clearToken,
   downloadDocument,
   downloadGuideDocx,
   downloadPlanningTemplateDocx,
@@ -12,6 +11,7 @@ import {
   getToken,
   setSharedGrade,
 } from "@/lib/api";
+import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADES = ["K", "1", "2", "3"];
 
@@ -405,71 +405,7 @@ export default function CoachPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🥑</span>
-          <span className="font-bold text-avocado-dark">Avocado</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-sm text-gray-600">
-            {me.name} · <span className="capitalize">{me.role.replace("_", " ")}</span>
-          </span>
-          {build?.build && (
-            <span
-              title={`API version ${build.version} · build ${build.build}`}
-              className="text-[10px] font-mono text-gray-400 border border-gray-200 rounded px-1.5 py-0.5"
-            >
-              build {build.build}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <a
-            href="/home"
-            className="text-sm font-semibold text-avocado-dark hover:underline"
-          >
-            🏠 Home
-          </a>
-          <a
-            href="/teachers"
-            className="text-sm font-semibold text-avocado-dark hover:underline"
-          >
-            👩‍🏫 Teachers
-          </a>
-          <a
-            href="/calendar"
-            className="text-sm font-semibold text-avocado-dark hover:underline"
-          >
-            📅 Calendar
-          </a>
-          <a
-            href="/goal"
-            className="text-sm font-semibold text-avocado-dark hover:underline"
-          >
-            🎯 Goal
-          </a>
-          <a
-            href="/reports"
-            className="text-sm font-semibold text-avocado-dark hover:underline"
-          >
-            📊 Reports
-          </a>
-          <a
-            href="/assistant"
-            className="text-sm font-semibold text-avocado-dark hover:underline"
-          >
-            🤖 AI Coach
-          </a>
-          <button
-            onClick={() => {
-              clearToken();
-              router.push("/");
-            }}
-            className="text-sm text-gray-500 hover:text-gray-800"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <CoachHeader me={me} active="/coach" build={build} />
 
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-xl font-bold text-gray-800 mb-1">Collaborative Planning</h1>

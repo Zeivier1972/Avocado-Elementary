@@ -86,7 +86,7 @@ export default function Tier2Page() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b border-gray-100">
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                     <th className="p-2 font-semibold">Word</th>
                     <th className="p-2 font-semibold">What it means (kid words)</th>
                     <th className="p-2 font-semibold">Appears in</th>
@@ -95,7 +95,7 @@ export default function Tier2Page() {
                 </thead>
                 <tbody>
                   {words.map((w: any) => (
-                    <tr key={w.word} className="border-b border-gray-50 align-top">
+                    <tr key={w.word} className="border-b border-gray-50 last:border-0 align-top hover:bg-avocado/5 transition-colors">
                       <td className="p-2 font-semibold text-avocado-dark capitalize">
                         {w.word}
                       </td>
