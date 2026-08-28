@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, getToken } from "@/lib/api";
+import { api, getToken } from "@/lib/api";
+import CoachHeader from "@/app/_components/CoachHeader";
 
 const bandColor: Record<string, string> = {
   on_track: "bg-green-100 text-green-800 border-green-200",
@@ -18,6 +19,7 @@ const bandDot: Record<string, string> = {
 export default function Dashboard() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
+  const [build, setBuild] = useState<any>(null);
   const [dash, setDash] = useState<any>(null);
   const [groups, setGroups] = useState<any[]>([]);
   const [plan, setPlan] = useState<any>(null);
@@ -35,6 +37,7 @@ export default function Dashboard() {
       router.push("/");
       return;
     }
+    api.health().then(setBuild).catch(() => setBuild(null));
     api
       .me()
       .then((u) => {
@@ -86,25 +89,7 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen">
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🥑</span>
-          <span className="font-bold text-avocado-dark">Avocado</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-sm text-gray-600">
-            {me.name} · <span className="capitalize">{me.role}</span>
-          </span>
-        </div>
-        <button
-          onClick={() => {
-            clearToken();
-            router.push("/");
-          }}
-          className="text-sm text-gray-500 hover:text-gray-800"
-        >
-          Sign out
-        </button>
-      </header>
+      <CoachHeader me={me} active="" build={build} />
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         {/* Snapshot + import */}
