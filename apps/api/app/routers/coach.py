@@ -1820,6 +1820,34 @@ def _teachers_list(teacher: str) -> list:
     return [t.strip() for t in (teacher or "").split(",") if t.strip()]
 
 
+# A class whose evidence-backed weakest standard is at/above this % is treated
+# as proficient — enrichment, not reteach.
+_DI_PROFICIENT_CUT = 85.0
+# Standards assessed by this many questions or fewer are "thin evidence" and are
+# not used as a DI target on their own (they can still show, flagged ⚠).
+_DI_MIN_QUESTIONS = 2
+
+
+def _di_target(by_standard: list) -> dict:
+    """The evidence-backed DI target for a class: the WEAKEST standard assessed by
+    at least _DI_MIN_QUESTIONS questions (a 1-question standard's % is too noisy to
+    prescribe on). Marks needs_di False when even that weakest is at proficiency."""
+    ranked = sorted((s for s in by_standard if s.get("percent") is not None),
+                    key=lambda s: s["percent"])
+    solid = [s for s in ranked if (s.get("questions") or 0) >= _DI_MIN_QUESTIONS]
+    pick = solid[0] if solid else (ranked[0] if ranked else None)
+    if not pick:
+        return {"standard": "", "percent": None, "needs_di": False, "note": ""}
+    note = ""
+    if not solid:
+        note = "thin evidence (few questions) — confirm with i-Ready/FAST"
+    needs = pick["percent"] < _DI_PROFICIENT_CUT
+    if not needs:
+        note = f"already proficient ({pick['percent']}%) — enrichment, not reteach"
+    return {"standard": pick["standard"], "percent": pick["percent"],
+            "needs_di": needs, "note": note}
+
+
 def _di_grouping(db, f: AssessmentForm) -> list:
     """Recommend which classes can SHARE one DI packet vs. need their own, by
     comparing what each class actually missed. Classes with the same weakest
@@ -1827,32 +1855,38 @@ def _di_grouping(db, f: AssessmentForm) -> list:
     generates one packet for the group instead of three identical ones.
     Deterministic (no AI / no tokens)."""
     a = _results_analysis(db, f)
-    profiles = []
+    reteach, enrichment, unmatched = [], [], []
     for c in a.get("classes", []):
-        weakest = c["by_standard"][0]["standard"] if c.get("by_standard") else ""
-        top = {m["position"] for m in (c.get("most_missed") or [])[:4]}
-        profiles.append({"teacher": c["teacher"], "standard": weakest,
-                         "missed": top, "avg": c.get("avg_percent"),
-                         "students": c.get("students", 0)})
+        prof = {"teacher": c["teacher"],
+                # Use the EVIDENCE-BACKED target (weakest standard with >=2
+                # questions), not a 1-question artifact.
+                "standard": c.get("di_target", ""),
+                "missed": {m["position"] for m in (c.get("most_missed") or [])[:4]},
+                "avg": c.get("avg_percent"), "students": c.get("students", 0)}
+        if not c.get("teacher") or c["teacher"] == "—":
+            unmatched.append(prof)          # students whose class didn't match roster
+        elif not c.get("needs_di", True):
+            enrichment.append(prof)         # already proficient — enrichment
+        else:
+            reteach.append(prof)
+
     clusters, used = [], set()
-    for i, p in enumerate(profiles):
+    for i, p in enumerate(reteach):
         if p["teacher"] in used:
             continue
         group = [p]
         used.add(p["teacher"])
-        for q in profiles[i + 1:]:
+        for q in reteach[i + 1:]:
             if q["teacher"] in used:
                 continue
-            # Same target standard + at least 2 shared most-missed questions.
             if q["standard"] and q["standard"] == p["standard"] \
                     and len(p["missed"] & q["missed"]) >= 2:
                 group.append(q)
                 used.add(q["teacher"])
-        if len(group) > 1:
-            shared = sorted(set.intersection(*[g["missed"] for g in group]))
-        else:
-            shared = sorted(group[0]["missed"])
+        shared = (sorted(set.intersection(*[g["missed"] for g in group]))
+                  if len(group) > 1 else sorted(group[0]["missed"]))
         clusters.append({
+            "kind": "share" if len(group) > 1 else "own",
             "standard": p["standard"],
             "teachers": [g["teacher"] for g in group],
             "class_count": len(group),
@@ -1861,6 +1895,20 @@ def _di_grouping(db, f: AssessmentForm) -> list:
             "shared": len(group) > 1,
         })
     clusters.sort(key=lambda c: -c["class_count"])
+    if enrichment:
+        clusters.append({
+            "kind": "enrichment", "standard": "",
+            "teachers": [g["teacher"] for g in enrichment],
+            "class_count": len(enrichment),
+            "students": sum(g["students"] for g in enrichment),
+            "shared_questions": [], "shared": False})
+    if unmatched:
+        clusters.append({
+            "kind": "unmatched", "standard": "",
+            "teachers": ["Unmatched students (fix roster)"],
+            "class_count": len(unmatched),
+            "students": sum(g["students"] for g in unmatched),
+            "shared_questions": [], "shared": False})
     return clusters
 
 
@@ -2512,6 +2560,17 @@ def _student_teacher_map(db, tenant_id) -> dict:
     return {sid: v[1] for sid, v in best.items()}
 
 
+def _name_key(name: str) -> str:
+    """An order- and punctuation-insensitive key for matching a results name to
+    the roster: lowercase, letters only, drop single-letter middle initials, and
+    sort the tokens — so 'ABSALON, MILANI', 'Milani Absalon' and 'Milani A Absalon'
+    all collapse to the same key."""
+    import re as _re
+    toks = [t for t in _re.sub(r"[^a-z ]", " ", (name or "").lower()).split()
+            if len(t) > 1]
+    return " ".join(sorted(toks))
+
+
 def _fill_teacher_from_roster(db, tenant_id, rows) -> int:
     """When the results file has no teacher/class column, look each student up in
     the roster (by district id, then by name) and fill their teacher, so the
@@ -2524,8 +2583,10 @@ def _fill_teacher_from_roster(db, tenant_id, rows) -> int:
               for s in students if s.district_student_id}
     by_name = {}
     for s in students:
-        by_name[f"{s.first_name} {s.last_name}".strip().lower()] = s
+        full = f"{s.first_name} {s.last_name}"
+        by_name[full.strip().lower()] = s
         by_name.setdefault(f"{s.last_name} {s.first_name}".strip().lower(), s)
+        by_name.setdefault(_name_key(full), s)  # order/punctuation-insensitive
     tmap = _student_teacher_map(db, tenant_id)
     filled = 0
     for r in rows:
@@ -2533,8 +2594,9 @@ def _fill_teacher_from_roster(db, tenant_id, rows) -> int:
             continue
         stu = by_did.get((r.get("student_id") or "").strip())
         if not stu:
-            nm = " ".join((r.get("student_name") or "").replace(",", " ").split()).lower()
-            stu = by_name.get(nm)
+            raw = r.get("student_name") or ""
+            nm = " ".join(raw.replace(",", " ").split()).lower()
+            stu = by_name.get(nm) or by_name.get(_name_key(raw))
         if stu and tmap.get(stu.id):
             r["teacher_name"] = tmap[stu.id]
             filled += 1
@@ -2644,10 +2706,14 @@ def _results_analysis(db, f: AssessmentForm) -> dict:
     classes = []
     for cls, subset in sorted(by_class.items()):
         avg = round(sum(r.percent for r in subset) / len(subset), 1)
+        bs = std_block(subset)
+        di = _di_target(bs)
         classes.append({
             "teacher": cls, "students": len(subset), "avg_percent": avg,
             **_color_for(f.grade, avg),
-            "by_standard": std_block(subset),
+            "by_standard": bs,
+            "di_target": di["standard"], "di_target_pct": di["percent"],
+            "needs_di": di["needs_di"], "di_note": di["note"],
             "most_missed": missed_block(subset, len(subset))[:5]})
 
     grade_avg = round(sum(r.percent for r in rows) / len(rows), 1)

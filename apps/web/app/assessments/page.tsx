@@ -550,36 +550,51 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                   g.shared ? "border-avocado/40 bg-white" : "border-gray-100 bg-white"
                 }`}
               >
-                <span
-                  className={`text-[10px] font-bold rounded px-2 py-0.5 ${
-                    g.shared
-                      ? "bg-avocado text-white"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {g.shared ? `SHARE · ${g.class_count} classes` : "OWN PACKET"}
-                </span>
+                {(() => {
+                  const badge: Record<string, [string, string]> = {
+                    share: [`SHARE · ${g.class_count} classes`, "bg-avocado text-white"],
+                    own: ["OWN PACKET", "bg-gray-100 text-gray-600"],
+                    enrichment: ["ENRICHMENT · proficient", "bg-blue-100 text-blue-700"],
+                    unmatched: ["FIX ROSTER", "bg-amber-100 text-amber-800"],
+                  };
+                  const [label, cls] = badge[g.kind] || badge.own;
+                  return (
+                    <span className={`text-[10px] font-bold rounded px-2 py-0.5 ${cls}`}>
+                      {label}
+                    </span>
+                  );
+                })()}
                 <span className="text-sm text-gray-800 font-semibold">
                   {g.teachers.join(", ")}
                 </span>
-                <span className="text-xs font-mono text-gray-500">
-                  {g.standard}
-                </span>
+                {g.standard && (
+                  <span className="text-xs font-mono text-gray-500">{g.standard}</span>
+                )}
                 {g.shared_questions?.length > 0 && (
                   <span className="text-xs text-gray-400">
                     · missed {g.shared_questions.join(", ")}
                   </span>
                 )}
-                <a
-                  href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
-                    g.standard
-                  )}&form_id=${f.id}&teacher=${encodeURIComponent(
-                    g.teachers.join(",")
-                  )}`}
-                  className="ml-auto text-xs font-semibold text-white bg-avocado hover:bg-avocado-dark rounded-lg px-2.5 py-1 whitespace-nowrap"
-                >
-                  {g.shared ? "Plan 1 packet for group →" : "Plan DI →"}
-                </a>
+                {g.kind === "enrichment" ? (
+                  <span className="ml-auto text-xs text-blue-700">
+                    No reteach — give enrichment / Dig Deeper
+                  </span>
+                ) : g.kind === "unmatched" ? (
+                  <span className="ml-auto text-xs text-amber-700">
+                    {g.students} students didn&apos;t match the roster — re-check names/IDs
+                  </span>
+                ) : (
+                  <a
+                    href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
+                      g.standard
+                    )}&form_id=${f.id}&teacher=${encodeURIComponent(
+                      g.teachers.join(",")
+                    )}`}
+                    className="ml-auto text-xs font-semibold text-white bg-avocado hover:bg-avocado-dark rounded-lg px-2.5 py-1 whitespace-nowrap"
+                  >
+                    {g.shared ? "Plan 1 packet for group →" : "Plan DI →"}
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -596,7 +611,7 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                 <th className="p-2 font-semibold">Class</th>
                 <th className="p-2 font-semibold">Students</th>
                 <th className="p-2 font-semibold">Average</th>
-                <th className="p-2 font-semibold">Weakest standard</th>
+                <th className="p-2 font-semibold">DI target (evidence-backed)</th>
                 <th className="p-2 font-semibold">Most-missed Qs</th>
               </tr>
             </thead>
@@ -609,40 +624,32 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                     <Chip color={c.color}>{c.avg_percent}%</Chip>
                   </td>
                   <td className="p-2">
-                    {c.by_standard[0] ? (
+                    {c.needs_di && c.di_target ? (
                       <span className="font-mono text-xs">
-                        {c.by_standard[0].standard}{" "}
-                        <Chip color={c.by_standard[0].color}>
-                          {c.by_standard[0].percent}%
-                        </Chip>{" "}
-                        {typeof c.by_standard[0].questions === "number" && (
-                          <span
-                            className={
-                              c.by_standard[0].questions <= 1
-                                ? "text-amber-600 font-semibold"
-                                : "text-gray-400"
-                            }
-                            title={
-                              c.by_standard[0].questions <= 1
-                                ? "Only 1 question for this class — thin evidence; confirm with i-Ready/FAST."
-                                : `${c.by_standard[0].questions} questions`
-                            }
-                          >
-                            {c.by_standard[0].questions} Q
-                            {c.by_standard[0].questions === 1 ? " ⚠" : "s"}
+                        {c.di_target}{" "}
+                        {typeof c.di_target_pct === "number" && (
+                          <span className="text-gray-500">
+                            {c.di_target_pct}%
                           </span>
                         )}{" "}
                         <a
                           href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
-                            c.by_standard[0].standard
+                            c.di_target
                           )}&form_id=${f.id}&teacher=${encodeURIComponent(c.teacher)}`}
-                          className="text-avocado-dark font-semibold hover:underline"
+                          className="text-avocado-dark font-semibold hover:underline font-sans"
                         >
                           → DI for this class
                         </a>
                       </span>
                     ) : (
-                      "—"
+                      <span className="text-xs text-green-700 font-semibold">
+                        ✓ Proficient — enrichment
+                      </span>
+                    )}
+                    {c.di_note && (
+                      <div className="text-[11px] text-amber-600 font-sans mt-0.5">
+                        ⚠ {c.di_note}
+                      </div>
                     )}
                   </td>
                   <td className="p-2 text-gray-600">
