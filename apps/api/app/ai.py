@@ -1416,21 +1416,23 @@ def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
                "wasn't uploaded, so mirror the SKILL and format from the benchmark)")
             + f":\n{items_txt}\n\n"
             f"BENCHMARK + common misconceptions (B1G-M):\n{std_ctx}\n\n"
+            "These questions MAY SPAN A FEW STANDARDS — that is fine; target every "
+            "one the class missed, even if it is not the packet's main standard.\n"
             "CLUSTER these missed questions by the MISCONCEPTION or error they "
             "reveal (questions missed for the SAME reason go together; questions on "
             "the same standard but a DIFFERENT demand — e.g. a word problem vs an "
-            "equation vs a picture — go in separate clusters). For EACH cluster give "
-            "2-3 matched 'fix-it' problems that MIRROR the real questions (same "
-            f"format, number range, and the '{model}' visual model) so students "
-            "rectify that exact mistake, each with its answer. Write the problems "
-            "TO THE STUDENT, elementary reading level.\n\n"
+            "equation vs a picture — go in separate clusters). Tag each cluster with "
+            "its standard code. For EACH cluster give 2-3 matched 'fix-it' problems "
+            "that MIRROR the real questions (same format and number range) so "
+            "students rectify that exact mistake, each with its answer. Write the "
+            "problems TO THE STUDENT, elementary reading level.\n\n"
             "If the real questions are multiple choice, give each fix sample a "
             "'choices' array of 3-4 SHORT options (one correct) that mirror the "
             "test's answer choices — including a plausible wrong option matching the "
             "misconception; otherwise omit 'choices'.\n"
-            'Return ONLY a JSON array: [{"questions":["Q17","Q19"],'
+            'Return ONLY a JSON array: [{"questions":["Q17","Q19"],"standard":"MA...",'
             '"why_missed":"the misconception in plain words",'
-            '"fix_samples":[{"problem":"a matched problem","value":9,"choices":["A opt","B opt","C opt","D opt"],"answer":"the correct option"}]}]'
+            '"fix_samples":[{"problem":"a matched problem","choices":["A opt","B opt","C opt","D opt"],"answer":"the correct option"}]}]'
             f"\n{_PLAIN}")
         arr, _ = _llm_json(
             client, prompt,

@@ -396,9 +396,16 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             out.append('<p class="helper">Note: the test PDF wasn\'t uploaded for this topic, so these mirror the skill and format. Upload the test to match the exact wording.</p>')
         for cl in misses:
             qs = ", ".join(_esc(q) for q in (cl.get("questions") or []))
-            out.append(f'<div class="day" style="background:#8E44AD">{qs or "Missed items"}'
+            std = _esc(cl.get("standard"))
+            head = qs or "Missed items"
+            if std:
+                head += f" · {std}"
+            out.append(f'<div class="day" style="background:#8E44AD">{head}'
                        f'<span class="small">{_esc(cl.get("why_missed"))}</span></div>')
-            cards = "".join(_problem_html(model, p) for p in (cl.get("fix_samples") or []))
+            # Mirror the real (often multiple-choice) test questions: text + choices,
+            # no forced manipulative model since a cluster may be off the packet's
+            # standard.
+            cards = "".join(_problem_html("none", p) for p in (cl.get("fix_samples") or []))
             out.append(f'<div class="phase-body"><div class="grid">{cards}</div></div>')
         out.append('</section>')
 

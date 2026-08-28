@@ -1792,15 +1792,15 @@ def di_focus(
 # OPM / Data Chat). tlc_sessions = how many teacher-led touches that tier gets,
 # which drives how many scripted reteach sessions its packet carries.
 _DI_ROTATION = [
-    {"name": "Intensive", "stars": 1, "band": "0-40%", "lo": 0, "hi": 40,
+    {"name": "Intensive", "stars": 1, "band": "0-49%", "lo": 0, "hi": 50,
      "tlc_sessions": 2,
      "rotation": ["i-Ready", "TLC", "IXL/Skill Trainer/Independent Practice",
                   "i-Ready", "TLC", "OPM", "Data Chat"]},
-    {"name": "Cusp", "stars": 2, "band": "40-70%", "lo": 40, "hi": 70,
+    {"name": "Cusp", "stars": 2, "band": "50-68%", "lo": 50, "hi": 69,
      "tlc_sessions": 2,
      "rotation": ["TLC", "IXL/Skill Trainer/Independent Practice", "i-Ready",
                   "TLC", "IXL/Skill Trainer/Independent Practice", "OPM", "Data Chat"]},
-    {"name": "Strategic", "stars": 3, "band": "70-100%", "lo": 70, "hi": 100,
+    {"name": "Strategic", "stars": 3, "band": "69-100%", "lo": 69, "hi": 100,
      "tlc_sessions": 1,
      "rotation": ["IXL/Skill Trainer/Independent Practice", "i-Ready", "TLC",
                   "IXL/Skill Trainer/Independent Practice", "i-Ready", "OPM", "Data Chat"]},
@@ -1811,7 +1811,7 @@ def _di_tier_for(pct: float):
     for t in _DI_ROTATION:
         if t["lo"] <= pct < t["hi"] or (t["hi"] == 100 and pct >= 100):
             return t
-    return _DI_ROTATION[-1] if pct >= 70 else _DI_ROTATION[0]
+    return _DI_ROTATION[-1] if pct >= 69 else _DI_ROTATION[0]
 
 
 def _teachers_list(teacher: str) -> list:
@@ -1945,6 +1945,34 @@ def _class_missed_on_standard(db, f: AssessmentForm, standard: str,
     return sorted(out, key=lambda m: -m["missed"])
 
 
+def _class_top_missed(db, f: AssessmentForm, teacher: str = "", limit: int = 8) -> list:
+    """The class's (or grade's) most-missed questions ACROSS ALL standards — so the
+    'Fix the Misses' page can also target questions that fall outside the packet's
+    reteach standard. Ranked by how many students missed each item."""
+    q = db.query(TopicResult).filter(TopicResult.form_id == f.id)
+    tl = _teachers_list(teacher)
+    if tl:
+        q = q.filter(TopicResult.teacher_name.in_(tl))
+    rows = q.all()
+    items = {it.position: it for it in db.query(AssessmentItem).filter(
+        AssessmentItem.form_id == f.id).all()}
+    n = len(rows)
+    cnt: dict = {}
+    for r in rows:
+        for pos in (r.missed_positions or []):
+            cnt[pos] = cnt.get(pos, 0) + 1
+    out = []
+    for pos, c in cnt.items():
+        it = items.get(pos)
+        if not it:
+            continue
+        out.append({"position": pos, "missed": c,
+                    "miss_pct": round(100.0 * c / n, 1) if n else 0,
+                    "standard": it.standard, "correct_response": it.correct_response,
+                    "stem": (it.stem or "")[:300]})
+    return sorted(out, key=lambda m: -m["missed"])[:limit]
+
+
 def _di_students_by_tier(db, f: AssessmentForm, standard: str,
                          teacher: str = "") -> dict:
     """Group this test's students into the three rotation tiers by their score ON
@@ -2001,10 +2029,16 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
         packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2)
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
         packet["teacher"] = teacher
-        # Layer 2: target the specific missed questions (clustered by misconception).
+        # Layer 2: target the class's most-missed questions ACROSS ALL standards
+        # (only forms that exist), so the 'Fix the Misses' page also hits questions
+        # outside the packet's reteach standard.
+        all_missed = []
+        for form in [x for x in forms if x]:
+            all_missed.extend(_class_top_missed(db, form, teacher, limit=8))
+        all_missed.sort(key=lambda m: -m.get("missed", 0))
         packet["target_the_misses"] = generate_target_the_misses(
-            s, missed, grade, packet.get("model", "none"))
-        packet["stems_captured"] = any((m.get("stem") or "").strip() for m in missed)
+            s, all_missed[:8], grade, packet.get("model", "none"))
+        packet["stems_captured"] = any((m.get("stem") or "").strip() for m in all_missed)
 
         # Attach the student groups (who is in each tier + counts), scoped to class.
         groups = _di_students_by_tier(db, f, standard, teacher) if f else {}
