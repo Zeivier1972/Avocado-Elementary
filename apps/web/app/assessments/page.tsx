@@ -535,9 +535,12 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
             🧩 DI grouping — who can share one packet
           </div>
           <p className="text-xs text-gray-500 mb-2">
-            Based on what each class actually missed. Classes with the same weakest
-            benchmark and overlapping missed questions can use <b>one</b> packet —
-            generate it once instead of per class.
+            Based on what each class actually missed. <b>Default to per-class</b> for
+            accuracy — each class&apos;s deficiency is measured on its own students.
+            Share <b>one</b> packet only where classes truly overlap (the SHARE rows
+            below). {groups.length === 1 && groups[0].shared
+              ? "Here every class shares the same gap — a single grade-wide packet works."
+              : "Give the OWN-PACKET classes their own."}
           </p>
           <div className="space-y-2">
             {groups.map((g: any, i: number) => (
@@ -612,6 +615,23 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                         <Chip color={c.by_standard[0].color}>
                           {c.by_standard[0].percent}%
                         </Chip>{" "}
+                        {typeof c.by_standard[0].questions === "number" && (
+                          <span
+                            className={
+                              c.by_standard[0].questions <= 1
+                                ? "text-amber-600 font-semibold"
+                                : "text-gray-400"
+                            }
+                            title={
+                              c.by_standard[0].questions <= 1
+                                ? "Only 1 question for this class — thin evidence; confirm with i-Ready/FAST."
+                                : `${c.by_standard[0].questions} questions`
+                            }
+                          >
+                            {c.by_standard[0].questions} Q
+                            {c.by_standard[0].questions === 1 ? " ⚠" : "s"}
+                          </span>
+                        )}{" "}
                         <a
                           href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
                             c.by_standard[0].standard
