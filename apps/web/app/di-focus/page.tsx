@@ -19,6 +19,7 @@ function DiFocusInner() {
   const grade = params.get("grade") || "";
   const standard = params.get("standard") || "";
   const formId = params.get("form_id") || "";
+  const teacher = params.get("teacher") || "";
   const [me, setMe] = useState<any>(null);
   const [build, setBuild] = useState<any>(null);
   const [data, setData] = useState<any>(null);
@@ -31,7 +32,7 @@ function DiFocusInner() {
     setPacketBusy(true);
     setPackets(null);
     try {
-      const r = await api.createDiPackets(grade, standard, formId);
+      const r = await api.createDiPackets(grade, standard, formId, teacher);
       setPacketId(r.packet_id);
       // Poll until ready (DI packet is one AI call, usually under a minute).
       for (let i = 0; i < 60; i++) {
@@ -84,6 +85,7 @@ function DiFocusInner() {
           </a>
           <h1 className="text-xl font-bold text-gray-800 mt-1">
             DI Focus — {GRADE_LABEL(grade)}
+            {teacher ? ` · ${teacher}'s class` : " · grade-wide"}
           </h1>
           <p className="text-sm text-gray-500">
             One place to plan reteach for a weak standard: what it is, the Tier 2

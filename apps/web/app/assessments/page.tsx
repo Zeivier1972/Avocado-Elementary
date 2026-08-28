@@ -537,10 +537,10 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                         <a
                           href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
                             c.by_standard[0].standard
-                          )}&form_id=${f.id}`}
+                          )}&form_id=${f.id}&teacher=${encodeURIComponent(c.teacher)}`}
                           className="text-avocado-dark font-semibold hover:underline"
                         >
-                          → DI
+                          → DI for this class
                         </a>
                       </span>
                     ) : (

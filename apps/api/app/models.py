@@ -330,6 +330,7 @@ class DiPacket(Base, TimestampMixin):
     grade_level: Mapped[str] = mapped_column(String, default="", index=True)
     standard: Mapped[str] = mapped_column(String, default="", index=True)
     form_id: Mapped[str] = mapped_column(String, default="", index=True)
+    teacher: Mapped[str] = mapped_column(String, default="", index=True)  # "" = grade-wide
     title: Mapped[str] = mapped_column(String, default="")
     content: Mapped[dict] = mapped_column(JSON, default=dict)
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)

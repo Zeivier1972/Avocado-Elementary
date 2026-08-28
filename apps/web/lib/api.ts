@@ -209,11 +209,16 @@ export const api = {
     req(`/coach/documents/${id}`, { method: "DELETE" }),
   generateGuideFromDoc: (id: string) =>
     req(`/coach/documents/${id}/generate-guide`, { method: "POST" }),
-  createDiPackets: (grade: string, standard: string, form_id = "") =>
+  createDiPackets: (
+    grade: string,
+    standard: string,
+    form_id = "",
+    teacher = ""
+  ) =>
     req(`/coach/di-packets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grade, standard, form_id }),
+      body: JSON.stringify({ grade, standard, form_id, teacher }),
     }),
   getDiPackets: (id: string) => req(`/coach/di-packets/${id}`),
   generateGuideCombined: (

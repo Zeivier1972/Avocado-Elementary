@@ -1814,12 +1814,45 @@ def _di_tier_for(pct: float):
     return _DI_ROTATION[-1] if pct >= 70 else _DI_ROTATION[0]
 
 
-def _di_students_by_tier(db, f: AssessmentForm, standard: str) -> dict:
+def _class_missed_on_standard(db, f: AssessmentForm, standard: str,
+                              teacher: str = "") -> list:
+    """Most-missed questions on ONE benchmark, for ONE class (teacher) or grade-wide
+    when teacher is empty. Ranked by how many students missed each item, with the
+    correct answer and captured question text so DI targets that group's misses."""
+    q = db.query(TopicResult).filter(TopicResult.form_id == f.id)
+    if teacher:
+        q = q.filter(TopicResult.teacher_name == teacher)
+    rows = q.all()
+    items = {it.position: it for it in db.query(AssessmentItem).filter(
+        AssessmentItem.form_id == f.id).all()}
+    n = len(rows)
+    cnt: dict = {}
+    for r in rows:
+        for pos in (r.missed_positions or []):
+            it = items.get(pos)
+            if it and it.standard == standard:
+                cnt[pos] = cnt.get(pos, 0) + 1
+    out = []
+    for pos, c in cnt.items():
+        it = items[pos]
+        out.append({"position": pos, "missed": c,
+                    "miss_pct": round(100.0 * c / n, 1) if n else 0,
+                    "standard": standard, "correct_response": it.correct_response,
+                    "stem": (it.stem or "")[:300]})
+    return sorted(out, key=lambda m: -m["missed"])
+
+
+def _di_students_by_tier(db, f: AssessmentForm, standard: str,
+                         teacher: str = "") -> dict:
     """Group this test's students into the three rotation tiers by their score ON
     THE CHOSEN STANDARD (falling back to their overall topic %), so each packet
-    lists exactly who is in it and how big each group is."""
+    lists exactly who is in it and how big each group is. Scoped to ONE class when
+    teacher is given, else grade-wide."""
     groups = {t["name"]: [] for t in _DI_ROTATION}
-    for r in db.query(TopicResult).filter(TopicResult.form_id == f.id).all():
+    q = db.query(TopicResult).filter(TopicResult.form_id == f.id)
+    if teacher:
+        q = q.filter(TopicResult.teacher_name == teacher)
+    for r in q.all():
         by = (r.by_standard or {}).get(standard)
         if by and by.get("possible"):
             pct = round(100.0 * by.get("earned", 0.0) / by["possible"], 1)
@@ -1834,8 +1867,11 @@ def _di_students_by_tier(db, f: AssessmentForm, standard: str) -> dict:
     return groups
 
 
-def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str):
-    """Background generation of the three-tier DI packet (own DB session)."""
+def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
+                       teacher: str = ""):
+    """Background generation of the three-tier DI packet (own DB session). When
+    teacher is set, everything (most-missed + tier groups) is scoped to THAT
+    class, so each teacher gets a packet for their own class's deficiencies."""
     from app.db.session import SessionLocal
     from app.tier2_vocab import tier2_for_standards
 
@@ -1848,28 +1884,26 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str):
         s = sd[0] if sd else {"code": standard, "description": ""}
         tier2 = [e["word"] for e in tier2_for_standards([s])]
 
-        # Most-missed questions on this standard (from the test's results).
+        # Most-missed questions on this standard, scoped to the class (or grade).
         missed = []
         f = db.get(AssessmentForm, form_id) if form_id else None
         forms = [f] if f else db.query(AssessmentForm).filter(
             AssessmentForm.tenant_id == rec.tenant_id,
             AssessmentForm.grade == grade).all()
         for form in [x for x in forms if x]:
-            a = _results_analysis(db, form)
-            for m in a.get("most_missed", []):
-                if m.get("standard") == standard:
-                    missed.append(m)
+            missed.extend(_class_missed_on_standard(db, form, standard, teacher))
         missed.sort(key=lambda m: -m.get("miss_pct", 0))
 
         packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2)
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
+        packet["teacher"] = teacher
         # Layer 2: target the specific missed questions (clustered by misconception).
         packet["target_the_misses"] = generate_target_the_misses(
             s, missed, grade, packet.get("model", "none"))
         packet["stems_captured"] = any((m.get("stem") or "").strip() for m in missed)
 
-        # Attach the student groups (who is in each tier + counts).
-        groups = _di_students_by_tier(db, f, standard) if f else {}
+        # Attach the student groups (who is in each tier + counts), scoped to class.
+        groups = _di_students_by_tier(db, f, standard, teacher) if f else {}
         for t in packet.get("tiers", []):
             g = groups.get(t.get("tier"), [])
             t["students"] = g
@@ -1902,6 +1936,7 @@ class _DiPacketReq(BaseModel):
     grade: str
     standard: str
     form_id: str = ""
+    teacher: str = ""  # "" = grade-wide; else target this class's deficiencies
 
 
 @router.post("/di-packets")
@@ -1911,16 +1946,20 @@ def create_di_packets(
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
-    """Start background generation of the three-tier DI packet for one benchmark.
-    Returns a packet_id the DI Focus page polls."""
+    """Start background generation of the three-tier DI packet for one benchmark,
+    grade-wide or for a single class (teacher). Returns a packet_id to poll."""
+    scope = f" · {req.teacher}" if req.teacher else ""
     rec = DiPacket(
         tenant_id=user.tenant_id, grade_level=req.grade, standard=req.standard,
-        form_id=req.form_id, created_by=user.id, status="generating",
-        title=f"DI Packets — Grade {req.grade} · {req.standard}",
-        content={"standard": req.standard, "grade_level": req.grade, "tiers": []})
+        form_id=req.form_id, teacher=req.teacher, created_by=user.id,
+        status="generating",
+        title=f"DI Packets — Grade {req.grade} · {req.standard}{scope}",
+        content={"standard": req.standard, "grade_level": req.grade,
+                 "teacher": req.teacher, "tiers": []})
     db.add(rec)
     db.commit()
-    background.add_task(_run_di_packet_job, rec.id, req.grade, req.standard, req.form_id)
+    background.add_task(_run_di_packet_job, rec.id, req.grade, req.standard,
+                        req.form_id, req.teacher)
     audit(db, actor=user, action="generate", entity_type="di_packet",
           entity_id=rec.id, purpose="di_packets")
     return {"packet_id": rec.id, "status": "generating"}

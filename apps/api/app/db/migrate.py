@@ -26,6 +26,9 @@ _ADDED_COLUMNS = {
     "schedule_blocks": {
         "program": "VARCHAR DEFAULT ''",  # "" | ASD
     },
+    "di_packets": {
+        "teacher": "VARCHAR DEFAULT ''",  # "" = grade-wide; else the class
+    },
 }
 # student_assessments is a new table (create_all builds it) — no ALTERs needed.
 

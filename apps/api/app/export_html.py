@@ -294,7 +294,11 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">']
     head.append(f'<style>{css}</style></head><body><div class="wrap">')
     out = list(head)
-    out.append(f'<div class="band"><div><div class="eyebrow">Grade {grade} · Math · DI Center Packet</div>'
+    teacher = _esc(packet.get("teacher"))
+    eyebrow = f"Grade {grade} · Math · DI Center Packet"
+    if teacher:
+        eyebrow += f" · {teacher}'s class"
+    out.append(f'<div class="band"><div><div class="eyebrow">{eyebrow}</div>'
                f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
                f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')
     if missed:
