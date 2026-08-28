@@ -223,10 +223,16 @@ _CSS = """
 :root{--paper:#FBF8F1;--ink:#26302A;--muted:#6B7A6E;--line:#DED7C6;--brand:#4E7C2F;--brand-deep:#38601F;--frame:#B9C2AE;}
 *{box-sizing:border-box;}body{margin:0;background:var(--paper);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:16px;line-height:1.5;}
 .wrap{max-width:820px;margin:0 auto;padding:26px 22px 60px;}h1,h2,h3{font-family:"Baloo 2","Atkinson Hyperlegible",cursive;}
-.band{background:var(--brand-deep);color:#fff;border-radius:20px;padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;}
-.band .eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#CFE3BE;font-weight:700;}
-.band h1{margin:.1em 0 0;font-size:31px;font-weight:800;line-height:1;}.band .std{font-size:14px;color:#DDEBCE;margin-top:6px;}
-.namebar{display:flex;gap:16px;font-size:14px;color:#E8F1DE;}.namebar span{border-bottom:2px solid #7BA35C;padding:0 28px 3px 6px;}
+.band{background:var(--brand-deep);color:#fff;border-radius:14px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;}
+.band .eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#CFE3BE;font-weight:700;}
+.band h1{margin:.1em 0 0;font-size:18px;font-weight:800;line-height:1.15;}.band .std{font-size:12px;color:#DDEBCE;margin-top:3px;}
+.namebar{display:flex;gap:12px;font-size:13px;color:#E8F1DE;}.namebar span{border-bottom:2px solid #7BA35C;padding:0 24px 2px 6px;}
+.copies{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:12px;font-size:13px;}
+.copies .lbl{font-weight:700;color:var(--ink);}
+.copies .cc{font-weight:700;color:#fff;border-radius:999px;padding:2px 10px;}
+.choices{display:flex;flex-direction:column;gap:9px;margin-top:10px;}
+.choice{display:flex;align-items:center;gap:9px;border:1.5px solid var(--line);border-radius:10px;padding:7px 12px;font-size:15px;}
+.choice .b{width:24px;height:24px;border-radius:50%;border:2px solid var(--frame);display:inline-grid;place-items:center;font-family:"Baloo 2";font-weight:700;font-size:13px;flex:none;}
 .ican{font-family:"Baloo 2";font-size:19px;font-weight:700;color:var(--brand-deep);margin:16px 2px 4px;}
 .missed{background:#fff;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:12px;padding:12px 16px;margin-top:12px;font-size:14px;}
 .tier{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;margin-top:22px;border-top-width:8px;}
@@ -267,12 +273,31 @@ def _esc(s) -> str:
     return html.escape(str(s or ""))
 
 
+def _choices_html(choices) -> str:
+    """Multiple-choice answers, stacked one per line with a lettered bubble and
+    clear spacing so young students don't confuse them (A. / B. / C. / D.)."""
+    if not isinstance(choices, list) or not choices:
+        return ""
+    letters = "ABCDEFGH"
+    rows = []
+    for i, ch in enumerate(choices[:8]):
+        rows.append(f'<div class="choice"><span class="b">{letters[i]}</span>'
+                    f'<span>{_esc(ch)}</span></div>')
+    return f'<div class="choices">{"".join(rows)}</div>'
+
+
 def _problem_html(model, p, show_default=True) -> str:
     q = _esc(p.get("text") or p.get("problem"))
     vis = ""
     if p.get("show_model", show_default) and (p.get("value") is not None or "rows" in p or "a" in p):
         vis = svg_model(model, p)
-    ans = f'<div style="margin-top:8px;color:var(--muted);font-size:13px;">Answer: <span style="border:2px dashed var(--frame);border-radius:8px;display:inline-block;width:90px;height:26px;vertical-align:middle;"></span></div>'
+    choices = _choices_html(p.get("choices"))
+    if choices:
+        ans = choices  # multiple choice — no write-in box needed
+    else:
+        ans = ('<div style="margin-top:10px;color:var(--muted);font-size:13px;">'
+               'Answer: <span style="border:2px dashed var(--frame);border-radius:8px;'
+               'display:inline-block;width:110px;height:30px;vertical-align:middle;"></span></div>')
     return f'<div class="prob"><p class="q">{q}</p>{vis}{ans}</div>'
 
 
@@ -307,6 +332,20 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         items = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
         out.append(f'<div class="missed"><b>We are fixing the questions the class missed most:</b> {items}. '
                    f'These packets reteach those exact ideas.</div>')
+
+    # Copies to make — how many of each tier to print (for the copier).
+    tiers = packet.get("tiers", []) or []
+    tcount = {t.get("tier"): t.get("student_count", 0) for t in tiers}
+    total = sum(tcount.values())
+    if total:
+        chips = "".join(
+            f'<span class="cc" style="background:{_TIER_META.get(name, ("", "#888", ""))[1]}">'
+            f'{label} ×{tcount.get(name,0)}</span>'
+            for name, label in (("Intensive", "Red"), ("Cusp", "Yellow"),
+                                ("Strategic", "Green")))
+        who = f"{_esc(teacher)}" if teacher else "grade-wide"
+        out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
+                   f'{chips}<span class="cc" style="background:#38601F">Total ×{total}</span></div>')
 
     for t in packet.get("tiers", []):
         css, hexc, stars = _TIER_META.get(t.get("tier"), ("blue", "#2E86C1", ""))

@@ -1294,7 +1294,7 @@ _DI_PACKET_SCHEMA = (
     '"watch_it":{"value":6,"statement":"the worked example in kid words (e.g. \'6 is EVEN — 3 pairs, 0 left over\')"},'
     '"try_it":{"problem":"one guided problem in student words","value":8,'
     '"steps":["step 1 for the student","step 2","step 3"]},'
-    '"on_your_own":[{"text":"an independent problem, similar to the test","value":9,"show_model":true,"answer":"the answer"}]}],'
+    '"on_your_own":[{"text":"an independent problem, similar to the test","value":9,"show_model":true,"choices":["option A","option B","option C","option D"],"answer":"the correct option"}]}],'
     '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer"}]}]'
 )
 
@@ -1342,7 +1342,10 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             "Each day: watch_it (one worked example), try_it (one guided problem with "
             "2-3 student steps), and on_your_own with ENOUGH problems to fill ~15 "
             "minutes of independent work (Intensive & Cusp: 5-6 per day; Strategic: "
-            "4-5 plus a 'Dig Deeper' enrichment). Tier intent: Intensive = "
+            "4-5 plus a 'Dig Deeper' enrichment). If the test is multiple choice, "
+            "give each on_your_own problem a 'choices' array of 3-4 SHORT options "
+            "(exactly one correct) so it looks like the test; otherwise omit "
+            "'choices'. Tier intent: Intensive = "
             "foundational, most scaffolding, concrete model every time; Cusp = "
             "targeted practice to reach proficiency; Strategic = practice + "
             "higher-order enrichment. Day 2 (Intensive/Cusp) fades the scaffold "
@@ -1412,9 +1415,13 @@ def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
             f"format, number range, and the '{model}' visual model) so students "
             "rectify that exact mistake, each with its answer. Write the problems "
             "TO THE STUDENT, elementary reading level.\n\n"
+            "If the real questions are multiple choice, give each fix sample a "
+            "'choices' array of 3-4 SHORT options (one correct) that mirror the "
+            "test's answer choices — including a plausible wrong option matching the "
+            "misconception; otherwise omit 'choices'.\n"
             'Return ONLY a JSON array: [{"questions":["Q17","Q19"],'
             '"why_missed":"the misconception in plain words",'
-            '"fix_samples":[{"problem":"a matched problem","value":9,"answer":"the answer"}]}]'
+            '"fix_samples":[{"problem":"a matched problem","value":9,"choices":["A opt","B opt","C opt","D opt"],"answer":"the correct option"}]}]'
             f"\n{_PLAIN}")
         arr, _ = _llm_json(
             client, prompt,
