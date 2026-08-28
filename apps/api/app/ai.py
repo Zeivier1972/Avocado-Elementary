@@ -1485,7 +1485,8 @@ def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
         std_ctx = _std_context([standard])
         have_text = any((m.get("stem") or "").strip() for m in most_missed)
         items_txt = "\n".join(
-            f"- Q{m.get('position')} ({m.get('miss_pct','')}% missed, correct "
+            f"- Q{m.get('position')} [{m.get('standard') or '?'}] "
+            f"({m.get('miss_pct','')}% missed, correct "
             f"answer {m.get('correct_response','')}): "
             f"{(m.get('stem') or '(question text not captured)').strip()[:300]}"
             for m in most_missed[:10])
@@ -1498,13 +1499,16 @@ def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
                "wasn't uploaded, so mirror the SKILL and format from the benchmark)")
             + f":\n{items_txt}\n\n"
             f"BENCHMARK + common misconceptions (B1G-M):\n{std_ctx}\n\n"
-            "These questions MAY SPAN A FEW STANDARDS — that is fine; target every "
-            "one the class missed, even if it is not the packet's main standard.\n"
+            "Each question's standard code is given in [brackets]. These questions "
+            "MAY SPAN A FEW STANDARDS — that is fine; target every one the class "
+            "missed, even if it is not the packet's main standard.\n"
             "CLUSTER these missed questions by the MISCONCEPTION or error they "
             "reveal (questions missed for the SAME reason go together; questions on "
             "the same standard but a DIFFERENT demand — e.g. a word problem vs an "
-            "equation vs a picture — go in separate clusters). Tag each cluster with "
-            "its standard code. For EACH cluster give 2-3 matched 'fix-it' problems "
+            "equation vs a picture — go in separate clusters). NEVER put questions "
+            "from DIFFERENT standards in the same cluster. Tag each cluster with the "
+            "standard given in [brackets] for its questions EXACTLY — never guess or "
+            "relabel it. For EACH cluster give 2-3 matched 'fix-it' problems "
             "that MIRROR the real questions (same format and number range) so "
             "students rectify that exact mistake, each with its answer. Write the "
             "problems TO THE STUDENT, elementary reading level.\n\n"
