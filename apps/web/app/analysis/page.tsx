@@ -204,7 +204,7 @@ export default function AnalysisPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs min-w-[820px]">
                   <thead>
-                    <tr className="text-left text-gray-500 border-b border-gray-100">
+                    <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                       <th className="p-2 font-semibold">Student</th>
                       <th className="p-2 font-semibold">FAST scale</th>
                       <th className="p-2 font-semibold">Level</th>
@@ -233,7 +233,7 @@ export default function AnalysisPage() {
                       return (
                         <tr
                           key={r.student_id}
-                          className="border-b border-gray-50 align-top"
+                          className="border-b border-gray-50 last:border-0 align-top hover:bg-avocado/5 transition-colors"
                         >
                           <td className="p-2 text-gray-800 whitespace-nowrap">{r.name}</td>
                           <td className="p-2 tabular-nums text-gray-700">
@@ -355,7 +355,7 @@ export default function AnalysisPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border border-gray-100">
                     <thead>
-                      <tr className="bg-gray-50 text-left text-gray-500">
+                      <tr className="bg-gray-50/80 text-left text-[11px] uppercase tracking-wide text-gray-500">
                         <th className="p-1.5 font-semibold">Benchmark</th>
                         <th className="p-1.5 font-semibold">Description</th>
                         <th className="p-1.5 font-semibold">Times assessed</th>
@@ -365,7 +365,7 @@ export default function AnalysisPage() {
                     </thead>
                     <tbody>
                       {coverage.map((c: any) => (
-                        <tr key={c.benchmark} className="border-t border-gray-100 align-top">
+                        <tr key={c.benchmark} className="border-t border-gray-100 align-top hover:bg-avocado/5 transition-colors">
                           <td className="p-1.5 font-medium text-gray-700 whitespace-nowrap">
                             {c.benchmark}
                           </td>
