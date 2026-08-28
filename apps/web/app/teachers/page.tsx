@@ -9,10 +9,38 @@ const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
 
 function pctChip(pct: number | null) {
   if (pct === null || pct === undefined)
-    return "bg-gray-100 text-gray-500";
+    return "bg-gray-100 text-gray-500 border-gray-200";
   if (pct >= 60) return "bg-green-50 text-green-700 border-green-200";
   if (pct >= 40) return "bg-amber-50 text-amber-700 border-amber-200";
   return "bg-red-50 text-red-700 border-red-200";
+}
+
+function barColor(pct: number | null) {
+  if (pct === null || pct === undefined) return "#e5e7eb";
+  if (pct >= 60) return "#27AE60";
+  if (pct >= 40) return "#E67E22";
+  return "#C0392B";
+}
+
+function initials(name: string) {
+  return (
+    (name || "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "?"
+  );
+}
+
+const AVATAR_COLORS = [
+  "#4a7c2f", "#2E86C1", "#8E44AD", "#C0392B",
+  "#E67E22", "#117A65", "#B7791F", "#5D6D7E",
+];
+function avatarColor(name: string) {
+  let h = 0;
+  for (const ch of name || "") h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
 export default function TeachersPage() {
@@ -55,26 +83,75 @@ export default function TeachersPage() {
   if (!me) return <div className="p-10 text-gray-500">Loading…</div>;
 
   const diag = data?.diagnostics;
+  const all = data?.teachers || [];
+  const withData = all.filter((t: any) => t.pct_level_3_plus != null);
+  const avgL3 = withData.length
+    ? Math.round(
+        withData.reduce((s: number, t: any) => s + t.pct_level_3_plus, 0) /
+          withData.length
+      )
+    : null;
+  const needAttn = all.filter(
+    (t: any) => t.pct_level_3_plus != null && t.pct_level_3_plus < 40
+  ).length;
 
   return (
     <main className="min-h-screen">
       <CoachHeader me={me} active="/teachers" build={build} />
       <div className="max-w-6xl mx-auto p-6 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Teachers</h1>
+            <h1 className="text-2xl font-bold text-gray-800 tracking-tight">
+              Teachers
+            </h1>
             <p className="text-gray-500 text-sm">
               Your accounts. Open one to see their students&apos; data and log
               coaching notes. Sorted by who needs you most.
             </p>
           </div>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search teachers…"
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+              🔍
+            </span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search teachers…"
+              className="border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm bg-white w-56 focus:border-avocado focus:outline-none"
+            />
+          </div>
         </div>
+
+        {/* Summary KPIs */}
+        {all.length > 0 && (
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Teachers", value: all.length, tone: "text-gray-800" },
+              {
+                label: "Avg % at Level 3+",
+                value: avgL3 === null ? "—" : `${avgL3}%`,
+                tone: "text-avocado-dark",
+              },
+              {
+                label: "Need attention",
+                value: needAttn,
+                tone: needAttn > 0 ? "text-red-600" : "text-gray-800",
+              },
+            ].map((k) => (
+              <div
+                key={k.label}
+                className="bg-white rounded-2xl border border-gray-100 p-4 text-center"
+              >
+                <div className={`text-3xl font-bold tabular-nums ${k.tone}`}>
+                  {k.value}
+                </div>
+                <div className="text-[11px] uppercase tracking-wide text-gray-400 mt-0.5">
+                  {k.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {err && (
           <div className="bg-red-50 border border-red-100 text-red-700 rounded-xl p-4 text-sm">
@@ -93,10 +170,17 @@ export default function TeachersPage() {
               <a
                 key={t.teacher_id}
                 href={`/teachers/${t.teacher_id}`}
-                className="bg-white rounded-2xl border border-gray-100 p-5 hover:border-avocado hover:shadow-sm transition block"
+                className="bg-white rounded-2xl border border-gray-100 p-5 hover:border-avocado transition block"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                <div className="flex items-start gap-3">
+                  <span
+                    className="shrink-0 grid place-items-center w-11 h-11 rounded-full text-white font-bold text-sm"
+                    style={{ background: avatarColor(t.name) }}
+                    aria-hidden
+                  >
+                    {initials(t.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
                     <div className="font-semibold text-gray-800 truncate">
                       {t.name}
                     </div>
@@ -117,14 +201,36 @@ export default function TeachersPage() {
                 </div>
                 <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-avocado"
-                    style={{ width: `${t.pct_level_3_plus ?? 0}%` }}
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${t.pct_level_3_plus ?? 0}%`,
+                      background: barColor(t.pct_level_3_plus),
+                    }}
                   />
                 </div>
-                <div className="mt-2 text-xs text-gray-400">
-                  {t.fast_math_period
-                    ? `FAST Math · ${t.fast_math_period}`
-                    : "FAST Math · baseline"}
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className="text-gray-400">
+                    {t.fast_math_period
+                      ? `FAST Math · ${t.fast_math_period}`
+                      : "FAST Math · baseline"}
+                  </span>
+                  {t.pct_level_3_plus != null && (
+                    <span
+                      className={`font-semibold ${
+                        t.pct_level_3_plus >= 60
+                          ? "text-green-700"
+                          : t.pct_level_3_plus >= 40
+                          ? "text-amber-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {t.pct_level_3_plus >= 60
+                        ? "On track"
+                        : t.pct_level_3_plus >= 40
+                        ? "Watch"
+                        : "Needs support"}
+                    </span>
+                  )}
                 </div>
               </a>
             ))}
