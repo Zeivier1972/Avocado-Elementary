@@ -22,6 +22,7 @@ from app.ai import (
     generate_di_packets,
     generate_planning_guide,
     generate_plc_agenda,
+    generate_target_the_misses,
     simplify_guide_text,
 )
 from app.export_docx import guide_to_docx
@@ -1862,6 +1863,10 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str):
 
         packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2)
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
+        # Layer 2: target the specific missed questions (clustered by misconception).
+        packet["target_the_misses"] = generate_target_the_misses(
+            s, missed, grade, packet.get("model", "none"))
+        packet["stems_captured"] = any((m.get("stem") or "").strip() for m in missed)
 
         # Attach the student groups (who is in each tier + counts).
         groups = _di_students_by_tier(db, f, standard) if f else {}

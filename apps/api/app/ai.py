@@ -1374,6 +1374,56 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
         return base
 
 
+def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
+                               model: str) -> list:
+    """Layer 2 of DI: cluster the class's most-missed questions ON THIS BENCHMARK
+    by the MISCONCEPTION they reveal (not just the standard), and write matched
+    'fix-it' samples that mirror the real items (their wording/format/numbers) so
+    students rectify that exact mistake. Uses the captured question text (stems)
+    when the test PDF was uploaded. Returns [] if AI is off or nothing to target."""
+    if not most_missed:
+        return []
+    if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
+        return []
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        std_ctx = _std_context([standard])
+        have_text = any((m.get("stem") or "").strip() for m in most_missed)
+        items_txt = "\n".join(
+            f"- Q{m.get('position')} ({m.get('miss_pct','')}% missed, correct "
+            f"answer {m.get('correct_response','')}): "
+            f"{(m.get('stem') or '(question text not captured)').strip()[:300]}"
+            for m in most_missed[:10])
+        prompt = (
+            f"You are a Grade {grade} math coach planning the TARGETED part of a DI "
+            f"reteach for ONE benchmark. Below are the ACTUAL test questions the "
+            f"class missed most on this benchmark"
+            + (" (with their real wording)" if have_text else
+               " (only item numbers + correct answers were captured — the test PDF "
+               "wasn't uploaded, so mirror the SKILL and format from the benchmark)")
+            + f":\n{items_txt}\n\n"
+            f"BENCHMARK + common misconceptions (B1G-M):\n{std_ctx}\n\n"
+            "CLUSTER these missed questions by the MISCONCEPTION or error they "
+            "reveal (questions missed for the SAME reason go together; questions on "
+            "the same standard but a DIFFERENT demand — e.g. a word problem vs an "
+            "equation vs a picture — go in separate clusters). For EACH cluster give "
+            "2-3 matched 'fix-it' problems that MIRROR the real questions (same "
+            f"format, number range, and the '{model}' visual model) so students "
+            "rectify that exact mistake, each with its answer. Write the problems "
+            "TO THE STUDENT, elementary reading level.\n\n"
+            'Return ONLY a JSON array: [{"questions":["Q17","Q19"],'
+            '"why_missed":"the misconception in plain words",'
+            '"fix_samples":[{"problem":"a matched problem","value":9,"answer":"the answer"}]}]'
+            f"\n{_PLAIN}")
+        arr, _ = _llm_json(
+            client, prompt,
+            "You output ONLY a valid JSON array, no prose or fences.", 6000)
+        return arr or []
+    except Exception:
+        return []
+
+
 def _llm_json(client, prompt: str, system: str, max_tokens: int):
     """One streamed call returning (parsed_json_array | None, reason)."""
     with client.messages.stream(

@@ -199,9 +199,11 @@ function DiFocusInner() {
                   DI Packets — Intensive · Cusp · Strategic
                 </div>
                 <p className="text-xs text-gray-500 max-w-xl">
-                  Full reteach per rotation tier, grounded in the B1G-M benchmark +
-                  the most-missed questions, with the right number of teacher-led
-                  (TLC) sessions per group and an OPM progress check.
+                  Two layers: (1) reteach the skill per tier (Watch it → Try it → On
+                  your own, by day), and (2) <b>Target the Misses</b> — matched
+                  fix-it problems for the exact questions the class missed, clustered
+                  by misconception. Grounded in the B1G-M + your test. OPM check
+                  included.
                 </p>
               </div>
               <div className="flex items-center gap-2">

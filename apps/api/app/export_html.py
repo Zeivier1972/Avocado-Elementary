@@ -339,6 +339,22 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             out.append(f'<div class="opm"><h2>Quick Check — Did I Grow? ✅</h2><div class="grid" style="margin-top:10px;">{cards}</div></div>')
         out.append('</section>')
 
-    out.append(f'<div class="foot">Avocado · Grade {grade} · {std} — Red &amp; Yellow = 2 days · Green = 1 day · Each day: Watch it → Try it → On your own</div>')
+    # Layer 2 — Target the Misses: matched fix-it samples per misconception cluster.
+    misses = packet.get("target_the_misses") or []
+    if misses:
+        out.append('<section class="tier" style="border-top-color:#8E44AD">')
+        out.append('<div class="tier-head"><span class="pill" style="background:#8E44AD">🎯 Fix the Questions We Missed</span></div>')
+        out.append('<p class="tier-sub">Matched practice for the exact questions the class missed most — do these after the reteach to rectify the mistake.</p>')
+        if not packet.get("stems_captured", True):
+            out.append('<p class="helper">Note: the test PDF wasn\'t uploaded for this topic, so these mirror the skill and format. Upload the test to match the exact wording.</p>')
+        for cl in misses:
+            qs = ", ".join(_esc(q) for q in (cl.get("questions") or []))
+            out.append(f'<div class="day" style="background:#8E44AD">{qs or "Missed items"}'
+                       f'<span class="small">{_esc(cl.get("why_missed"))}</span></div>')
+            cards = "".join(_problem_html(model, p) for p in (cl.get("fix_samples") or []))
+            out.append(f'<div class="phase-body"><div class="grid">{cards}</div></div>')
+        out.append('</section>')
+
+    out.append(f'<div class="foot">Avocado · Grade {grade} · {std} — Reteach the skill, then Target the Misses · Red &amp; Yellow = 2 days · Green = 1 day</div>')
     out.append('</div></body></html>')
     return "".join(out)
