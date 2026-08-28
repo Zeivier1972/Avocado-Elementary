@@ -287,15 +287,17 @@ _CSS = """
 .opm{background:#FBEBE8;border:1px solid #EAD2CE;border-radius:20px;padding:18px 20px;margin-top:22px;border-top:8px solid #C0392B;}
 .opm h2{margin:0;font-size:20px;color:#C0392B;}.foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;}
 @media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}
-.tier,.phase-body{break-inside:auto;}.prob,.example,.opm{break-inside:avoid;}
+.tier,.phase-body,.opm{break-inside:auto;}.prob,.example{break-inside:avoid;}
 .phase,.day{break-after:avoid;}.band{border-radius:0;}
-.tier{margin-top:14px;padding:16px;}.day{margin:12px 0 6px;}.phase{margin:10px 0 6px;}
+.pbreak{break-before:page;page-break-before:always;}
+.tier{margin-top:0;padding:16px 16px 0;}.day{margin:0 0 6px;}.phase{margin:10px 0 6px;}
 .wrap{padding-bottom:0;}@page{margin:1.1cm;}}
 """
 # For PDF rendering (WeasyPrint) the same rules apply without @media print.
 _CSS_PDF_EXTRA = """
-.tier,.phase-body{break-inside:auto;}.prob,.example,.opm{break-inside:avoid;}
+.tier,.phase-body,.opm{break-inside:auto;}.prob,.example{break-inside:avoid;}
 .phase,.day{break-after:avoid;}
+.pbreak{break-before:page;page-break-before:always;}
 @page{size:Letter;margin:1.1cm;}
 body{background:#fff;}
 """
@@ -413,13 +415,19 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
                    f'{chips}<span class="cc" style="background:#38601F">Total ×{total}</span></div>')
 
-    for t in packet.get("tiers", []):
+    for ti, t in enumerate(packet.get("tiers", [])):
         css, hexc, stars = _TIER_META.get(t.get("tier"), ("blue", "#2E86C1", ""))
-        out.append(f'<section class="tier" style="border-top-color:{hexc}">')
+        # Each tier starts on a fresh printed page, so a teacher can pull a clean
+        # stack per group (Red / Yellow / Green) without another tier bleeding in.
+        tpb = "" if ti == 0 else " pbreak"
+        out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
         out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">{stars} {_esc(t.get("tier"))}</span>'
                    f'<h2>{_esc(t.get("band"))}</h2></div>')
-        for day in t.get("days", []):
-            out.append(f'<div class="day" style="background:{hexc}">Day {_esc(day.get("day"))} — {_esc(day.get("title"))}'
+        for di, day in enumerate(t.get("days", [])):
+            # Each Day after the first also breaks to its own page, so Day 1 and
+            # Day 2 print as separate handouts.
+            dpb = "" if di == 0 else " pbreak"
+            out.append(f'<div class="day{dpb}" style="background:{hexc}">Day {_esc(day.get("day"))} — {_esc(day.get("title"))}'
                        f'<span class="small">{_esc(day.get("pacing"))}</span></div>')
             # Watch it
             w = day.get("watch_it") or {}
@@ -453,13 +461,13 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         opm = t.get("opm") or []
         if opm:
             cards = "".join(_problem_html(model, {**p, "show_model": False}) for p in opm)
-            out.append(f'<div class="opm"><h2>Quick Check — Did I Grow? ✅</h2><div class="grid" style="margin-top:10px;">{cards}</div></div>')
+            out.append(f'<div class="opm pbreak"><h2>Quick Check — Did I Grow? ✅</h2><div class="grid" style="margin-top:10px;">{cards}</div></div>')
         out.append('</section>')
 
     # Layer 2 — Target the Misses: matched fix-it samples per misconception cluster.
     misses = packet.get("target_the_misses") or []
     if misses:
-        out.append('<section class="tier" style="border-top-color:#8E44AD">')
+        out.append('<section class="tier pbreak" style="border-top-color:#8E44AD">')
         out.append('<div class="tier-head"><span class="pill" style="background:#8E44AD">🎯 Fix the Questions We Missed</span></div>')
         out.append('<p class="tier-sub">Matched practice for the exact questions the class missed most — do these after the reteach to rectify the mistake.</p>')
         if not packet.get("stems_captured", True):
