@@ -2594,6 +2594,12 @@ def _results_analysis(db, f: AssessmentForm) -> dict:
     items = {it.position: it for it in db.query(AssessmentItem).filter(
         AssessmentItem.form_id == f.id).all()}
     desc = _std_desc_map(db)
+    # How many questions on the test assess each standard — so proficiency % is
+    # read WITH the evidence behind it (0% on 1 item is weaker than 40% on 9).
+    std_items: dict = {}
+    for it in items.values():
+        if it.scored:
+            std_items[it.standard] = std_items.get(it.standard, 0) + 1
 
     def std_block(subset):
         agg: dict = {}
@@ -2602,11 +2608,17 @@ def _results_analysis(db, f: AssessmentForm) -> dict:
                 e = agg.setdefault(std, {"earned": 0.0, "possible": 0.0})
                 e["earned"] += v.get("earned", 0.0)
                 e["possible"] += v.get("possible", 0.0)
+        n = len(subset)
         out = []
         for std, v in agg.items():
             pct = round(100.0 * v["earned"] / v["possible"], 1) if v["possible"] else None
+            nq = std_items.get(std, 0)
+            # Average questions correct per student on this standard.
+            avg_correct = round(v["earned"] / n, 1) if n else None
             out.append({"standard": std, "description": desc.get(std, ""),
-                        "percent": pct, **_color_for(f.grade, pct)})
+                        "percent": pct, "questions": nq,
+                        "avg_correct": avg_correct, "students": n,
+                        **_color_for(f.grade, pct)})
         return sorted(out, key=lambda x: (x["percent"] if x["percent"] is not None else 999))
 
     def missed_block(subset, n):

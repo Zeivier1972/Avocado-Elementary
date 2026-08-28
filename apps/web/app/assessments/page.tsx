@@ -470,9 +470,10 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
           Benchmarks — least proficient first (pick your DI focus)
         </div>
         <p className="text-xs text-gray-400 mb-2">
-          Ranked by the class&apos;s <b>average score</b> on each benchmark (lowest =
-          least proficient), not by how many red students it has. The weakest one is
-          at the top — click <b>Plan DI</b> to build the reteach.
+          Ranked by <b>proficiency %</b> (points earned ÷ points possible on each
+          benchmark) — normalized for the number of questions, so it&apos;s the real
+          deficiency, not just raw miss count. The <b>Qs</b> count shows the evidence:
+          a low % on few questions is a weaker signal than on many.
         </p>
         <div className="space-y-1.5">
           {a.by_standard.map((s: any, i: number) => (
@@ -498,6 +499,21 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                   </div>
                 )}
               </div>
+              {typeof s.questions === "number" && (
+                <span
+                  className={`text-[11px] whitespace-nowrap ${
+                    s.questions <= 1 ? "text-amber-600 font-semibold" : "text-gray-400"
+                  }`}
+                  title={
+                    s.questions <= 1
+                      ? "Only 1 question — thin evidence; confirm with i-Ready/FAST before heavy reteach."
+                      : `${s.questions} questions assess this standard`
+                  }
+                >
+                  {s.questions} Q{s.questions === 1 ? "" : "s"}
+                  {s.questions <= 1 ? " ⚠" : ""}
+                </span>
+              )}
               <Chip color={s.color}>{s.percent}%</Chip>
               <a
                 href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
