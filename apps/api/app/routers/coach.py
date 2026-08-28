@@ -1862,12 +1862,15 @@ def _di_grouping(db, f: AssessmentForm) -> list:
                 # questions), not a 1-question artifact.
                 "standard": c.get("di_target", ""),
                 "missed": {m["position"] for m in (c.get("most_missed") or [])[:4]},
-                "avg": c.get("avg_percent"), "students": c.get("students", 0)}
+                "avg": c.get("avg_percent"), "students": c.get("students", 0),
+                "red": c.get("red_on_target", 0)}
         if not c.get("teacher") or c["teacher"] == "—":
             unmatched.append(prof)          # students whose class didn't match roster
-        elif not c.get("needs_di", True):
-            enrichment.append(prof)         # already proficient — enrichment
+        elif not c.get("needs_di", True) and prof["red"] == 0:
+            enrichment.append(prof)         # proficient AND no red kids — enrichment
         else:
+            # Reteach when the class needs DI, OR it's proficient overall but
+            # still has Red kids on the target (they get the Intensive tier).
             reteach.append(prof)
 
     clusters, used = [], set()
@@ -1891,6 +1894,7 @@ def _di_grouping(db, f: AssessmentForm) -> list:
             "teachers": [g["teacher"] for g in group],
             "class_count": len(group),
             "students": sum(g["students"] for g in group),
+            "red": sum(g.get("red", 0) for g in group),
             "shared_questions": [f"Q{n}" for n in shared],
             "shared": len(group) > 1,
         })
@@ -2708,12 +2712,23 @@ def _results_analysis(db, f: AssessmentForm) -> dict:
         avg = round(sum(r.percent for r in subset) / len(subset), 1)
         bs = std_block(subset)
         di = _di_target(bs)
+        # Count the tier of each student ON THE TARGET STANDARD, so a
+        # high-average class that still has Red (Intensive) kids is never
+        # dismissed as pure enrichment.
+        tcounts = {t["name"]: 0 for t in _DI_ROTATION}
+        for r in subset:
+            by = (r.by_standard or {}).get(di["standard"])
+            p = (100.0 * by["earned"] / by["possible"]
+                 if by and by.get("possible") else r.percent)
+            tcounts[_di_tier_for(p)["name"]] += 1
         classes.append({
             "teacher": cls, "students": len(subset), "avg_percent": avg,
             **_color_for(f.grade, avg),
             "by_standard": bs,
             "di_target": di["standard"], "di_target_pct": di["percent"],
             "needs_di": di["needs_di"], "di_note": di["note"],
+            "red_on_target": tcounts.get("Intensive", 0),
+            "yellow_on_target": tcounts.get("Cusp", 0),
             "most_missed": missed_block(subset, len(subset))[:5]})
 
     grade_avg = round(sum(r.percent for r in rows) / len(rows), 1)

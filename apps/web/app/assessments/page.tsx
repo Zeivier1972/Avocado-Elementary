@@ -575,6 +575,11 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                     · missed {g.shared_questions.join(", ")}
                   </span>
                 )}
+                {(g.kind === "share" || g.kind === "own") && g.red > 0 && (
+                  <span className="text-xs font-semibold text-red-600">
+                    · {g.red} red need reteach
+                  </span>
+                )}
                 {g.kind === "enrichment" ? (
                   <span className="ml-auto text-xs text-blue-700">
                     No reteach — give enrichment / Dig Deeper
@@ -624,13 +629,11 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                     <Chip color={c.color}>{c.avg_percent}%</Chip>
                   </td>
                   <td className="p-2">
-                    {c.needs_di && c.di_target ? (
+                    {c.needs_di || c.red_on_target > 0 ? (
                       <span className="font-mono text-xs">
                         {c.di_target}{" "}
                         {typeof c.di_target_pct === "number" && (
-                          <span className="text-gray-500">
-                            {c.di_target_pct}%
-                          </span>
+                          <span className="text-gray-500">{c.di_target_pct}%</span>
                         )}{" "}
                         <a
                           href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
@@ -640,13 +643,20 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                         >
                           → DI for this class
                         </a>
+                        {!c.needs_di && c.red_on_target > 0 && (
+                          <div className="text-[11px] text-red-600 font-sans mt-0.5">
+                            Proficient overall, but {c.red_on_target} red kid
+                            {c.red_on_target === 1 ? "" : "s"} — the packet tiers
+                            them into Intensive.
+                          </div>
+                        )}
                       </span>
                     ) : (
                       <span className="text-xs text-green-700 font-semibold">
-                        ✓ Proficient — enrichment
+                        ✓ Proficient, no red — enrichment
                       </span>
                     )}
-                    {c.di_note && (
+                    {c.di_note && !(!c.needs_di && c.red_on_target > 0) && (
                       <div className="text-[11px] text-amber-600 font-sans mt-0.5">
                         ⚠ {c.di_note}
                       </div>
