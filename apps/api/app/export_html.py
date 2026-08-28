@@ -245,9 +245,11 @@ _CSS = """
 .phase .pn{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-family:"Baloo 2";font-weight:800;color:#fff;font-size:15px;background:var(--muted);}
 .phase h3{margin:0;font-size:17px;}.phase .gr{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-left:auto;}
 .phase-body{border-left:3px solid var(--line);margin-left:13px;padding-left:18px;}
-.example{background:var(--brand-deep);color:#fff;border-radius:14px;padding:13px 16px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;}
-.example .tag{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#CFE3BE;font-weight:700;width:100%;}
-.example .st{font-family:"Baloo 2";font-weight:800;font-size:17px;}
+.example{background:#EEF4E6;color:var(--ink);border:1px solid #CFE0BC;border-left:5px solid var(--brand);border-radius:12px;padding:11px 14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+.example .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand-deep);font-weight:700;width:100%;}
+.example .st{font-family:"Baloo 2";font-weight:800;font-size:16px;color:var(--ink);}
+.example .cap{color:var(--muted);}
+.example .verdict .even{color:#2e7d32;}.example .verdict .odd{color:#C0392B;}
 .steps{display:grid;gap:7px;margin:4px 0;}.step{display:grid;grid-template-columns:26px 1fr;gap:9px;align-items:start;}
 .step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:"Baloo 2";font-weight:800;color:#fff;font-size:13px;background:var(--muted);}
 .prob{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:#fff;}
