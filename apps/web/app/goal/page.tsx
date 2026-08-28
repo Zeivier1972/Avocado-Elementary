@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, getToken } from "@/lib/api";
+import { api, getToken } from "@/lib/api";
 import DataSubnav from "@/app/_components/DataSubnav";
+import CoachHeader from "@/app/_components/CoachHeader";
 
 const FAST = ["PM1", "PM2", "PM3"];
 const IREADY = ["AP1", "AP2", "AP3"];
@@ -11,6 +12,7 @@ const IREADY = ["AP1", "AP2", "AP3"];
 export default function GoalPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
+  const [build, setBuild] = useState<any>(null);
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
@@ -18,6 +20,7 @@ export default function GoalPage() {
       router.push("/");
       return;
     }
+    api.health().then(setBuild).catch(() => setBuild(null));
     api
       .me()
       .then((u) => {
@@ -37,30 +40,12 @@ export default function GoalPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🥑</span>
-          <span className="font-bold text-avocado-dark">Avocado</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-sm text-gray-600">School Goal</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="/reports" className="text-sm text-avocado-dark hover:underline">📊 Reports</a>
-          <a href="/coach" className="text-sm text-avocado-dark hover:underline">Planning</a>
-          <a href="/assistant" className="text-sm text-avocado-dark hover:underline">🤖 AI Coach</a>
-          <button
-            onClick={() => { clearToken(); router.push("/"); }}
-            className="text-sm text-gray-500 hover:text-gray-800"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <CoachHeader me={me} active="/goal" build={build} />
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <DataSubnav active="/goal" />
         {/* Headline goal */}
-        <div className="bg-avocado-dark text-white rounded-2xl p-6">
+        <div className="bg-gradient-to-br from-avocado to-avocado-dark text-white rounded-2xl p-6 shadow-sm">
           <div className="text-sm opacity-80">🎯 School Goal — {data.goal}</div>
           <div className="flex items-end gap-6 mt-2">
             <div>
