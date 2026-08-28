@@ -38,16 +38,26 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-2">🥑</div>
-          <h1 className="text-3xl font-bold text-avocado-dark">Avocado</h1>
+          <div className="mx-auto mb-3 grid place-items-center w-16 h-16 rounded-2xl bg-gradient-to-br from-avocado to-avocado-dark text-3xl shadow-sm">
+            🥑
+          </div>
+          <h1 className="text-3xl font-extrabold text-avocado-dark tracking-tight">
+            Avocado
+          </h1>
           <p className="text-gray-500 mt-1">
-            Instructional Intelligence for M-DCPS
+            Instructional intelligence for elementary math
           </p>
         </div>
         <form
           onSubmit={submit}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-4"
         >
+          <div className="text-center pb-1">
+            <div className="font-bold text-gray-800">Welcome back</div>
+            <div className="text-xs text-gray-400">
+              Sign in to your coaching workspace
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -86,6 +96,13 @@ export default function LoginPage() {
             Demo: coach@ · teacher@ · principal@avocado.edu · demo1234
           </p>
         </form>
+        <div className="mt-6 flex items-center justify-center gap-4 text-[11px] text-gray-400">
+          <span>📊 Data-driven DI</span>
+          <span>·</span>
+          <span>🎯 Goal tracking</span>
+          <span>·</span>
+          <span>🤖 AI coaching</span>
+        </div>
       </div>
     </main>
   );

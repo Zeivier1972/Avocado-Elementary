@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, getToken } from "@/lib/api";
+import { api, getToken } from "@/lib/api";
+import CoachHeader from "@/app/_components/CoachHeader";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -17,6 +18,7 @@ const SUGGESTIONS = [
 export default function AssistantPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
+  const [build, setBuild] = useState<any>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,6 +30,7 @@ export default function AssistantPage() {
       router.push("/");
       return;
     }
+    api.health().then(setBuild).catch(() => setBuild(null));
     api
       .me()
       .then((u) => {
@@ -83,17 +86,11 @@ export default function AssistantPage() {
 
   return (
     <main className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🥑</span>
-          <span className="font-bold text-avocado-dark">Avocado</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-sm text-gray-600">AI Coach</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="/coach" className="text-sm text-avocado-dark hover:underline">
-            ← Planning
-          </a>
+      <CoachHeader me={me} active="/assistant" build={build} />
+
+      <div className="flex-1 max-w-3xl w-full mx-auto p-6 flex flex-col">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-xl font-bold text-gray-800">Expert AI Coach</h1>
           {msgs.length > 0 && (
             <button
               onClick={clearChat}
@@ -102,20 +99,7 @@ export default function AssistantPage() {
               🗑 Clear chat
             </button>
           )}
-          <button
-            onClick={() => {
-              clearToken();
-              router.push("/");
-            }}
-            className="text-sm text-gray-500 hover:text-gray-800"
-          >
-            Sign out
-          </button>
         </div>
-      </header>
-
-      <div className="flex-1 max-w-3xl w-full mx-auto p-6 flex flex-col">
-        <h1 className="text-xl font-bold text-gray-800">Expert AI Coach</h1>
         <p className="text-sm text-gray-500 mb-2">
           It knows your live system — goal progress, every teacher&apos;s data,
           pacing, standards &amp; Tier 2 vocabulary, assessments, your notes, and
