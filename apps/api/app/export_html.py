@@ -297,7 +297,9 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     teacher = _esc(packet.get("teacher"))
     eyebrow = f"Grade {grade} · Math · DI Center Packet"
     if teacher:
-        eyebrow += f" · {teacher}'s class"
+        n_classes = teacher.count(",") + 1
+        eyebrow += (f" · {n_classes} classes: {teacher}" if n_classes > 1
+                    else f" · {teacher}'s class")
     out.append(f'<div class="band"><div><div class="eyebrow">{eyebrow}</div>'
                f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
                f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')

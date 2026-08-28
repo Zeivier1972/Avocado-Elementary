@@ -1814,14 +1814,65 @@ def _di_tier_for(pct: float):
     return _DI_ROTATION[-1] if pct >= 70 else _DI_ROTATION[0]
 
 
+def _teachers_list(teacher: str) -> list:
+    """A DI packet's teacher field can be one class or a comma-joined GROUP of
+    classes that share the same deficiency (one packet for all of them)."""
+    return [t.strip() for t in (teacher or "").split(",") if t.strip()]
+
+
+def _di_grouping(db, f: AssessmentForm) -> list:
+    """Recommend which classes can SHARE one DI packet vs. need their own, by
+    comparing what each class actually missed. Classes with the same weakest
+    benchmark AND overlapping most-missed questions are grouped — so the coach
+    generates one packet for the group instead of three identical ones.
+    Deterministic (no AI / no tokens)."""
+    a = _results_analysis(db, f)
+    profiles = []
+    for c in a.get("classes", []):
+        weakest = c["by_standard"][0]["standard"] if c.get("by_standard") else ""
+        top = {m["position"] for m in (c.get("most_missed") or [])[:4]}
+        profiles.append({"teacher": c["teacher"], "standard": weakest,
+                         "missed": top, "avg": c.get("avg_percent"),
+                         "students": c.get("students", 0)})
+    clusters, used = [], set()
+    for i, p in enumerate(profiles):
+        if p["teacher"] in used:
+            continue
+        group = [p]
+        used.add(p["teacher"])
+        for q in profiles[i + 1:]:
+            if q["teacher"] in used:
+                continue
+            # Same target standard + at least 2 shared most-missed questions.
+            if q["standard"] and q["standard"] == p["standard"] \
+                    and len(p["missed"] & q["missed"]) >= 2:
+                group.append(q)
+                used.add(q["teacher"])
+        if len(group) > 1:
+            shared = sorted(set.intersection(*[g["missed"] for g in group]))
+        else:
+            shared = sorted(group[0]["missed"])
+        clusters.append({
+            "standard": p["standard"],
+            "teachers": [g["teacher"] for g in group],
+            "class_count": len(group),
+            "students": sum(g["students"] for g in group),
+            "shared_questions": [f"Q{n}" for n in shared],
+            "shared": len(group) > 1,
+        })
+    clusters.sort(key=lambda c: -c["class_count"])
+    return clusters
+
+
 def _class_missed_on_standard(db, f: AssessmentForm, standard: str,
                               teacher: str = "") -> list:
     """Most-missed questions on ONE benchmark, for ONE class (teacher) or grade-wide
     when teacher is empty. Ranked by how many students missed each item, with the
     correct answer and captured question text so DI targets that group's misses."""
     q = db.query(TopicResult).filter(TopicResult.form_id == f.id)
-    if teacher:
-        q = q.filter(TopicResult.teacher_name == teacher)
+    tl = _teachers_list(teacher)
+    if tl:
+        q = q.filter(TopicResult.teacher_name.in_(tl))
     rows = q.all()
     items = {it.position: it for it in db.query(AssessmentItem).filter(
         AssessmentItem.form_id == f.id).all()}
@@ -1850,8 +1901,9 @@ def _di_students_by_tier(db, f: AssessmentForm, standard: str,
     teacher is given, else grade-wide."""
     groups = {t["name"]: [] for t in _DI_ROTATION}
     q = db.query(TopicResult).filter(TopicResult.form_id == f.id)
-    if teacher:
-        q = q.filter(TopicResult.teacher_name == teacher)
+    tl = _teachers_list(teacher)
+    if tl:
+        q = q.filter(TopicResult.teacher_name.in_(tl))
     for r in q.all():
         by = (r.by_standard or {}).get(standard)
         if by and by.get("possible"):
@@ -1937,6 +1989,20 @@ class _DiPacketReq(BaseModel):
     standard: str
     form_id: str = ""
     teacher: str = ""  # "" = grade-wide; else target this class's deficiencies
+
+
+@router.get("/di-grouping")
+def di_grouping(
+    form_id: str = Query(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """Recommend which classes can share ONE DI packet vs. need their own, from
+    what each class actually missed on this test. Saves generating duplicates."""
+    f = db.get(AssessmentForm, form_id)
+    if not f or f.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Assessment not found")
+    return {"grade": f.grade, "form_id": f.id, "clusters": _di_grouping(db, f)}
 
 
 @router.post("/di-packets")

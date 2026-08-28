@@ -417,6 +417,13 @@ export default function AssessmentsPage() {
 function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
   const f = data.form;
   const a = data.analysis;
+  const [groups, setGroups] = useState<any[] | null>(null);
+  useEffect(() => {
+    api
+      .diGrouping(f.id)
+      .then((r) => setGroups(r.clusters || []))
+      .catch(() => setGroups([]));
+  }, [f.id]);
   if (!a || a.students === 0) {
     return (
       <div className="bg-white rounded-2xl border border-avocado/30 p-5">
@@ -504,6 +511,61 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
           ))}
         </div>
       </div>
+
+      {/* DI grouping recommendation — who can share one packet */}
+      {groups && groups.length > 0 && (
+        <div className="bg-avocado/5 border border-avocado/30 rounded-xl p-4">
+          <div className="font-semibold text-gray-800 text-sm">
+            🧩 DI grouping — who can share one packet
+          </div>
+          <p className="text-xs text-gray-500 mb-2">
+            Based on what each class actually missed. Classes with the same weakest
+            benchmark and overlapping missed questions can use <b>one</b> packet —
+            generate it once instead of per class.
+          </p>
+          <div className="space-y-2">
+            {groups.map((g: any, i: number) => (
+              <div
+                key={i}
+                className={`flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 border ${
+                  g.shared ? "border-avocado/40 bg-white" : "border-gray-100 bg-white"
+                }`}
+              >
+                <span
+                  className={`text-[10px] font-bold rounded px-2 py-0.5 ${
+                    g.shared
+                      ? "bg-avocado text-white"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {g.shared ? `SHARE · ${g.class_count} classes` : "OWN PACKET"}
+                </span>
+                <span className="text-sm text-gray-800 font-semibold">
+                  {g.teachers.join(", ")}
+                </span>
+                <span className="text-xs font-mono text-gray-500">
+                  {g.standard}
+                </span>
+                {g.shared_questions?.length > 0 && (
+                  <span className="text-xs text-gray-400">
+                    · missed {g.shared_questions.join(", ")}
+                  </span>
+                )}
+                <a
+                  href={`/di-focus?grade=${f.grade}&standard=${encodeURIComponent(
+                    g.standard
+                  )}&form_id=${f.id}&teacher=${encodeURIComponent(
+                    g.teachers.join(",")
+                  )}`}
+                  className="ml-auto text-xs font-semibold text-white bg-avocado hover:bg-avocado-dark rounded-lg px-2.5 py-1 whitespace-nowrap"
+                >
+                  {g.shared ? "Plan 1 packet for group →" : "Plan DI →"}
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Per class */}
       <div>

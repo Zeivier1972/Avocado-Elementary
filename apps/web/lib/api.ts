@@ -221,6 +221,8 @@ export const api = {
       body: JSON.stringify({ grade, standard, form_id, teacher }),
     }),
   getDiPackets: (id: string) => req(`/coach/di-packets/${id}`),
+  diGrouping: (form_id: string) =>
+    req(`/coach/di-grouping?form_id=${encodeURIComponent(form_id)}`),
   generateGuideCombined: (
     grade_level: string,
     topic_code: string,
