@@ -575,11 +575,14 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                     · missed {g.shared_questions.join(", ")}
                   </span>
                 )}
-                {(g.kind === "share" || g.kind === "own") && g.red > 0 && (
-                  <span className="text-xs font-semibold text-red-600">
-                    · {g.red} red need reteach
-                  </span>
-                )}
+                {(g.kind === "share" || g.kind === "own") &&
+                  (g.red > 0 || g.yellow > 0) && (
+                    <span className="text-xs font-semibold">
+                      · <span className="text-red-600">{g.red} Red</span>{" "}
+                      <span className="text-amber-600">{g.yellow} Yellow</span> to
+                      reteach
+                    </span>
+                  )}
                 {g.kind === "enrichment" ? (
                   <span className="ml-auto text-xs text-blue-700">
                     No reteach — give enrichment / Dig Deeper
@@ -629,7 +632,7 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                     <Chip color={c.color}>{c.avg_percent}%</Chip>
                   </td>
                   <td className="p-2">
-                    {c.needs_di || c.red_on_target > 0 ? (
+                    {c.needs_di ? (
                       <span className="font-mono text-xs">
                         {c.di_target}{" "}
                         {typeof c.di_target_pct === "number" && (
@@ -643,20 +646,24 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                         >
                           → DI for this class
                         </a>
-                        {!c.needs_di && c.red_on_target > 0 && (
-                          <div className="text-[11px] text-red-600 font-sans mt-0.5">
-                            Proficient overall, but {c.red_on_target} red kid
-                            {c.red_on_target === 1 ? "" : "s"} — the packet tiers
-                            them into Intensive.
-                          </div>
-                        )}
+                        <div className="text-[11px] font-sans mt-0.5">
+                          <span className="text-red-600 font-semibold">
+                            🔴 {c.red_on_target} Red
+                          </span>{" "}
+                          <span className="text-amber-600 font-semibold">
+                            🟡 {c.yellow_on_target} Yellow
+                          </span>{" "}
+                          <span className="text-green-700 font-semibold">
+                            🟢 {c.green_on_target} Green
+                          </span>
+                        </div>
                       </span>
                     ) : (
                       <span className="text-xs text-green-700 font-semibold">
-                        ✓ Proficient, no red — enrichment
+                        ✓ All Green — enrichment
                       </span>
                     )}
-                    {c.di_note && !(!c.needs_di && c.red_on_target > 0) && (
+                    {c.di_note && c.needs_di && (
                       <div className="text-[11px] text-amber-600 font-sans mt-0.5">
                         ⚠ {c.di_note}
                       </div>

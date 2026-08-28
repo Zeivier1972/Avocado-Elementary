@@ -1863,15 +1863,14 @@ def _di_grouping(db, f: AssessmentForm) -> list:
                 "standard": c.get("di_target", ""),
                 "missed": {m["position"] for m in (c.get("most_missed") or [])[:4]},
                 "avg": c.get("avg_percent"), "students": c.get("students", 0),
-                "red": c.get("red_on_target", 0)}
+                "red": c.get("red_on_target", 0),
+                "yellow": c.get("yellow_on_target", 0)}
         if not c.get("teacher") or c["teacher"] == "—":
             unmatched.append(prof)          # students whose class didn't match roster
-        elif not c.get("needs_di", True) and prof["red"] == 0:
-            enrichment.append(prof)         # proficient AND no red kids — enrichment
+        elif not c.get("needs_di", True):
+            enrichment.append(prof)         # every kid Green on the weakest — enrichment
         else:
-            # Reteach when the class needs DI, OR it's proficient overall but
-            # still has Red kids on the target (they get the Intensive tier).
-            reteach.append(prof)
+            reteach.append(prof)            # has Red/Yellow — tiered reteach packet
 
     clusters, used = [], set()
     for i, p in enumerate(reteach):
@@ -1895,6 +1894,7 @@ def _di_grouping(db, f: AssessmentForm) -> list:
             "class_count": len(group),
             "students": sum(g["students"] for g in group),
             "red": sum(g.get("red", 0) for g in group),
+            "yellow": sum(g.get("yellow", 0) for g in group),
             "shared_questions": [f"Q{n}" for n in shared],
             "shared": len(group) > 1,
         })
@@ -2721,14 +2721,24 @@ def _results_analysis(db, f: AssessmentForm) -> dict:
             p = (100.0 * by["earned"] / by["possible"]
                  if by and by.get("possible") else r.percent)
             tcounts[_di_tier_for(p)["name"]] += 1
+        red = tcounts.get("Intensive", 0)
+        yellow = tcounts.get("Cusp", 0)
+        green = tcounts.get("Strategic", 0)
+        # A class needs a reteach packet on its weakest standard whenever ANY
+        # student is below proficient (Red or Yellow) — the packet tiers them.
+        # Enrichment-only when every kid is Green (proficient).
+        needs_di = (red > 0 or yellow > 0)
+        note = di["note"] if di["note"] and "already proficient" not in di["note"] else ""
+        if not needs_di:
+            note = "every student is proficient (Green) on the weakest standard"
         classes.append({
             "teacher": cls, "students": len(subset), "avg_percent": avg,
             **_color_for(f.grade, avg),
             "by_standard": bs,
             "di_target": di["standard"], "di_target_pct": di["percent"],
-            "needs_di": di["needs_di"], "di_note": di["note"],
-            "red_on_target": tcounts.get("Intensive", 0),
-            "yellow_on_target": tcounts.get("Cusp", 0),
+            "needs_di": needs_di, "di_note": note,
+            "red_on_target": red, "yellow_on_target": yellow,
+            "green_on_target": green,
             "most_missed": missed_block(subset, len(subset))[:5]})
 
     grade_avg = round(sum(r.percent for r in rows) / len(rows), 1)
