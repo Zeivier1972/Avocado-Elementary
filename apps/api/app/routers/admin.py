@@ -123,22 +123,23 @@ def _build_map(headers: list[str]) -> dict:
     return field_map
 
 
-EXPECTED_GRADES = {"K", "1", "2", "3"}
+# Grades the school actually has: Pre-K through 3rd.
+EXPECTED_GRADES = {"PK", "K", "1", "2", "3"}
 
 
 def _grade_warnings(counts: dict) -> list:
     """Warn when students were imported on a grade the school does not have
-    (expected K-3) or with a blank grade, so a bad grade column in the roster
+    (expected PK-3) or with a blank grade, so a bad grade column in the roster
     file is caught at upload time instead of silently creating a Grade 4."""
     out = []
     for g, n in sorted(counts.items()):
         gg = (g or "").upper()
         if not gg:
             out.append(f"{n} student(s) imported with a blank grade — set a grade "
-                       f"(K, 1, 2, or 3) in the roster file.")
+                       f"(PK, K, 1, 2, or 3) in the roster file.")
         elif gg not in EXPECTED_GRADES:
             out.append(f"{n} student(s) imported on grade '{g}' — the school only "
-                       f"has K-3. Fix the grade column and re-import (see "
+                       f"has PK-3. Fix the grade column and re-import (see "
                        f"Roster health on the Teachers page).")
     return out
 

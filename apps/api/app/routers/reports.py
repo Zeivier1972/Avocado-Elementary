@@ -269,7 +269,8 @@ def teachers(
     }
 
 
-EXPECTED_GRADES = ["K", "1", "2", "3"]
+# Grades the school actually has: Pre-K through 3rd. Grade 4+ signals a bad import.
+EXPECTED_GRADES = ["PK", "K", "1", "2", "3"]
 
 
 @router.get("/roster-audit")

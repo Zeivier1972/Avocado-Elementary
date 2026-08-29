@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
 
-const GRADE_LABEL = (g: string) => (g === "K" ? "Kindergarten" : `Grade ${g}`);
+const GRADE_LABEL = (g: string) =>
+  g === "K" ? "Kindergarten" : g === "PK" ? "Pre-K" : `Grade ${g}`;
 
 function pctChip(pct: number | null) {
   if (pct === null || pct === undefined)
