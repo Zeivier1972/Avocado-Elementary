@@ -123,6 +123,26 @@ def _build_map(headers: list[str]) -> dict:
     return field_map
 
 
+EXPECTED_GRADES = {"K", "1", "2", "3"}
+
+
+def _grade_warnings(counts: dict) -> list:
+    """Warn when students were imported on a grade the school does not have
+    (expected K-3) or with a blank grade, so a bad grade column in the roster
+    file is caught at upload time instead of silently creating a Grade 4."""
+    out = []
+    for g, n in sorted(counts.items()):
+        gg = (g or "").upper()
+        if not gg:
+            out.append(f"{n} student(s) imported with a blank grade — set a grade "
+                       f"(K, 1, 2, or 3) in the roster file.")
+        elif gg not in EXPECTED_GRADES:
+            out.append(f"{n} student(s) imported on grade '{g}' — the school only "
+                       f"has K-3. Fix the grade column and re-import (see "
+                       f"Roster health on the Teachers page).")
+    return out
+
+
 def _require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role not in ADMIN_ROLES:
         raise HTTPException(403, "Leadership/coach role required")
@@ -160,6 +180,7 @@ async def import_roster(
 
     students_new = students_upd = teachers_new = classes_new = enroll_new = 0
     errors: list[str] = []
+    grade_counts: dict[str, int] = {}
     teacher_cache: dict[str, User] = {}
     class_cache: dict[tuple, ClassRoom] = {}
     student_cache: dict[str, Student] = {}
@@ -221,6 +242,7 @@ async def import_roster(
             db.flush()
             students_new += 1
         student_cache[sid] = student
+        grade_counts[grade] = grade_counts.get(grade, 0) + 1
 
         # Teacher (optional) -> upsert a User(role=teacher).
         temail = get(row, "teacher_email").lower()
@@ -281,6 +303,7 @@ async def import_roster(
         "teachers_created": teachers_new, "classes_created": classes_new,
         "enrollments_created": enroll_new,
         "errors": errors[:50], "error_count": len(errors),
+        "warnings": _grade_warnings(grade_counts),
         "column_mapping": fmap,
     }
 
@@ -457,6 +480,7 @@ async def import_excel(
         "assessments_created": asmt_new, "assessments_updated": asmt_upd,
         "students_by_grade": dict(sorted(by_grade.items())),
         "assessment_counts": dict(sorted(by_type.items())),
+        "warnings": _grade_warnings(by_grade),
     }
 
 

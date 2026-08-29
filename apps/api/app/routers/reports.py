@@ -229,6 +229,7 @@ def teachers(
         out.append({
             "teacher_id": t.id, "name": t.name, "grades": grades,
             "students": len(students),
+            "tested": len(levels),
             "fast_math_period": period,
             "pct_level_3_plus": round(100 * sum(1 for x in levels if x >= 3) / len(levels))
                                 if levels else None,

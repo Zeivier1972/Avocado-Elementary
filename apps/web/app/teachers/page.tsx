@@ -296,6 +296,16 @@ export default function TeachersPage() {
                       {t.grades?.map(GRADE_LABEL).join(", ")} · {t.students}{" "}
                       students
                     </div>
+                    {typeof t.tested === "number" && (
+                      <div
+                        className={`text-[11px] mt-0.5 ${
+                          t.tested < t.students ? "text-amber-600" : "text-gray-400"
+                        }`}
+                      >
+                        {t.tested}/{t.students} tested
+                        {t.tested < t.students ? " · partial data" : ""}
+                      </div>
+                    )}
                   </div>
                   <span
                     className={`text-xs font-bold px-2 py-1 rounded-full border tabular-nums ${pctChip(
@@ -322,23 +332,28 @@ export default function TeachersPage() {
                       ? `FAST Math · ${t.fast_math_period}`
                       : "FAST Math · baseline"}
                   </span>
-                  {t.pct_level_3_plus != null && (
-                    <span
-                      className={`font-semibold ${
-                        t.pct_level_3_plus >= 60
-                          ? "text-green-700"
+                  {t.pct_level_3_plus != null &&
+                    (t.tested < t.students * 0.5 ? (
+                      <span className="font-semibold text-gray-400">
+                        Low coverage
+                      </span>
+                    ) : (
+                      <span
+                        className={`font-semibold ${
+                          t.pct_level_3_plus >= 60
+                            ? "text-green-700"
+                            : t.pct_level_3_plus >= 40
+                            ? "text-amber-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {t.pct_level_3_plus >= 60
+                          ? "On track"
                           : t.pct_level_3_plus >= 40
-                          ? "text-amber-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {t.pct_level_3_plus >= 60
-                        ? "On track"
-                        : t.pct_level_3_plus >= 40
-                        ? "Watch"
-                        : "Needs support"}
-                    </span>
-                  )}
+                          ? "Watch"
+                          : "Needs support"}
+                      </span>
+                    ))}
                 </div>
               </a>
             ))}

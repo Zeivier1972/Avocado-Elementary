@@ -89,9 +89,14 @@ export default function ReportsPage() {
       const form = new FormData();
       form.append("file", file);
       const r = await api.importExcel(form);
+      const warn =
+        r.warnings && r.warnings.length
+          ? "  ⚠ " + r.warnings.join("  ⚠ ")
+          : "";
       setMsg(
         `Imported: ${r.students_created} new / ${r.students_updated} updated students · ` +
-          `${r.assessments_created + r.assessments_updated} assessments`
+          `${r.assessments_created + r.assessments_updated} assessments` +
+          warn
       );
       await load(grade);
     } catch (err) {
