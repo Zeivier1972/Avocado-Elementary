@@ -268,6 +268,79 @@ def teachers(
     }
 
 
+EXPECTED_GRADES = ["K", "1", "2", "3"]
+
+
+@router.get("/roster-audit")
+def roster_audit(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Data-quality check across every teacher: grade(s) taught, roster size,
+    how many students actually have a FAST Math score (coverage), and anomalies
+    — students on a grade the school doesn't have (e.g. Grade 4), and teachers
+    whose roster spans more than one grade. Lets a coach verify the whole roster
+    at a glance and catch bad imports."""
+    expected = set(EXPECTED_GRADES)
+    # latest FAST Math level per student (same rule as the teachers list)
+    latest: dict = {}
+    for a in db.query(StudentAssessment).filter(
+            StudentAssessment.tenant_id == user.tenant_id,
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == "MATH").all():
+        if a.level is None or not (1 <= a.level <= 5):
+            continue
+        order = FAST_PERIODS.index(a.period) if a.period in FAST_PERIODS else -1
+        cur = latest.get(a.student_id)
+        if cur is None or order > cur[0]:
+            latest[a.student_id] = (order, int(a.level))
+
+    tlist = db.query(User).filter(
+        User.tenant_id == user.tenant_id, User.role == "teacher").all()
+    teachers = []
+    off_grade: list = []
+    seen_off: set = set()
+    for t in tlist:
+        students = _students_for_teacher(db, user.tenant_id, t.id)
+        if not students:
+            continue
+        grades = sorted({s.grade_level for s in students})
+        tested = [s for s in students if s.id in latest]
+        bad = sorted({s.grade_level for s in students
+                      if (s.grade_level or "") not in expected})
+        for s in students:
+            g = s.grade_level or ""
+            if g not in expected and s.id not in seen_off:
+                seen_off.add(s.id)
+                off_grade.append({
+                    "student": f"{s.first_name.title()} {s.last_name.title()}",
+                    "grade": g or "(blank)", "teacher": t.name})
+        teachers.append({
+            "teacher_id": t.id, "name": t.name, "grades": grades,
+            "students": len(students),
+            "tested": len(tested),
+            "coverage_pct": round(100 * len(tested) / len(students)) if students else 0,
+            "pct_level_3_plus": (round(100 * sum(1 for s in tested if latest[s.id][1] >= 3)
+                                       / len(tested)) if tested else None),
+            "multi_grade": len(grades) > 1,
+            "off_grade": bad,
+        })
+    teachers.sort(key=lambda x: (x["coverage_pct"], x["name"]))
+    # School-wide grade counts, so an unexpected grade is obvious.
+    all_students = db.query(Student).filter(
+        Student.tenant_id == user.tenant_id).all()
+    grade_counts: dict = {}
+    for s in all_students:
+        g = s.grade_level or "(blank)"
+        grade_counts[g] = grade_counts.get(g, 0) + 1
+    return {
+        "expected_grades": EXPECTED_GRADES,
+        "grade_counts": dict(sorted(grade_counts.items())),
+        "off_grade_students": sorted(off_grade, key=lambda x: (x["grade"], x["teacher"])),
+        "teachers": teachers,
+    }
+
+
 def _l25_ids(db, tenant_id, grade):
     """Lowest-25% student ids in a grade, by latest FAST Math scale (fallback
     level). Computed automatically instead of relying on a manual flag column."""

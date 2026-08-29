@@ -48,6 +48,7 @@ export default function TeachersPage() {
   const [me, setMe] = useState<any>(null);
   const [build, setBuild] = useState<any>(null);
   const [data, setData] = useState<any>(null);
+  const [audit, setAudit] = useState<any>(null);
   const [q, setQ] = useState("");
   const [err, setErr] = useState("");
 
@@ -57,6 +58,7 @@ export default function TeachersPage() {
       return;
     }
     api.health().then(setBuild).catch(() => setBuild(null));
+    api.rosterAudit().then(setAudit).catch(() => setAudit(null));
     api
       .me()
       .then((u) => {
@@ -150,6 +152,112 @@ export default function TeachersPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Roster health — catches bad imports (off-grade students, low coverage) */}
+        {audit && (audit.off_grade_students?.length > 0 ||
+          audit.teachers?.some((t: any) => t.coverage_pct < 100)) && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="font-semibold text-gray-800 text-sm">
+                🩺 Roster health
+              </div>
+              <div className="text-xs text-gray-400">
+                Grades in data:{" "}
+                {Object.entries(audit.grade_counts || {})
+                  .map(([g, n]: any) => `${g}:${n}`)
+                  .join(" · ")}
+              </div>
+            </div>
+
+            {audit.off_grade_students?.length > 0 && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <div className="text-sm font-semibold text-amber-800">
+                  ⚠ {audit.off_grade_students.length} student
+                  {audit.off_grade_students.length === 1 ? "" : "s"} on a grade
+                  the school shouldn&apos;t have (expected{" "}
+                  {audit.expected_grades.join(", ")})
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {audit.off_grade_students.map((s: any, i: number) => (
+                    <span
+                      key={i}
+                      className="text-[11px] rounded-full bg-white border border-amber-200 text-amber-800 px-2 py-0.5"
+                      title={`${s.teacher} · Grade ${s.grade}`}
+                    >
+                      {s.student} · Gr {s.grade} · {s.teacher}
+                    </span>
+                  ))}
+                </div>
+                <div className="text-[11px] text-amber-700 mt-2">
+                  Fix the grade column for these students in the roster file and
+                  re-import (Reports → Upload data), or reset the roster.
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
+                    <th className="px-3 py-2 font-semibold">Teacher</th>
+                    <th className="px-3 py-2 font-semibold">Grade(s)</th>
+                    <th className="px-3 py-2 font-semibold">Students</th>
+                    <th className="px-3 py-2 font-semibold">FAST coverage</th>
+                    <th className="px-3 py-2 font-semibold">% L3+ (of tested)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {audit.teachers.map((t: any) => (
+                    <tr
+                      key={t.teacher_id}
+                      className="border-b border-gray-50 last:border-0 hover:bg-avocado/5 transition-colors"
+                    >
+                      <td className="px-3 py-2 font-semibold text-gray-800">
+                        {t.name}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={
+                            t.off_grade.length > 0 || t.multi_grade
+                              ? "text-amber-700 font-semibold"
+                              : "text-gray-600"
+                          }
+                        >
+                          {t.grades.join(", ")}
+                          {t.off_grade.length > 0 && " ⚠"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-gray-600">{t.students}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`font-semibold ${
+                            t.coverage_pct >= 80
+                              ? "text-green-700"
+                              : t.coverage_pct >= 40
+                              ? "text-amber-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {t.tested}/{t.students} ({t.coverage_pct}%)
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {t.pct_level_3_plus === null
+                          ? "—"
+                          : `${t.pct_level_3_plus}%`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-2">
+              Coverage = how many of the teacher&apos;s students actually have a
+              FAST Math score. A high &quot;% L3+&quot; on low coverage (e.g. 100%
+              of 2 tested) isn&apos;t the whole class.
+            </p>
           </div>
         )}
 

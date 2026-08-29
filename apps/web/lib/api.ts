@@ -99,6 +99,7 @@ export const api = {
   fastAnalysis: (grade: string, subject: string, period: string) =>
     req(`/reports/fast/${grade}?subject=${subject}&period=${period}`),
   teachers: () => req("/reports/teachers"),
+  rosterAudit: () => req("/reports/roster-audit"),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   goalAnalysis: (grade: string) => req(`/reports/goal-analysis/${grade}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),
