@@ -1291,10 +1291,10 @@ _DI_PACKET_SCHEMA = (
     '[{"tier":"Intensive|Cusp|Strategic",'
     '"days":[{"day":1,"title":"kid-friendly focus for the day",'
     '"pacing":"Model 5 min · Try it 10 min · On your own 15 min",'
-    '"watch_it":{"value":6,"statement":"the worked example in kid words (e.g. \'6 is EVEN — 3 pairs, 0 left over\')"},'
-    '"try_it":{"problem":"one guided problem in student words","value":8,'
+    '"watch_it":{"model":"array","rows":3,"cols":4,"statement":"the worked example in kid words"},'
+    '"try_it":{"problem":"one guided problem in student words","model":"equal_teams","a":4,"b":5,'
     '"steps":["step 1 for the student","step 2","step 3"]},'
-    '"on_your_own":[{"text":"an independent problem, similar to the test","value":9,"show_model":true,"choices":["option A","option B","option C","option D"],"answer":"the correct option"}]}],'
+    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","model":"number_line","value":18,"max":20,"show_model":true,"choices":["option A","option B","option C","option D"],"answer":"the correct option"}]}],'
     '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer"}]}]'
 )
 
@@ -1342,11 +1342,26 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"MOST-MISSED TEST QUESTIONS (mirror THESE — same idea, format and number "
             f"range):\n{missed_txt}\n\n"
             f"TIER 2 academic words to weave in: {', '.join(tier2 or [])}\n\n"
-            f"VISUAL MODEL for every problem: use '{model}'. Give an integer 'value' "
-            f"for each modeled problem (0-20 for ten_frame/pairing, the number for "
-            f"base_ten, etc.) so it can be drawn. For 'array' use \"rows\" and "
-            f"\"cols\"; for 'equal_teams' use \"a\" and \"b\"; for 'number_line' use "
-            f"\"value\" and \"max\".\n\n"
+            f"VISUAL MODEL — choose the BEST picture for EACH problem separately. Set "
+            f"a \"model\" on EVERY watch_it, try_it and on_your_own so the visual "
+            f"matches what THAT problem is asking and mirrors how the missed test item "
+            f"looks. Do NOT put the same model on every problem — vary it across the "
+            f"problems and tiers wherever the skill can be shown more than one way. "
+            f"Allowed models and the numeric fields to include with each (REQUIRED so "
+            f"it can be drawn):\n"
+            f"  - array: a rows×cols dot grid (equal rows / multiplication / repeated "
+            f"addition) — give \"rows\" and \"cols\"\n"
+            f"  - equal_teams: two or more equal groups — give \"a\" (number of groups) "
+            f"and \"b\" (amount in each)\n"
+            f"  - number_line: skip-counting, jumps, or position to a total — give "
+            f"\"value\" and \"max\"\n"
+            f"  - ten_frame: counts/sums within 20 — give \"value\" (0-20)\n"
+            f"  - base_ten: place value, tens & ones — give \"value\" (the number)\n"
+            f"  - pairing: even/odd shown as pairs — give \"value\" (0-30)\n"
+            f"Use ONLY models that TRULY represent THIS benchmark ({code}) — the "
+            f"default that fits it is '{model}', but pick whichever of the above best "
+            f"fits each individual problem and the test item it mirrors. If a problem "
+            f"truly needs no picture, set \"show_model\": false and omit the model.\n\n"
             f"Split EACH tier into this many DAYS:\n{day_map}\n"
             "Each day: watch_it (one worked example), try_it (one guided problem with "
             "2-3 student steps), and on_your_own with ENOUGH problems to fill ~15 "
