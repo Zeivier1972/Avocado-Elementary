@@ -281,6 +281,7 @@ _CSS = """
 .steps{display:grid;gap:7px;margin:4px 0;}.step{display:grid;grid-template-columns:26px 1fr;gap:9px;align-items:start;}
 .step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:"Baloo 2";font-weight:800;color:#fff;font-size:13px;background:var(--muted);}
 .prob{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:#fff;}
+.drawbox{margin-top:10px;border:2px dashed var(--frame);border-radius:10px;min-height:74px;padding:8px 10px;color:var(--muted);font-size:12px;}
 .prob .q{font-family:"Baloo 2";font-weight:700;font-size:15px;margin:0 0 6px;}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}@media(max-width:560px){.grid{grid-template-columns:1fr;}}
 .practicelabel{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:8px 0 4px;}
@@ -427,33 +428,37 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             # Each Day after the first also breaks to its own page, so Day 1 and
             # Day 2 print as separate handouts.
             dpb = "" if di == 0 else " pbreak"
+            # One visual model per DAY, so I do -> We do -> You do all use the
+            # SAME representation (gradual release). Variety happens between days
+            # and tiers, never within a day.
+            dmodel = day.get("model", model)
             out.append(f'<div class="day{dpb}" style="background:{hexc}">Day {_esc(day.get("day"))} — {_esc(day.get("title"))}'
                        f'<span class="small">{_esc(day.get("pacing"))}</span></div>')
-            # Watch it
+            # Watch it — the ONLY place the model is drawn and worked (the demo /
+            # heavy visual for Red & Yellow). The answer belongs here, not later.
             w = day.get("watch_it") or {}
             if w:
-                wvis = (svg_model(w.get("model", model), w)
+                wvis = (svg_model(dmodel, w)
                         if (w.get("value") is not None or "rows" in w or "a" in w) else "")
                 out.append('<div class="phase"><span class="pn" style="background:%s">1</span><h3>Watch it</h3><span class="gr">I do</span></div>' % hexc)
                 out.append('<div class="phase-body"><div class="example"><div class="tag">Study this one</div>'
                            + wvis
                            + f'<div class="st">{_esc(w.get("statement"))}</div></div></div>')
-            # Try it
+            # Try it — the student draws and solves. No pre-drawn model (that would
+            # contradict "draw it"), no answer given: just the problem + steps.
             tr = day.get("try_it") or {}
             if tr:
-                tvis = (svg_model(tr.get("model", model), tr, reveal=False)
-                        if (tr.get("value") is not None or "rows" in tr or "a" in tr) else "")
                 out.append('<div class="phase"><span class="pn" style="background:%s">2</span><h3>Try it</h3><span class="gr">We do</span></div>' % hexc)
                 steps = "".join(f'<div class="step"><span class="n">{i+1}</span><p>{_esc(s)}</p></div>'
                                 for i, s in enumerate(tr.get("steps", [])))
                 out.append(f'<div class="phase-body"><div class="prob"><p class="q">{_esc(tr.get("problem"))}</p>'
-                           + tvis
-                           + (f'<div class="steps">{steps}</div>' if steps else "") + '</div></div>')
-            # On your own
+                           + (f'<div class="steps">{steps}</div>' if steps else "")
+                           + '<div class="drawbox">Draw your model and solve here.</div></div></div>')
+            # On your own — independent practice: no drawn model, no answer.
             oyo = day.get("on_your_own") or []
             if oyo:
                 out.append('<div class="phase"><span class="pn" style="background:%s">3</span><h3>On your own</h3><span class="gr">You do</span></div>' % hexc)
-                cards = "".join(_problem_html(model, p) for p in oyo)
+                cards = "".join(_problem_html("none", p) for p in oyo)
                 extra = _extra_review_html(packet)
                 out.append(f'<div class="phase-body"><p class="practicelabel">Practice — keep going until time is up</p>'
                            f'<div class="grid">{cards}</div>{extra}</div>')

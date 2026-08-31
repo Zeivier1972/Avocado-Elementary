@@ -1289,13 +1289,13 @@ def suggest_di_model(code: str, description: str) -> str:
 
 _DI_PACKET_SCHEMA = (
     '[{"tier":"Intensive|Cusp|Strategic",'
-    '"days":[{"day":1,"title":"kid-friendly focus for the day",'
+    '"days":[{"day":1,"title":"kid-friendly focus for the day","model":"array",'
     '"pacing":"Model 5 min · Try it 10 min · On your own 15 min",'
-    '"watch_it":{"model":"array","rows":3,"cols":4,"statement":"the worked example in kid words"},'
-    '"try_it":{"problem":"one guided problem in student words","model":"equal_teams","a":4,"b":5,'
-    '"steps":["step 1 for the student","step 2","step 3"]},'
-    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","model":"number_line","value":18,"max":20,"show_model":true,"choices":["option A","option B","option C","option D"],"answer":"the correct option"}]}],'
-    '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer"}]}]'
+    '"watch_it":{"rows":2,"cols":3,"statement":"the worked example in kid words, WITH the answer shown"},'
+    '"try_it":{"problem":"one guided problem in student words",'
+    '"steps":["step 1 — the method","step 2","step 3 — do NOT state the final answer"]},'
+    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","choices":["option A","option B","option C","option D"],"answer":"correct option — TEACHER KEY ONLY, not shown to students"}]}],'
+    '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer — teacher key only"}]}]'
 )
 
 
@@ -1342,26 +1342,29 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"MOST-MISSED TEST QUESTIONS (mirror THESE — same idea, format and number "
             f"range):\n{missed_txt}\n\n"
             f"TIER 2 academic words to weave in: {', '.join(tier2 or [])}\n\n"
-            f"VISUAL MODEL — choose the BEST picture for EACH problem separately. Set "
-            f"a \"model\" on EVERY watch_it, try_it and on_your_own so the visual "
-            f"matches what THAT problem is asking and mirrors how the missed test item "
-            f"looks. Do NOT put the same model on every problem — vary it across the "
-            f"problems and tiers wherever the skill can be shown more than one way. "
-            f"Allowed models and the numeric fields to include with each (REQUIRED so "
-            f"it can be drawn):\n"
-            f"  - array: a rows×cols dot grid (equal rows / multiplication / repeated "
-            f"addition) — give \"rows\" and \"cols\"\n"
-            f"  - equal_teams: two or more equal groups — give \"a\" (number of groups) "
-            f"and \"b\" (amount in each)\n"
-            f"  - number_line: skip-counting, jumps, or position to a total — give "
-            f"\"value\" and \"max\"\n"
-            f"  - ten_frame: counts/sums within 20 — give \"value\" (0-20)\n"
-            f"  - base_ten: place value, tens & ones — give \"value\" (the number)\n"
-            f"  - pairing: even/odd shown as pairs — give \"value\" (0-30)\n"
-            f"Use ONLY models that TRULY represent THIS benchmark ({code}) — the "
-            f"default that fits it is '{model}', but pick whichever of the above best "
-            f"fits each individual problem and the test item it mirrors. If a problem "
-            f"truly needs no picture, set \"show_model\": false and omit the model.\n\n"
+            f"VISUAL MODEL — pick ONE model per DAY and put it on the day object as "
+            f"\"model\". That SAME model is used for Watch it, Try it and On your own "
+            f"that day, so I do -> We do -> You do all practice the SAME "
+            f"representation. Use a DIFFERENT model on a different DAY or TIER to "
+            f"match a different missed item — but NEVER mix models within one day. "
+            f"Allowed models (use only ones that TRULY represent {code}; the default "
+            f"that fits it is '{model}'):\n"
+            f"  - array: rows×cols dot grid (equal rows / multiplication) — day fields on watch_it: \"rows\",\"cols\"\n"
+            f"  - equal_teams: equal groups — \"a\" (number of groups), \"b\" (amount in each)\n"
+            f"  - number_line: skip-counting / jumps to a total — \"value\",\"max\"\n"
+            f"  - ten_frame: counts/sums within 20 — \"value\" (0-20)\n"
+            f"  - base_ten: place value, tens & ones — \"value\"\n"
+            f"  - pairing: even/odd as pairs — \"value\" (0-30)\n"
+            f"Only WATCH IT is drawn for the student — it is the worked example, so put "
+            f"the day-model's numeric fields ON watch_it. Try it and On your own are "
+            f"the STUDENT's to draw and solve, so they carry NO numeric fields and no "
+            f"picture.\n\n"
+            f"NEVER GIVE THE ANSWER AWAY in Try it or On your own. Watch it shows the "
+            f"worked answer; but try_it steps guide the METHOD only and must NOT state "
+            f"the final result, and on_your_own problems must not reveal their answer "
+            f"(put the correct choice in \"answer\" as a TEACHER KEY only — students "
+            f"never see it). Do not tell students to 'draw' a model you have already "
+            f"drawn for them.\n\n"
             f"Split EACH tier into this many DAYS:\n{day_map}\n"
             "Each day: watch_it (one worked example), try_it (one guided problem with "
             "2-3 student steps), and on_your_own with ENOUGH problems to fill ~15 "
@@ -1370,10 +1373,10 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             "give each on_your_own problem a 'choices' array of 3-4 SHORT options "
             "(exactly one correct) so it looks like the test; otherwise omit "
             "'choices'. Tier intent: Intensive = "
-            "foundational, most scaffolding, concrete model every time; Cusp = "
-            "targeted practice to reach proficiency; Strategic = practice + "
-            "higher-order enrichment. Day 2 (Intensive/Cusp) fades the scaffold "
-            "toward doing it without drawing. Include 3 OPM questions per tier.\n\n"
+            "foundational, smallest numbers, the Watch-it model is fully worked; Cusp "
+            "= targeted practice to reach proficiency; Strategic = practice + "
+            "higher-order enrichment. Day 2 (Intensive/Cusp) uses larger numbers. "
+            "Include 3 OPM questions per tier.\n\n"
             "Every number is grade-appropriate and grounded in the benchmark. Write "
             "at an elementary reading level.\n\n"
             f"Return ONLY a JSON array (one object per tier, in the order given) "
