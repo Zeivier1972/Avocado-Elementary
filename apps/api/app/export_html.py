@@ -328,6 +328,12 @@ _CSS = """
 .prob .q{font-family:"Baloo 2";font-weight:700;font-size:15px;margin:0 0 6px;}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}@media(max-width:560px){.grid{grid-template-columns:1fr;}}
 .practicelabel{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:8px 0 4px;}
+.chkstep{grid-template-columns:26px 22px 1fr;}
+.chk{width:18px;height:18px;border:2px solid var(--frame);border-radius:5px;margin-top:2px;}
+.routine{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#EEF4E6;border:1px solid #CFE0BC;border-radius:12px;padding:10px 14px;margin-top:12px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;color:var(--brand-deep);font-size:14px;}
+.routine .arw{color:var(--muted);font-weight:400;}
+.frame{margin-top:10px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;font-size:17px;color:var(--ink);letter-spacing:.02em;}
+.finish{margin-top:10px;background:#EAF6EA;border:1px solid #BFE3A0;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#2e7d32;}
 .opm{background:#FBEBE8;border:1px solid #EAD2CE;border-radius:20px;padding:18px 20px;margin-top:22px;border-top:8px solid #C0392B;}
 .opm h2{margin:0;font-size:20px;color:#C0392B;}.foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;}
 @media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}
@@ -364,6 +370,18 @@ def _choices_html(choices) -> str:
     return f'<div class="choices">{"".join(rows)}</div>'
 
 
+def _steps_html(steps, asd: bool = False) -> str:
+    """Numbered steps. For ASD packets each step gets a check box to tick off, so
+    the method reads as a discrete task-analysis checklist."""
+    rows = []
+    for i, s in enumerate(steps or []):
+        chk = '<span class="chk"></span>' if asd else ''
+        cls = "step chkstep" if asd else "step"
+        rows.append(f'<div class="{cls}"><span class="n">{i+1}</span>{chk}'
+                    f'<p>{_esc(s)}</p></div>')
+    return "".join(rows)
+
+
 def _problem_html(model, p, show_default=True) -> str:
     q = _esc(p.get("text") or p.get("problem"))
     vis = ""
@@ -372,8 +390,12 @@ def _problem_html(model, p, show_default=True) -> str:
         # may name its own model (enrichment mixes benchmarks).
         vis = svg_model(p.get("model", model), p, reveal=False)
     choices = _choices_html(p.get("choices"))
+    frame = p.get("answer_frame")
     if choices:
         ans = choices  # multiple choice — no write-in box needed
+    elif frame:
+        # ASD: a structured fill-in frame (e.g. "___ groups of ___ = ___").
+        ans = f'<div class="frame">{_esc(frame)}</div>'
     else:
         ans = ('<div style="margin-top:10px;color:var(--muted);font-size:13px;">'
                'Answer: <span style="border:2px dashed var(--frame);border-radius:8px;'
@@ -422,8 +444,11 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     head.append(f'<style>{css}</style></head><body><div class="wrap">')
     out = list(head)
     enrich = bool(packet.get("enrichment"))
+    asd = bool(packet.get("asd"))
     teacher = _esc(packet.get("teacher"))
     kind = "Enrichment · Dig Deeper" if enrich else "DI Center Packet"
+    if asd:
+        kind += " · ASD supports"
     eyebrow = f"Grade {grade} · Math · {kind}"
     if teacher:
         n_classes = teacher.count(",") + 1
@@ -441,6 +466,11 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         items = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
         out.append(f'<div class="missed"><b>We are fixing the questions the class missed most:</b> {items}. '
                    f'These packets reteach those exact ideas.</div>')
+    if asd:
+        out.append('<div class="routine"><span>Every day we do the same steps:</span>'
+                   '👀 Watch it <span class="arw">→</span> ✍️ Try it '
+                   '<span class="arw">→</span> ✅ On your own '
+                   '<span class="arw">→</span> 🎉 Done</div>')
 
     # Copies to make — how many of each tier to print (for the copier).
     tiers = packet.get("tiers", []) or []
@@ -483,9 +513,7 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             if w:
                 wvis = (svg_model(dmodel, w)
                         if (w.get("value") is not None or "rows" in w or "a" in w) else "")
-                wsteps = "".join(
-                    f'<div class="step"><span class="n">{i+1}</span><p>{_esc(s)}</p></div>'
-                    for i, s in enumerate(w.get("steps", [])))
+                wsteps = _steps_html(w.get("steps"), asd)
                 steps_block = (f'<div class="modelsteps"><div class="mslabel">How we did it — '
                                f'follow these steps:</div><div class="steps">{wsteps}</div></div>'
                                if wsteps else "")
@@ -499,8 +527,7 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             tr = day.get("try_it") or {}
             if tr:
                 out.append('<div class="phase"><span class="pn" style="background:%s">2</span><h3>Try it</h3><span class="gr">We do</span></div>' % hexc)
-                steps = "".join(f'<div class="step"><span class="n">{i+1}</span><p>{_esc(s)}</p></div>'
-                                for i, s in enumerate(tr.get("steps", [])))
+                steps = _steps_html(tr.get("steps"), asd)
                 out.append(f'<div class="phase-body"><div class="prob"><p class="q">{_esc(tr.get("problem"))}</p>'
                            + (f'<div class="steps">{steps}</div>' if steps else "")
                            + '<div class="drawbox">Draw your model and solve here.</div></div></div>')
@@ -510,8 +537,12 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                 out.append('<div class="phase"><span class="pn" style="background:%s">3</span><h3>On your own</h3><span class="gr">You do</span></div>' % hexc)
                 cards = "".join(_problem_html("none", p) for p in oyo)
                 extra = _extra_review_html(packet)
-                out.append(f'<div class="phase-body"><p class="practicelabel">Practice — keep going until time is up</p>'
-                           f'<div class="grid">{cards}</div>{extra}</div>')
+                label = ("Do each problem. Use the same steps."
+                         if asd else "Practice — keep going until time is up")
+                finish = (f'<div class="finish">✅ You are done when you finish all '
+                          f'{len(oyo)} problems on this page.</div>' if asd else "")
+                out.append(f'<div class="phase-body"><p class="practicelabel">{label}</p>'
+                           f'<div class="grid">{cards}</div>{extra}{finish}</div>')
         # OPM
         opm = t.get("opm") or []
         if opm:

@@ -1297,23 +1297,27 @@ _DI_PACKET_SCHEMA = (
     '"steps":["Step 1 — name/draw the model","Step 2 — the action (skip count / add groups)","Step 3 — write the equation and answer"]},'
     '"try_it":{"problem":"one guided problem in student words — SAME method as Watch it, new numbers",'
     '"steps":["Step 1 — same first move, no answer","Step 2","Step 3 — set up the equation but do NOT state the final answer"]},'
-    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","choices":["option A","option B","option C","option D"],"answer":"correct option — TEACHER KEY ONLY, not shown to students"}]}],'
+    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","choices":["option A","option B","option C","option D"],"answer_frame":"____ groups of ____ = ____ (ASD packets only; a fill-in frame, no answer)","answer":"correct option — TEACHER KEY ONLY, not shown to students"}]}],'
     '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer — teacher key only"}]}]'
 )
 
 
 def generate_di_packets(standard: dict, most_missed: list, grade: str,
-                        tiers: list, tier2: list | None = None) -> dict:
+                        tiers: list, tier2: list | None = None,
+                        asd: bool = False) -> dict:
     """Generate the three rotation-tier DI packets (Intensive / Cusp / Strategic)
     as STUDENT-FACING packets, grounded in the B1G-M benchmark AND the most-missed
     test questions. Each tier is split into DAYS (its TLC count: Intensive/Cusp = 2,
     Strategic = 1); each day runs Watch it -> Try it -> On your own with a visual
     MODEL chosen for the standard, plenty of independent practice (~30-min center),
-    and an OPM progress check per tier."""
+    and an OPM progress check per tier. When asd=True the packet is adapted for
+    students with autism (predictable structure, literal language, task-analysis
+    checklists, fewer items, answer frames, a clear finish line)."""
     code = standard.get("code", "")
     model = suggest_di_model(code, standard.get("description", ""))
     base = {"standard": code, "description": standard.get("description", ""),
-            "grade_level": grade, "model": model, "tiers": [], "ai_generated": False}
+            "grade_level": grade, "model": model, "asd": asd,
+            "tiers": [], "ai_generated": False}
     if not (settings.ai_provider == "anthropic" and settings.ai_api_key):
         base["ai_status"] = ("AI is off — turn on AI_PROVIDER=anthropic, AI_API_KEY, "
                              "AI_MODEL to write the DI packets.")
@@ -1388,8 +1392,11 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"Split EACH tier into this many DAYS:\n{day_map}\n"
             "Each day: watch_it (one worked example), try_it (one guided problem with "
             "2-3 student steps), and on_your_own with ENOUGH problems to fill ~15 "
-            "minutes of independent work (Intensive & Cusp: 5-6 per day; Strategic: "
-            "4-5 plus a 'Dig Deeper' enrichment). If the test is multiple choice, "
+            + ("minutes (ASD: keep it SHORT — 3 problems per day, one clear idea "
+               "each). " if asd else
+               "minutes of independent work (Intensive & Cusp: 5-6 per day; "
+               "Strategic: 4-5 plus a 'Dig Deeper' enrichment). ")
+            + "If the test is multiple choice, "
             "give each on_your_own problem a 'choices' array of 3-4 SHORT options "
             "(exactly one correct) so it looks like the test; otherwise omit "
             "'choices'. Tier intent: Intensive = "
@@ -1397,7 +1404,24 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             "= targeted practice to reach proficiency; Strategic = practice + "
             "higher-order enrichment. Day 2 (Intensive/Cusp) uses larger numbers. "
             "Include 3 OPM questions per tier.\n\n"
-            "Every number is grade-appropriate and grounded in the benchmark. Write "
+            + (
+                "AUTISM (ASD) SUPPORTS — this class is students with autism, so adapt "
+                "for them:\n"
+                "- Use LITERAL, concrete, short sentences. No idioms, sarcasm, or "
+                "open-ended wording. One instruction per sentence.\n"
+                "- Keep the SAME predictable structure and the SAME model every day; "
+                "familiarity lowers anxiety.\n"
+                "- Make each step a DISCRETE, observable action the student can check "
+                "off ('Draw 3 circles.' not 'Think about the groups.').\n"
+                "- FEWER items, lots of white space, one clear idea at a time.\n"
+                "- Give each on_your_own problem an \"answer_frame\" — a fill-in "
+                "sentence frame like '____ groups of ____ = ____' or '____ x ____ = "
+                "____' so the response is structured (still no answer given).\n"
+                "- Use calm, familiar, concrete contexts (blocks, snacks, pencils); "
+                "avoid busy story problems.\n\n"
+                if asd else ""
+            )
+            + "Every number is grade-appropriate and grounded in the benchmark. Write "
             "at an elementary reading level.\n\n"
             f"Return ONLY a JSON array (one object per tier, in the order given) "
             f"matching:\n{_DI_PACKET_SCHEMA}\n{_PLAIN}"

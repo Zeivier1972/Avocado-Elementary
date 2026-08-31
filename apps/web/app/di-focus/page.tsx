@@ -29,12 +29,32 @@ function DiFocusInner() {
   const [packets, setPackets] = useState<any>(null);
   const [packetId, setPacketId] = useState("");
   const [packetBusy, setPacketBusy] = useState(false);
+  const [asd, setAsd] = useState(false);
+
+  // Remember the ASD setting per class (per teacher) on this device, so the
+  // coach doesn't have to re-tick it for Nieves / Harrison / Persons each time.
+  const asdKey = `asd:${teacher || "grade"}`;
+  useEffect(() => {
+    try {
+      setAsd(localStorage.getItem(asdKey) === "1");
+    } catch {
+      /* private mode */
+    }
+  }, [asdKey]);
+  function toggleAsd(v: boolean) {
+    setAsd(v);
+    try {
+      localStorage.setItem(asdKey, v ? "1" : "0");
+    } catch {
+      /* private mode */
+    }
+  }
 
   async function generatePackets() {
     setPacketBusy(true);
     setPackets(null);
     try {
-      const r = await api.createDiPackets(grade, standard, formId, teacher, enrich);
+      const r = await api.createDiPackets(grade, standard, formId, teacher, enrich, asd);
       setPacketId(r.packet_id);
       // Poll until ready (DI packet is one AI call, usually under a minute).
       for (let i = 0; i < 60; i++) {
@@ -223,6 +243,20 @@ function DiFocusInner() {
                     </>
                   )}
                 </p>
+                {!enrich && (
+                  <label className="mt-2 inline-flex items-center gap-2 text-sm text-gray-700 bg-purple-50 border border-purple-100 rounded-lg px-3 py-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={asd}
+                      onChange={(e) => toggleAsd(e.target.checked)}
+                      className="accent-purple-600"
+                    />
+                    <span>
+                      🧩 <b>ASD class</b> — autism-friendly supports (checklists,
+                      answer frames, fewer items, literal language)
+                    </span>
+                  </label>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button

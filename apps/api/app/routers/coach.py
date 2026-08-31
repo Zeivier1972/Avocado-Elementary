@@ -2001,10 +2001,11 @@ def _di_students_by_tier(db, f: AssessmentForm, standard: str,
 
 
 def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
-                       teacher: str = ""):
+                       teacher: str = "", asd: bool = False):
     """Background generation of the three-tier DI packet (own DB session). When
     teacher is set, everything (most-missed + tier groups) is scoped to THAT
-    class, so each teacher gets a packet for their own class's deficiencies."""
+    class, so each teacher gets a packet for their own class's deficiencies. When
+    asd is set the packet is adapted for students with autism."""
     from app.db.session import SessionLocal
     from app.tier2_vocab import tier2_for_standards
 
@@ -2027,7 +2028,7 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
             missed.extend(_class_missed_on_standard(db, form, standard, teacher))
         missed.sort(key=lambda m: -m.get("miss_pct", 0))
 
-        packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2)
+        packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2, asd=asd)
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
         packet["teacher"] = teacher
         # Layer 2: target the class's most-missed questions ACROSS ALL standards
@@ -2164,6 +2165,7 @@ class _DiPacketReq(BaseModel):
     form_id: str = ""
     teacher: str = ""  # "" = grade-wide; else target this class's deficiencies
     enrichment: bool = False  # True = Dig Deeper packet for the all-Green kids
+    asd: bool = False  # True = adapt the packet for a class of students with autism
 
 
 @router.get("/di-grouping")
@@ -2205,7 +2207,7 @@ def create_di_packets(
                             req.form_id, req.teacher)
     else:
         background.add_task(_run_di_packet_job, rec.id, req.grade, req.standard,
-                            req.form_id, req.teacher)
+                            req.form_id, req.teacher, req.asd)
     audit(db, actor=user, action="generate", entity_type="di_packet",
           entity_id=rec.id, purpose="di_packets")
     return {"packet_id": rec.id, "status": "generating"}
