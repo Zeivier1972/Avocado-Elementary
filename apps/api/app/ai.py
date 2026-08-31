@@ -1291,9 +1291,10 @@ _DI_PACKET_SCHEMA = (
     '[{"tier":"Intensive|Cusp|Strategic",'
     '"days":[{"day":1,"title":"kid-friendly focus for the day","model":"array",'
     '"pacing":"Model 5 min · Try it 10 min · On your own 15 min",'
-    '"watch_it":{"rows":2,"cols":3,"statement":"the worked example in kid words, WITH the answer shown"},'
-    '"try_it":{"problem":"one guided problem in student words",'
-    '"steps":["step 1 — the method","step 2","step 3 — do NOT state the final answer"]},'
+    '"watch_it":{"rows":2,"cols":3,"statement":"the big idea in one kid sentence, WITH the answer",'
+    '"steps":["Step 1 — name/draw the model","Step 2 — the action (skip count / add groups)","Step 3 — write the equation and answer"]},'
+    '"try_it":{"problem":"one guided problem in student words — SAME method as Watch it, new numbers",'
+    '"steps":["Step 1 — same first move, no answer","Step 2","Step 3 — set up the equation but do NOT state the final answer"]},'
     '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","choices":["option A","option B","option C","option D"],"answer":"correct option — TEACHER KEY ONLY, not shown to students"}]}],'
     '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer — teacher key only"}]}]'
 )
@@ -1355,10 +1356,23 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"  - ten_frame: counts/sums within 20 — \"value\" (0-20)\n"
             f"  - base_ten: place value, tens & ones — \"value\"\n"
             f"  - pairing: even/odd as pairs — \"value\" (0-30)\n"
+            f"MATCH THE TEST: the day's model MUST be the SAME representation the "
+            f"MOST-MISSED items above use — arrays for array/row items, a number line "
+            f"for skip-counting, equal groups for repeated addition, a ten-frame for "
+            f"within-20 sums, base-ten for place value. Look at how those missed items "
+            f"are drawn and mirror it.\n"
             f"Only WATCH IT is drawn for the student — it is the worked example, so put "
             f"the day-model's numeric fields ON watch_it. Try it and On your own are "
             f"the STUDENT's to draw and solve, so they carry NO numeric fields and no "
             f"picture.\n\n"
+            f"SCAFFOLDED MODELING (this is what makes it teachable): watch_it is not "
+            f"just a picture — give it a \"steps\" list that WALKS THE METHOD one move "
+            f"at a time (e.g. 'Step 1: draw 3 rows', 'Step 2: put 4 dots in each row', "
+            f"'Step 3: skip count 4, 8, 12', 'Step 4: write 3 × 4 = 12'). Try it "
+            f"repeats the SAME numbered steps with a new problem (student does each "
+            f"step, no answer given), and On your own gives problems the student "
+            f"solves with those SAME steps from memory. Steps must be concrete, "
+            f"do-able actions a K-3 / ESE / ASD student can follow, not explanations.\n\n"
             f"NEVER GIVE THE ANSWER AWAY in Try it or On your own. Watch it shows the "
             f"worked answer; but try_it steps guide the METHOD only and must NOT state "
             f"the final result, and on_your_own problems must not reveal their answer "

@@ -278,6 +278,8 @@ _CSS = """
 .example .st{font-family:"Baloo 2";font-weight:800;font-size:16px;color:var(--ink);}
 .example .cap{color:var(--muted);}
 .example .verdict .even{color:#2e7d32;}.example .verdict .odd{color:#C0392B;}
+.modelsteps{margin-top:10px;background:#F4F8EE;border:1px solid #DCE7CC;border-radius:12px;padding:10px 14px;}
+.mslabel{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--brand-deep);margin-bottom:6px;}
 .steps{display:grid;gap:7px;margin:4px 0;}.step{display:grid;grid-template-columns:26px 1fr;gap:9px;align-items:start;}
 .step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:"Baloo 2";font-weight:800;color:#fff;font-size:13px;background:var(--muted);}
 .prob{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:#fff;}
@@ -440,10 +442,17 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             if w:
                 wvis = (svg_model(dmodel, w)
                         if (w.get("value") is not None or "rows" in w or "a" in w) else "")
+                wsteps = "".join(
+                    f'<div class="step"><span class="n">{i+1}</span><p>{_esc(s)}</p></div>'
+                    for i, s in enumerate(w.get("steps", [])))
+                steps_block = (f'<div class="modelsteps"><div class="mslabel">How we did it — '
+                               f'follow these steps:</div><div class="steps">{wsteps}</div></div>'
+                               if wsteps else "")
                 out.append('<div class="phase"><span class="pn" style="background:%s">1</span><h3>Watch it</h3><span class="gr">I do</span></div>' % hexc)
                 out.append('<div class="phase-body"><div class="example"><div class="tag">Study this one</div>'
                            + wvis
-                           + f'<div class="st">{_esc(w.get("statement"))}</div></div></div>')
+                           + f'<div class="st">{_esc(w.get("statement"))}</div></div>'
+                           + steps_block + '</div>')
             # Try it — the student draws and solves. No pre-drawn model (that would
             # contradict "draw it"), no answer given: just the problem + steps.
             tr = day.get("try_it") or {}
