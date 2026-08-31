@@ -2250,6 +2250,34 @@ def di_packets_html(
                     media_type="text/html", headers=headers)
 
 
+@router.get("/di-packets/{packet_id}/pdf")
+def di_packets_pdf(
+    packet_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_coach),
+):
+    """The packet as a real PDF (rendered from the same print HTML by headless
+    Chromium) so teachers can just open it. If Chromium is unavailable the
+    download falls back to the self-contained HTML instead of failing."""
+    from app.export_html import render_di_packet_html, render_di_packet_pdf
+    rec = db.get(DiPacket, packet_id)
+    if not rec or rec.tenant_id != user.tenant_id:
+        raise HTTPException(404, "DI packet not found")
+    if rec.status != "ready":
+        raise HTTPException(409, "Packets are not ready yet.")
+    base = f"DI-Packet-G{rec.grade_level}-{rec.standard}"
+    pdf = render_di_packet_pdf(rec.content)
+    if pdf:
+        return Response(
+            content=pdf, media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{base}.pdf"'})
+    # Fallback: serve the HTML download so the coach still gets a file.
+    return Response(
+        content=render_di_packet_html(rec.content), media_type="text/html",
+        headers={"Content-Disposition": f'attachment; filename="{base}.html"',
+                 "X-PDF-Fallback": "chromium-unavailable"})
+
+
 # --- Master schedule: math times & Math-DI windows ---------------------------
 
 def _last_name(name: str) -> str:

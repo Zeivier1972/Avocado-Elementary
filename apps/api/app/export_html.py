@@ -10,6 +10,10 @@ from __future__ import annotations
 
 import html
 import math
+import os
+import shutil
+import subprocess
+import tempfile
 
 GREEN = "#BFE3A0"
 PINK = "#F4B6AC"
@@ -545,3 +549,60 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     out.append(f'<div class="foot">{foot}</div>')
     out.append('</div></body></html>')
     return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# PDF export — render the same print HTML through headless Chromium so teachers
+# get a real .pdf (not an .html file). Chromium is installed in the API image;
+# if it is somehow unavailable this returns None and the caller falls back to
+# serving HTML, so the download never hard-fails.
+# ---------------------------------------------------------------------------
+def _chromium_bin() -> str | None:
+    env = os.environ.get("CHROME_BIN")
+    if env and os.path.exists(env):
+        return env
+    for name in ("chromium", "chromium-browser", "google-chrome",
+                 "google-chrome-stable", "chrome"):
+        p = shutil.which(name)
+        if p:
+            return p
+    return None
+
+
+def html_to_pdf(page_html: str) -> bytes | None:
+    """Print an HTML string to PDF bytes with headless Chromium. Returns None if
+    Chromium is missing or the render fails (caller should fall back to HTML)."""
+    exe = _chromium_bin()
+    if not exe:
+        return None
+    with tempfile.TemporaryDirectory() as d:
+        src = os.path.join(d, "packet.html")
+        out = os.path.join(d, "packet.pdf")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(page_html)
+        base = [exe, "--headless=new", "--no-sandbox", "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=10000"]
+        url = "file://" + src
+        # Newer Chromium uses --no-pdf-header-footer; older uses
+        # --print-to-pdf-no-header. Try the modern flags, then fall back.
+        for extra in (["--no-pdf-header-footer"], ["--print-to-pdf-no-header"], []):
+            cmd = base + extra + [f"--print-to-pdf={out}", url]
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, timeout=90)
+            except Exception:
+                continue
+            try:
+                with open(out, "rb") as f:
+                    data = f.read()
+                if data[:4] == b"%PDF":
+                    return data
+            except OSError:
+                pass
+    return None
+
+
+def render_di_packet_pdf(packet: dict) -> bytes | None:
+    """The DI packet as PDF bytes, or None if Chromium is unavailable."""
+    return html_to_pdf(render_di_packet_html(packet, for_pdf=True))

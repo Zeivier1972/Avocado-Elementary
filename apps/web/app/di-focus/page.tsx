@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, getToken, openDiPacketHtml, downloadDiPacketHtml } from "@/lib/api";
+import { api, getToken, openDiPacketHtml, downloadDiPacketPdf } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
 
 const TIER_HEX: Record<string, string> = {
@@ -252,14 +252,18 @@ function DiFocusInner() {
                     </button>
                     <button
                       onClick={() =>
-                        downloadDiPacketHtml(
-                          packetId,
-                          `DI-Packet-${standard}.html`
-                        ).catch((e) => alert(String((e as Error).message)))
+                        downloadDiPacketPdf(packetId, `DI-Packet-${standard}`)
+                          .then((isPdf) => {
+                            if (!isPdf)
+                              alert(
+                                "PDF isn't available right now, so it downloaded as an HTML file you can open and print. Try again shortly, or use Open / print → Save as PDF."
+                              );
+                          })
+                          .catch((e) => alert(String((e as Error).message)))
                       }
                       className="border border-avocado text-avocado-dark text-sm font-semibold rounded-lg px-3 py-2"
                     >
-                      ⬇ Download file
+                      ⬇ Download PDF
                     </button>
                   </>
                 )}

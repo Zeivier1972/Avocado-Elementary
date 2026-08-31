@@ -462,6 +462,32 @@ export async function downloadDiPacketHtml(id: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+// Download the DI packet as a real PDF (rendered server-side by Chromium). The
+// server falls back to HTML only if Chromium is unavailable, so we name the file
+// by the Content-Type we actually get back.
+export async function downloadDiPacketPdf(id: string, baseName: string) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/coach/di-packets/${id}/pdf`, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Download failed (${res.status}). ${body.slice(0, 200)}`);
+  }
+  const type = res.headers.get("Content-Type") || "";
+  const isPdf = type.includes("pdf");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${baseName || "di-packet"}.${isPdf ? "pdf" : "html"}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return isPdf;
+}
+
 const COACH_ROLES = [
   "math_coach",
   "reading_coach",
