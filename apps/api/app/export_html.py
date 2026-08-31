@@ -164,6 +164,31 @@ def _equal_teams(a: int, b: int) -> str:
             + team(b, a * 26 + 48, "#EED9A8") + "</svg>")
 
 
+def _equal_groups(groups: int, per: int) -> str:
+    """`groups` boxes, each holding `per` counters — the CORRECT picture for
+    'N groups of M' (repeated addition / multiplication as equal groups). Unlike
+    equal_teams (two addends a + b), this shows N equal groups of M."""
+    groups = max(1, min(6, groups))
+    per = max(1, min(8, per))
+    r, gap, pad, bh, sp = 9, 24, 12, 44, 16
+    bw = per * gap + pad
+    W = groups * (bw + sp) + 4
+    parts = [f'<svg width="100%" viewBox="0 0 {W} {bh + 14}" '
+             f'preserveAspectRatio="xMinYMin meet" style="max-width:{W}px" '
+             f'role="img" aria-label="{groups} groups of {per}">']
+    x = 4
+    for _g in range(groups):
+        parts.append(f'<rect x="{x}" y="7" width="{bw}" height="{bh}" rx="12" '
+                     f'fill="none" stroke="#8a9b7f" stroke-width="2"/>')
+        for i in range(per):
+            cx = x + pad / 2 + i * gap + r
+            parts.append(f'<circle cx="{cx:.0f}" cy="{7 + bh / 2:.0f}" r="{r}" '
+                         f'fill="{GREEN}" stroke="#4E7C2F"/>')
+        x += bw + sp
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 import re as _re
 
 
@@ -228,12 +253,24 @@ def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
             return _array(r, c)
         if model == "number_line":
             return _number_line(_val(spec), _i(spec.get("max"), 20))
-        if model == "equal_teams":
-            a, b = spec.get("a"), spec.get("b")
+        if model in ("equal_groups", "equal_teams"):
+            # groups (a) and amount-in-each (b). Accept a/b or groups/per, else
+            # parse "N groups of M" from the text.
+            a = spec.get("a", spec.get("groups"))
+            b = spec.get("b", spec.get("per"))
             if a is None or b is None:
-                nums = _ints(_ctx_text(spec))
-                a = a if a is not None else (nums[0] if nums else 0)
-                b = b if b is not None else (nums[1] if len(nums) > 1 else 0)
+                t = _ctx_text(spec)
+                gm = _re.search(r"(\d+)\s*(?:equal\s+)?groups?", t, _re.I)
+                pm = _re.search(r"of\s*(\d+)|(\d+)\s*(?:counters?|in each|per group|each)", t, _re.I)
+                nums = _ints(t)
+                if a is None:
+                    a = _i(gm.group(1)) if gm else (nums[0] if nums else 0)
+                if b is None:
+                    b = _i(pm.group(1) or pm.group(2)) if pm else (nums[1] if len(nums) > 1 else 0)
+            # equal_groups = N groups of M (correct for repeated addition /
+            # multiplication); equal_teams stays two addends a + b (even/odd).
+            if model == "equal_groups":
+                return _equal_groups(_i(a), _i(b))
             return _equal_teams(_i(a), _i(b))
     except Exception:
         return ""

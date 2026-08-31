@@ -1274,8 +1274,10 @@ def suggest_di_model(code: str, description: str) -> str:
         return "base_ten"
     if "even" in d or "odd" in d:
         return "pairing"
-    if "array" in d or "rows" in d or "multiplication" in d or "equal groups" in d:
+    if "array" in d or "rows" in d:
         return "array"
+    if "equal group" in d or "repeated addition" in d or "multiplication" in d:
+        return "equal_groups"
     if "number line" in d or "skip count" in d:
         return "number_line"
     if "sum" in d and ("equal" in d or "two equal" in d):
@@ -1350,8 +1352,12 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"match a different missed item — but NEVER mix models within one day. "
             f"Allowed models (use only ones that TRULY represent {code}; the default "
             f"that fits it is '{model}'):\n"
-            f"  - array: rows×cols dot grid (equal rows / multiplication) — day fields on watch_it: \"rows\",\"cols\"\n"
-            f"  - equal_teams: equal groups — \"a\" (number of groups), \"b\" (amount in each)\n"
+            f"  - array: rows×cols dot grid (equal rows shown as a grid) — \"rows\",\"cols\"\n"
+            f"  - equal_groups: N GROUPS OF M for repeated addition / multiplication — "
+            f"draws 'a' separate group-circles each holding 'b' counters — give \"a\" "
+            f"(number of groups) and \"b\" (amount in EACH group). Use THIS, not "
+            f"equal_teams, for '3 groups of 2'.\n"
+            f"  - equal_teams: TWO equal addends a + b (even/odd only) — \"a\",\"b\"\n"
             f"  - number_line: skip-counting / jumps to a total — \"value\",\"max\"\n"
             f"  - ten_frame: counts/sums within 20 — \"value\" (0-20)\n"
             f"  - base_ten: place value, tens & ones — \"value\"\n"
