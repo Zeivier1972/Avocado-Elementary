@@ -474,6 +474,28 @@ export default function TeachersPage() {
                     }}
                   />
                 </div>
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const next = !t.asd;
+                      api
+                        .setTeacherAsd(t.teacher_id, next)
+                        .then(() => reloadRoster())
+                        .catch((er) => alert((er as Error).message));
+                    }}
+                    className={`text-[11px] font-semibold rounded-full px-2.5 py-0.5 border ${
+                      t.asd
+                        ? "bg-purple-100 text-purple-800 border-purple-200"
+                        : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-purple-50"
+                    }`}
+                    title="When on, this teacher's DI packets always use autism-friendly supports"
+                  >
+                    🧩 ASD class {t.asd ? "✓" : "— off"}
+                  </button>
+                </div>
                 <div className="mt-2 flex items-center justify-between text-xs">
                   <span className="text-gray-400">
                     {t.fast_math_period

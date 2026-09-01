@@ -30,6 +30,7 @@ function DiFocusInner() {
   const [packetId, setPacketId] = useState("");
   const [packetBusy, setPacketBusy] = useState(false);
   const [asd, setAsd] = useState(false);
+  const [asdLocked, setAsdLocked] = useState(false);
 
   // Remember the ASD setting per class (per teacher) on this device, so the
   // coach doesn't have to re-tick it for Nieves / Harrison / Persons each time.
@@ -90,6 +91,22 @@ function DiFocusInner() {
       })
       .then(setData)
       .catch((e) => setErr((e as Error).message));
+    // If this class's teacher is flagged ASD on the Teachers page, reflect it.
+    if (teacher) {
+      const names = teacher.split(",").map((x) => x.trim());
+      api
+        .teachers()
+        .then((r: any) => {
+          const flagged = (r.teachers || []).some(
+            (t: any) => names.includes(t.name) && t.asd
+          );
+          if (flagged) {
+            setAsd(true);
+            setAsdLocked(true);
+          }
+        })
+        .catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grade, standard, formId]);
 
@@ -248,12 +265,19 @@ function DiFocusInner() {
                     <input
                       type="checkbox"
                       checked={asd}
+                      disabled={asdLocked}
                       onChange={(e) => toggleAsd(e.target.checked)}
                       className="accent-purple-600"
                     />
                     <span>
                       🧩 <b>ASD class</b> — autism-friendly supports (checklists,
                       answer frames, fewer items, literal language)
+                      {asdLocked && (
+                        <span className="text-purple-700">
+                          {" "}
+                          · set for this teacher on the Teachers page
+                        </span>
+                      )}
                     </span>
                   </label>
                 )}

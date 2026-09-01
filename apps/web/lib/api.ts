@@ -102,6 +102,12 @@ export const api = {
   rosterAudit: () => req("/reports/roster-audit"),
   addStudentsToClass: (form: FormData) =>
     req("/admin/roster/add-students", { method: "POST", body: form }),
+  setTeacherAsd: (teacherId: string, asd: boolean) =>
+    req(`/reports/teachers/${teacherId}/asd`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ asd }),
+    }),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   goalAnalysis: (grade: string) => req(`/reports/goal-analysis/${grade}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),

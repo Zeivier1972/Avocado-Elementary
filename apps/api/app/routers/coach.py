@@ -2028,6 +2028,16 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
             missed.extend(_class_missed_on_standard(db, form, standard, teacher))
         missed.sort(key=lambda m: -m.get("miss_pct", 0))
 
+        # A teacher can be flagged ASD once (on the Teachers page); their packets
+        # then always get autism-friendly supports, even if the box wasn't ticked.
+        if not asd:
+            names = _teachers_list(teacher)
+            if names:
+                flagged = db.query(User).filter(
+                    User.tenant_id == rec.tenant_id, User.role == "teacher",
+                    User.name.in_(names)).all()
+                if any((u.scope or {}).get("asd") for u in flagged):
+                    asd = True
         packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2, asd=asd)
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
         packet["teacher"] = teacher

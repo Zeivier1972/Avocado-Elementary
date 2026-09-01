@@ -3,7 +3,7 @@ imported FAST / iReady / Topic assessment data."""
 import re
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -231,6 +231,7 @@ def teachers(
             "students": len(students),
             "tested": len(levels),
             "fast_math_period": period,
+            "asd": bool((t.scope or {}).get("asd")),
             "pct_level_3_plus": round(100 * sum(1 for x in levels if x >= 3) / len(levels))
                                 if levels else None,
         })
@@ -270,6 +271,27 @@ def teachers(
 
 
 # Grades the school actually has: Pre-K through 3rd. Grade 4+ signals a bad import.
+@router.post("/teachers/{teacher_id}/asd")
+def set_teacher_asd(
+    teacher_id: str,
+    asd: bool = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Mark (or unmark) a teacher's class as ASD, saved on the teacher so their DI
+    packets always get autism-friendly supports on any device — no per-generation
+    checkbox needed."""
+    t = db.get(User, teacher_id)
+    if not t or t.tenant_id != user.tenant_id or t.role != "teacher":
+        raise HTTPException(404, "Teacher not found")
+    sc = dict(t.scope or {})
+    sc["asd"] = bool(asd)
+    t.scope = sc
+    db.add(t)
+    db.commit()
+    return {"teacher_id": t.id, "name": t.name, "asd": sc["asd"]}
+
+
 EXPECTED_GRADES = ["PK", "K", "1", "2", "3"]
 
 
@@ -319,6 +341,7 @@ def roster_audit(
                     "grade": g or "(blank)", "teacher": t.name})
         teachers.append({
             "teacher_id": t.id, "name": t.name, "grades": grades,
+            "asd": bool((t.scope or {}).get("asd")),
             "students": len(students),
             "tested": len(tested),
             "coverage_pct": round(100 * len(tested) / len(students)) if students else 0,
