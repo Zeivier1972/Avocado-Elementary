@@ -2754,6 +2754,13 @@ def _student_teacher_map(db, tenant_id) -> dict:
     return {sid: v[1] for sid, v in best.items()}
 
 
+def _id_key(v) -> str:
+    """Compare student ids ignoring leading zeros, so a results id '0893267'
+    matches a roster id '893267' (and vice versa)."""
+    v = str(v or "").strip()
+    return v.lstrip("0") or v
+
+
 def _name_key(name: str) -> str:
     """An order- and punctuation-insensitive key for matching a results name to
     the roster: lowercase, letters only, drop single-letter middle initials, and
@@ -2773,7 +2780,7 @@ def _fill_teacher_from_roster(db, tenant_id, rows) -> int:
     if not rows or all((r.get("teacher_name") or "").strip() for r in rows):
         return 0
     students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
-    by_did = {(s.district_student_id or "").strip(): s
+    by_did = {_id_key(s.district_student_id): s
               for s in students if s.district_student_id}
     by_name = {}
     for s in students:
@@ -2786,7 +2793,7 @@ def _fill_teacher_from_roster(db, tenant_id, rows) -> int:
     for r in rows:
         if (r.get("teacher_name") or "").strip():
             continue
-        stu = by_did.get((r.get("student_id") or "").strip())
+        stu = by_did.get(_id_key(r.get("student_id")))
         if not stu:
             raw = r.get("student_name") or ""
             nm = " ".join(raw.replace(",", " ").split()).lower()
@@ -2803,7 +2810,7 @@ def _link_topic_results_to_students(db, tenant_id, f: AssessmentForm, rows) -> i
     student id, then by full name. Percent is stored as a 0-1 fraction (the shape
     Reports expects). Returns how many were linked."""
     students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
-    by_did = {(s.district_student_id or "").strip(): s for s in students if s.district_student_id}
+    by_did = {_id_key(s.district_student_id): s for s in students if s.district_student_id}
     by_name = {}
     for s in students:
         by_name[f"{s.first_name} {s.last_name}".strip().lower()] = s
@@ -2812,7 +2819,7 @@ def _link_topic_results_to_students(db, tenant_id, f: AssessmentForm, rows) -> i
     subject = (f.subject or "MATH").upper()
     n = 0
     for r in rows:
-        stu = by_did.get((r.get("student_id") or "").strip())
+        stu = by_did.get(_id_key(r.get("student_id")))
         if not stu:
             # Names may arrive as "Last, First" (Performance Matters) — drop the
             # comma so it matches the roster's "last first" key.
