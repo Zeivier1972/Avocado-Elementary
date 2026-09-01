@@ -2648,7 +2648,8 @@ async def import_results(
     """Upload a grade-wide RESULTS spreadsheet (one row per student, one column
     per question) for this topic test. Scores each student against the answer
     key, color-codes by the Math Goal rubric, and stores per student/class.
-    Re-uploading replaces the results for this test."""
+    Re-uploading UPDATES only the students in the file — every other class's
+    results for this test are kept, so you can upload one class at a time."""
     from app.topic_results_import import parse_results
 
     f = db.get(AssessmentForm, form_id)
@@ -2671,7 +2672,19 @@ async def import_results(
     # If the export carries no teacher/class column, recover each student's
     # teacher from the roster so per-class results and DI packets still work.
     _fill_teacher_from_roster(db, user.tenant_id, res["rows"])
-    db.query(TopicResult).filter(TopicResult.form_id == f.id).delete()
+    # Replace ONLY the students in this file (matched by id — leading zeros
+    # ignored — or by name), leaving every other class's results for this test
+    # intact. This makes a per-class re-upload safe: it updates Nieves without
+    # touching the rest.
+    def _idk(v):
+        v = str(v or "").strip()
+        return v.lstrip("0") or v
+    in_ids = {_idk(r["student_id"]) for r in res["rows"] if r.get("student_id")}
+    in_names = {_name_key(r["student_name"]) for r in res["rows"] if r.get("student_name")}
+    for row in db.query(TopicResult).filter(TopicResult.form_id == f.id).all():
+        if _idk(row.student_id) in in_ids or _name_key(row.student_name) in in_names:
+            db.delete(row)
+    db.flush()
     for r in res["rows"]:
         pct = r["percent"]
         lvl = _color_for(f.grade, pct)["level"]

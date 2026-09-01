@@ -313,6 +313,11 @@ export default function AssessmentsPage() {
                   >
                     ⬇ Template
                   </button>
+                  <span className="text-[11px] text-gray-400 w-full">
+                    Uploading updates only the students in your file — other
+                    classes&apos; results for this test are kept. Upload one class at
+                    a time or the whole grade.
+                  </span>
                   <button
                     onClick={() => openResults(f.id)}
                     className="text-sm font-semibold text-avocado-dark hover:underline"
