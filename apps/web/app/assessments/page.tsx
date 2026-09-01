@@ -605,8 +605,16 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
                     🚀 Plan enrichment →
                   </a>
                 ) : g.kind === "unmatched" ? (
-                  <span className="ml-auto text-xs text-amber-700">
-                    {g.students} students didn&apos;t match the roster — re-check names/IDs
+                  <span className="ml-auto flex items-center gap-2">
+                    <span className="text-xs text-amber-700">
+                      {g.students} students didn&apos;t match the roster
+                    </span>
+                    <a
+                      href="/teachers?add=1"
+                      className="text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-2.5 py-1 whitespace-nowrap"
+                    >
+                      ➕ Add to a class →
+                    </a>
                   </span>
                 ) : (
                   <a
@@ -644,7 +652,18 @@ function ResultsPanel({ data, onClose }: { data: any; onClose: () => void }) {
             <tbody>
               {a.classes.map((c: any) => (
                 <tr key={c.teacher} className="border-b border-gray-50 last:border-0 align-top hover:bg-avocado/5 transition-colors">
-                  <td className="px-3 py-2.5 font-semibold text-gray-800">{c.teacher}</td>
+                  <td className="px-3 py-2.5 font-semibold text-gray-800">
+                    {c.teacher}
+                    {c.teacher && c.teacher !== "—" && (
+                      <a
+                        href={`/teachers?add=1&teacher=${encodeURIComponent(c.teacher)}`}
+                        title="Add students to this class by ID"
+                        className="block text-[11px] font-normal text-avocado-dark hover:underline mt-0.5"
+                      >
+                        ➕ Add students
+                      </a>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-gray-500">{c.students}</td>
                   <td className="px-3 py-2.5">
                     <Chip color={c.color}>{c.avg_percent}%</Chip>

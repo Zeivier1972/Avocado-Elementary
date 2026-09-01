@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getToken } from "@/lib/api";
 import CoachHeader from "@/app/_components/CoachHeader";
@@ -57,6 +57,42 @@ export default function TeachersPage() {
   const [addGrade, setAddGrade] = useState("3");
   const [addBusy, setAddBusy] = useState(false);
   const [addMsg, setAddMsg] = useState("");
+  const [addFocus, setAddFocus] = useState(false);
+  const addRef = useRef<HTMLDivElement>(null);
+  const wantTeacherRef = useRef<string>("");
+
+  // Deep-link from the DI grouping panel: /teachers?add=1&teacher=<name> opens
+  // and pre-selects the Add-students tool.
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("add") === "1") setAddFocus(true);
+      wantTeacherRef.current = p.get("teacher") || "";
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Pre-select the teacher named in the deep-link once the roster has loaded.
+  useEffect(() => {
+    const tn = wantTeacherRef.current;
+    const list = data?.teachers;
+    if (!tn || !list) return;
+    const t = list.find((x: any) => x.name === tn);
+    if (t) {
+      setAddTeacher(t.teacher_id);
+      const g = t.grades?.find((x: string) => x && x !== "—");
+      if (g) setAddGrade(g);
+    }
+    wantTeacherRef.current = "";
+  }, [data]);
+
+  // Scroll the Add-students card into view when arriving via ?add=1.
+  useEffect(() => {
+    if (addFocus && addRef.current) {
+      addRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [addFocus, data]);
 
   async function reloadRoster() {
     setData(await api.teachers());
@@ -195,7 +231,12 @@ export default function TeachersPage() {
 
         {/* Add students to a class — by id, no duplicates */}
         {all.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div
+            ref={addRef}
+            className={`bg-white rounded-2xl border p-5 ${
+              addFocus ? "border-avocado ring-2 ring-avocado/30" : "border-gray-100"
+            }`}
+          >
             <div className="font-semibold text-gray-800 text-sm">
               ➕ Add students to a class
             </div>
