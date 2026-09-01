@@ -119,6 +119,113 @@ def _is_correct(cell: str, correct: str) -> bool | None:
     return None
 
 
+_STD_CODE = re.compile(r"([A-Z]{2,4}\.[K0-9]+\.[A-Z]+\.\d+\.\d+)", re.I)
+
+
+def _pct(v: str):
+    """A percent cell ('83%', '0.83', '83') -> float 0-100, or None."""
+    raw = _norm(v)
+    if not raw:
+        return None
+    has_pct = "%" in raw
+    try:
+        f = float(raw.replace("%", "").strip())
+    except ValueError:
+        return None
+    if not has_pct and 0 < f <= 1:
+        f *= 100  # a fraction like 0.83
+    return round(f, 1)
+
+
+def _parse_benchmark_summary(rows: list[list], items: list[dict]) -> dict:
+    """Fallback for a Performance Matters 'Student Results' export that has NO
+    per-question columns — just a Student Name, Student Id, Total Score and one
+    percent column PER BENCHMARK (e.g. 'FL.20.BEST.MA.3.AR.1.1'). We can't know
+    which individual questions were missed, but we CAN store each student's
+    per-standard proficiency (so class averages, the weakest-standard DI target
+    and Red/Yellow/Green tiers all work). Points are reconstructed from the test
+    blueprint so the numbers line up with the rest of the system."""
+    # Point total per standard, from the answer key (scored items only).
+    std_possible: dict = {}
+    for it in items:
+        if it.get("scored"):
+            std_possible[it.get("standard", "")] = (
+                std_possible.get(it.get("standard", ""), 0.0) + it.get("points", 0))
+    test_stds = {s for s in std_possible if s}
+    if not test_stds:
+        return {"rows": []}
+
+    # Find the header row: has a name-ish and id-ish column and >=1 benchmark col
+    # whose extracted standard code is one of THIS test's standards.
+    hdr_i = None
+    name_col = id_col = total_col = None
+    std_cols: dict = {}  # column index -> standard code
+    for i in range(min(15, len(rows))):
+        r = [_norm(c) for c in rows[i]]
+        nc = ic = tc = None
+        sc: dict = {}
+        for j, h in enumerate(r):
+            if not h:
+                continue
+            m = _STD_CODE.search(h)
+            if m and m.group(1).upper() in test_stds:
+                sc[j] = m.group(1).upper()
+                continue
+            if ic is None and _ID_HINT.search(h):
+                ic = j
+                continue
+            if tc is None and re.search(r"total", h, re.I):
+                tc = j
+                continue
+            if nc is None and _NAME_HINT.search(h):
+                nc = j
+        if sc and (nc is not None or ic is not None):
+            hdr_i, name_col, id_col, total_col, std_cols = i, nc, ic, tc, sc
+            break
+    if hdr_i is None or not std_cols:
+        return {"rows": []}
+
+    out = []
+    for row in rows[hdr_i + 1:]:
+        if not any(_norm(c) for c in row):
+            continue
+        def cell(j):
+            return _norm(row[j]) if j is not None and j < len(row) else ""
+        name, sid = cell(name_col), cell(id_col)
+        if not name and not sid:
+            continue
+        by_std: dict = {}
+        earned = possible = 0.0
+        for j, code in std_cols.items():
+            poss = std_possible.get(code, 0.0)
+            if not poss:
+                continue
+            p = _pct(cell(j))
+            if p is None:
+                continue
+            e = round(poss * p / 100.0, 2)
+            by_std[code] = {"earned": e, "possible": poss}
+            earned += e
+            possible += poss
+        if not by_std:
+            continue
+        total = _pct(cell(total_col))
+        pct = total if total is not None else (
+            round(100.0 * earned / possible, 1) if possible else 0.0)
+        out.append({
+            "student_name": name, "student_id": sid, "teacher_name": "",
+            "points_earned": round(earned, 2), "points_possible": round(possible, 2),
+            "percent": pct, "answered": len(by_std),
+            "by_standard": by_std, "missed_positions": [],
+        })
+    if not out:
+        return {"rows": []}
+    return {"rows": out, "reason": None,
+            "detected": {"format": "benchmark_summary",
+                         "standards_matched": len(std_cols),
+                         "item_level": False}}
+
+
 def parse_results(data: bytes, items: list[dict]) -> dict:
     """Score a results workbook against the blueprint items. Returns
     {"rows": [...per student...], "reason", "detected"}."""
@@ -133,8 +240,13 @@ def parse_results(data: bytes, items: list[dict]) -> dict:
 
     hi, det, data_start = _find_header(rows, items)
     if hi < 0 or not det["qcols"]:
+        # No per-question columns — try the per-benchmark summary export.
+        summary = _parse_benchmark_summary(rows, items)
+        if summary.get("rows"):
+            return summary
         return {"rows": [], "reason": "could not find question columns (Q1, Q2 …) "
-                                      "matching the test"}
+                                      "matching the test, or benchmark % columns "
+                                      "(e.g. MA.3.AR.1.1) for this test"}
     item_by_pos = {it["position"]: it for it in items}
     qcols = det["qcols"]
 

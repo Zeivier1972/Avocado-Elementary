@@ -133,9 +133,13 @@ export default function AssessmentsPage() {
       form.append("file", file);
       const r = await api.importResults(id, form);
       setResults(await api.getResults(id));
+      const scored =
+        r.format === "benchmark_summary"
+          ? `Loaded ${r.students} students (per-standard percentages) across ${r.classes.length} classes.`
+          : `Scored ${r.students} students across ${r.classes.length} classes (${r.questions_matched} questions matched).`;
       alert(
-        `Scored ${r.students} students across ${r.classes.length} classes ` +
-          `(${r.questions_matched} questions matched).` +
+        scored +
+          (r.note ? `\n\nℹ ${r.note}` : "") +
           (r.linked_to_roster
             ? `\n\n${r.linked_to_roster} students linked to the roster — these ` +
               `topic scores now show in Reports, Goal Analysis, and each ` +

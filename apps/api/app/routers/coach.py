@@ -2702,9 +2702,18 @@ async def import_results(
     audit(db, actor=user, action="import", entity_type="topic_results",
           entity_id=f.id, purpose="topic_test_results")
     classes = sorted({r["teacher_name"] for r in res["rows"] if r["teacher_name"]})
+    detected = res.get("detected", {})
+    note = ""
+    if detected.get("format") == "benchmark_summary":
+        note = ("Loaded as a benchmark-summary (per-standard %s) — class averages, "
+                "the weakest-standard DI target and Red/Yellow/Green tiers work, but "
+                "item-level most-missed questions aren't in this export. Upload the "
+                "item-level CBT results (a column per question) for question-level DI.")
     return {"students": len(res["rows"]), "classes": classes,
             "linked_to_roster": linked,
-            "questions_matched": res.get("detected", {}).get("questions_matched", 0)}
+            "questions_matched": detected.get("questions_matched", 0),
+            "format": detected.get("format", "item_level"),
+            "note": note}
 
 
 def _topic_period(topic_code: str) -> str:
