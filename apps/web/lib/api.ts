@@ -100,6 +100,8 @@ export const api = {
     req(`/reports/fast/${grade}?subject=${subject}&period=${period}`),
   teachers: () => req("/reports/teachers"),
   rosterAudit: () => req("/reports/roster-audit"),
+  addStudentsToClass: (form: FormData) =>
+    req("/admin/roster/add-students", { method: "POST", body: form }),
   teacherReport: (id: string) => req(`/reports/teacher/${id}`),
   goalAnalysis: (grade: string) => req(`/reports/goal-analysis/${grade}`),
   guideSummary: (id: string) => req(`/coach/guides/${id}/summary`),

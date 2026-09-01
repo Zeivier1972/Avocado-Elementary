@@ -4,7 +4,7 @@ import csv
 import io
 import re
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
@@ -690,3 +690,156 @@ def school_summary(
         "by_grade": dict(sorted(by_grade.items())),
         "ell": ell, "ese": ese, "fast_math_baseline": fast_baseline,
     }
+
+
+# --- Add students to a class (by ID) -----------------------------------------
+# Enroll students under an EXISTING teacher from a simple id+name list (e.g. a
+# Performance Matters "Student Results" export). Matches existing students by id
+# (leading-zero tolerant) so no duplicates, and never overwrites a good name.
+
+def _idkey(s: str) -> str:
+    """Compare student ids ignoring leading zeros ('0893267' == '893267')."""
+    s = (s or "").strip()
+    return s.lstrip("0") or s
+
+
+def _split_name(name: str) -> tuple:
+    """'ABONCEVILLALOB, YEFRIN' -> ('Yefrin', 'Aboncevillalob'). Falls back to
+    splitting on the last space when there is no comma."""
+    name = (name or "").strip()
+    if "," in name:
+        last, first = name.split(",", 1)
+    elif " " in name:
+        first, last = name.rsplit(" ", 1)
+    else:
+        first, last = name, ""
+    def t(x):
+        return " ".join("-".join(p.capitalize() for p in w.split("-"))
+                        for w in x.split())
+    return t(first), t(last)
+
+
+def _parse_id_name_rows(data: bytes) -> list:
+    """Pull (student_id, first, last) from an uploaded xlsx/csv that has a student
+    id column and either a combined name column or first/last columns."""
+    if data[:2] == b"PK":  # xlsx
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        ws = wb[wb.sheetnames[0]]
+        rows = [[("" if c is None else str(c)).strip() for c in r]
+                for r in ws.iter_rows(values_only=True)]
+    else:
+        text = data.decode("utf-8-sig", errors="replace")
+        rows = [[(c or "").strip() for c in r] for r in csv.reader(io.StringIO(text))]
+    if not rows:
+        return []
+    # find the header row (first row that has an id-ish and a name-ish column)
+    id_keys = ("student id", "student_id", "studentid", "id number", "local id",
+               "student number", "id")
+    name_keys = ("student name", "name")
+    hdr_i, cols = None, {}
+    for i, r in enumerate(rows[:10]):
+        low = [c.lower() for c in r]
+        idc = next((j for j, c in enumerate(low) if c in id_keys), None)
+        namec = next((j for j, c in enumerate(low) if c in name_keys), None)
+        firstc = next((j for j, c in enumerate(low) if c in ("first name", "first_name", "first")), None)
+        lastc = next((j for j, c in enumerate(low) if c in ("last name", "last_name", "last")), None)
+        if idc is not None and (namec is not None or (firstc is not None and lastc is not None)):
+            hdr_i = i
+            cols = {"id": idc, "name": namec, "first": firstc, "last": lastc}
+            break
+    if hdr_i is None:
+        return []
+    out = []
+    for r in rows[hdr_i + 1:]:
+        if cols["id"] >= len(r):
+            continue
+        sid = r[cols["id"]].strip()
+        if not sid:
+            continue
+        if cols["first"] is not None and cols["last"] is not None:
+            first = r[cols["first"]] if cols["first"] < len(r) else ""
+            last = r[cols["last"]] if cols["last"] < len(r) else ""
+        else:
+            nm = r[cols["name"]] if (cols["name"] is not None and cols["name"] < len(r)) else ""
+            first, last = _split_name(nm)
+        out.append((sid, first, last))
+    return out
+
+
+@router.post("/roster/add-students")
+async def add_students_to_class(
+    file: UploadFile = File(...),
+    teacher_id: str = Form(...),
+    grade: str = Form(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Enroll the students in an id+name file under an EXISTING teacher's class.
+    Matches by id ignoring leading zeros (so kids already on the roster are found,
+    not duplicated) and creates only the ones that are truly missing."""
+    district = db.query(District).first()
+    tenant_id = district.id
+    school = db.query(School).filter(School.tenant_id == tenant_id).first()
+    teacher = db.get(User, teacher_id)
+    if not teacher or teacher.tenant_id != tenant_id or teacher.role != "teacher":
+        raise HTTPException(404, "Teacher not found")
+
+    rows = _parse_id_name_rows(await file.read())
+    if not rows:
+        raise HTTPException(
+            400, "Couldn't find a Student Id + Student Name column in this file.")
+
+    g = (grade or "").strip().upper().replace("GRADE", "").strip()
+    if g in ("PK", "PRE-K", "PREK", "VPK"):
+        g = "PK"
+    elif g in ("K", "KG", "0", "00"):
+        g = "K"
+    g = g.lstrip("0") or g
+
+    existing = {_idkey(s.district_student_id): s
+                for s in db.query(Student).filter(Student.tenant_id == tenant_id).all()}
+    cname = f"{g} - {teacher.name}" if g else teacher.name
+    cls = (db.query(ClassRoom)
+           .filter(ClassRoom.tenant_id == tenant_id,
+                   ClassRoom.teacher_id == teacher.id,
+                   ClassRoom.name == cname).first())
+    if not cls:
+        cls = ClassRoom(tenant_id=tenant_id, school_id=school.id,
+                        teacher_id=teacher.id, name=cname, subject="HOMEROOM")
+        db.add(cls)
+        db.flush()
+
+    created = matched = enrolled = 0
+    result = []
+    for sid, first, last in rows:
+        stu = existing.get(_idkey(sid))
+        if stu:
+            matched += 1
+            if g and not stu.grade_level:
+                stu.grade_level = g
+            state = "already on roster"
+        else:
+            stu = Student(tenant_id=tenant_id, school_id=school.id,
+                          district_student_id=sid, first_name=first,
+                          last_name=last, grade_level=g, flags={})
+            db.add(stu)
+            db.flush()
+            existing[_idkey(sid)] = stu
+            created += 1
+            state = "added"
+        ex = (db.query(Enrollment)
+              .filter(Enrollment.class_id == cls.id,
+                      Enrollment.student_id == stu.id).first())
+        if not ex:
+            db.add(Enrollment(class_id=cls.id, student_id=stu.id))
+            enrolled += 1
+        result.append({"id": sid,
+                       "name": f"{stu.first_name} {stu.last_name}".strip(),
+                       "state": state})
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="roster",
+          purpose="add_students_to_class")
+    return {"teacher": teacher.name, "grade": g, "count": len(rows),
+            "created": created, "matched": matched, "enrolled": enrolled,
+            "students": result}

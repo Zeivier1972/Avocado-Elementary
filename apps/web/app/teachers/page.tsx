@@ -52,6 +52,43 @@ export default function TeachersPage() {
   const [audit, setAudit] = useState<any>(null);
   const [q, setQ] = useState("");
   const [err, setErr] = useState("");
+  // Add-students-to-a-class tool
+  const [addTeacher, setAddTeacher] = useState("");
+  const [addGrade, setAddGrade] = useState("3");
+  const [addBusy, setAddBusy] = useState(false);
+  const [addMsg, setAddMsg] = useState("");
+
+  async function reloadRoster() {
+    setData(await api.teachers());
+    api.rosterAudit().then(setAudit).catch(() => {});
+  }
+
+  async function onAddStudents(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!addTeacher) {
+      setAddMsg("Pick a teacher first.");
+      return;
+    }
+    setAddBusy(true);
+    setAddMsg("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("teacher_id", addTeacher);
+      form.append("grade", addGrade);
+      const r = await api.addStudentsToClass(form);
+      setAddMsg(
+        `✓ ${r.teacher}: ${r.enrolled} enrolled — ${r.created} added, ${r.matched} already on roster (${r.count} in file).`
+      );
+      await reloadRoster();
+    } catch (err2) {
+      setAddMsg("Failed: " + (err2 as Error).message);
+    } finally {
+      setAddBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!getToken()) {
@@ -153,6 +190,75 @@ export default function TeachersPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Add students to a class — by id, no duplicates */}
+        {all.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="font-semibold text-gray-800 text-sm">
+              ➕ Add students to a class
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5 mb-3">
+              Upload a student list (e.g. a Performance Matters results export) and
+              pick the teacher. Students are matched by ID — leading zeros ignored —
+              so kids already on the roster aren&apos;t duplicated; only the missing
+              ones are added and everyone is enrolled in that class.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={addTeacher}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setAddTeacher(id);
+                  const t = all.find((x: any) => x.teacher_id === id);
+                  const g = t?.grades?.find((x: string) => x && x !== "—");
+                  if (g) setAddGrade(g);
+                }}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+              >
+                <option value="">Choose teacher…</option>
+                {[...all]
+                  .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                  .map((t: any) => (
+                    <option key={t.teacher_id} value={t.teacher_id}>
+                      {t.name}
+                      {t.grades?.length ? ` · ${t.grades.join(", ")}` : ""}
+                    </option>
+                  ))}
+              </select>
+              <select
+                value={addGrade}
+                onChange={(e) => setAddGrade(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white"
+                title="Grade for newly added students"
+              >
+                {["PK", "K", "1", "2", "3"].map((g) => (
+                  <option key={g} value={g}>
+                    {g === "K" ? "Kindergarten" : g === "PK" ? "Pre-K" : `Grade ${g}`}
+                  </option>
+                ))}
+              </select>
+              <label
+                className={`inline-block text-sm font-semibold rounded-lg px-3 py-2 cursor-pointer ${
+                  addTeacher
+                    ? "bg-avocado hover:bg-avocado-dark text-white"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {addBusy ? "Adding…" : "⬆ Upload list"}
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={onAddStudents}
+                  className="hidden"
+                  disabled={addBusy || !addTeacher}
+                />
+              </label>
+            </div>
+            {addMsg && (
+              <div className="text-xs text-gray-600 mt-2">{addMsg}</div>
+            )}
           </div>
         )}
 
