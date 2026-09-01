@@ -1498,33 +1498,65 @@ def generate_enrichment_packet(standards: list, grade: str,
         client = anthropic.Anthropic(api_key=settings.ai_api_key)
         std_ctx = _std_context(standards)
         model_hint = "; ".join(
-            f"{s.get('code','')} -> {suggest_di_model(s.get('code',''), s.get('description',''))}"
+            f"{s.get('code','')} -> {suggest_di_model(s.get('code',''), s.get('description',''), grade)}"
             for s in standards) or model
+        young = (grade or "").upper() in ("PK", "K", "1")
+        band = ("Extend & explore — within grade" if young
+                else "Above grade — Dig Deeper")
+        if young:
+            rigor = (
+                f"RIGOR: STAY WITHIN the standard and WITHIN grade-level numbers — do "
+                f"NOT go above grade. These are Grade {grade} kids who JUST took the "
+                f"first topic test, so keep numbers in the SAME small range the test "
+                f"used (for Kinder Topic 1 that is 0-5 — never higher). Enrichment "
+                f"here means DEEPER, MORE VARIED practice at the SAME level, not "
+                f"harder: count different sets of objects, show the same number a "
+                f"different way (a five-frame, then fingers, then objects), match a "
+                f"number to a set, one more / one less within the range, and subitize "
+                f"(say how many without counting). Keep it playful, concrete, and "
+                f"hands-on. NEVER multi-step reasoning, big numbers, 'prove it another "
+                f"way', or anything above grade.\n\n")
+            build = (
+                f"Build ONE short day: watch_it (a worked count example in the tested "
+                f"range), try_it (one guided count problem with 1-2 tiny steps), and "
+                f"on_your_own with just 3-4 simple, varied count problems. Use the "
+                f"five_frame or counters model; numbers 0-5 for Kinder Topic 1. Give "
+                f"an 'answer' for each. Include 1-2 gentle OPM checks.\n\n")
+        else:
+            rigor = (
+                f"RIGOR: ABOVE grade level. These kids have the basics, so PUSH them: "
+                f"multi-step problems, problems that combine BOTH benchmarks at once, "
+                f"'explain your thinking', 'prove it another way', 'find the mistake', "
+                f"open-ended tasks with more than one answer, and 'create your own "
+                f"problem for a friend'. Bigger numbers than the tested grade, and "
+                f"reasoning over recall. NEVER a plain recall drill.\n\n")
+            build = (
+                f"Build ONE day with gradual release: watch_it (a worked above-grade "
+                f"example showing the reasoning), try_it (one guided multi-step "
+                f"challenge with 2-3 student steps), and on_your_own with 6-8 rich "
+                f"challenge problems spanning the benchmarks (tag each with its "
+                f"'standard' code). Include 2-3 stretch OPM checks.\n\n")
         prompt = (
-            f"You are an elementary math coach writing ONE student ENRICHMENT / 'Dig "
-            f"Deeper' packet for Grade {grade} for the students who are ALREADY "
-            f"PROFICIENT (all Green). They work it at a 30-minute teacher-led "
-            f"center. NO teacher script — write everything TO THE STUDENT.\n\n"
-            f"COVER ALL of these benchmarks TOGETHER in the one packet (mix and "
-            f"connect them — do NOT reteach; extend):\n{std_ctx}\n\n"
-            f"RIGOR: ABOVE grade level. These kids have the basics, so PUSH them: "
-            f"multi-step problems, problems that combine BOTH benchmarks at once, "
-            f"'explain your thinking', 'prove it another way', 'find the mistake', "
-            f"open-ended tasks with more than one answer, and 'create your own "
-            f"problem for a friend'. Bigger numbers than the tested grade, and "
-            f"reasoning over recall. NEVER a plain recall drill.\n\n"
-            f"TIER 2 academic words to weave in: {', '.join(tier2 or [])}\n\n"
-            f"Build ONE day with gradual release: watch_it (a worked above-grade "
-            f"example showing the reasoning), try_it (one guided multi-step challenge "
-            f"with 2-3 student steps), and on_your_own with 6-8 rich challenge "
-            f"problems spanning the benchmarks (tag each with its 'standard' code). "
-            f"Most enrichment problems are constructed-response, so set "
+            f"You are an elementary math coach writing ONE student ENRICHMENT packet "
+            f"for Grade {grade} for the students who are ALREADY PROFICIENT (all "
+            f"Green). They work it at a 30-minute teacher-led center. NO teacher "
+            f"script — write everything TO THE STUDENT.\n\n"
+            f"Extend these benchmarks — do NOT reteach, but stay ON these standards:\n"
+            f"{std_ctx}\n\n"
+            + rigor
+            + f"TIER 2 academic words to weave in: {', '.join(tier2 or [])}\n\n"
+            + build
+            + f"Most enrichment problems are constructed-response, so set "
             f"\"show_model\": false and give an 'answer' (or a sample response for "
             f"open-ended ones) — add a visual only where it truly helps by setting "
             f"\"model\" and \"value\" on that problem (models: {model_hint}). For "
-            f"'array' use \"rows\"/\"cols\"; 'equal_teams' use \"a\"/\"b\"; "
-            f"'number_line' use \"value\"/\"max\". Include 2-3 stretch OPM checks.\n\n"
-            f"Return ONLY a JSON array with ONE object matching:\n{_ENRICH_SCHEMA}\n{_PLAIN}"
+            f"'array' use \"rows\"/\"cols\"; 'equal_teams'/'equal_groups' use "
+            f"\"a\"/\"b\"; 'number_line' use \"value\"/\"max\"; 'five_frame'/"
+            f"'counters' use \"value\".\n\n"
+            + ("KINDERGARTEN RULE: numbers 0-5 only, use five_frame or counters, "
+               "count by ones, never tens/base-ten or above-grade content.\n\n"
+               if (grade or "").upper() == "K" else "")
+            + f"Return ONLY a JSON array with ONE object matching:\n{_ENRICH_SCHEMA}\n{_PLAIN}"
         )
         arr, reason = _llm_json(
             client, prompt,
@@ -1535,7 +1567,7 @@ def generate_enrichment_packet(standards: list, grade: str,
             return base
         gen = arr[0] if arr else {}
         base.update({
-            "tiers": [{"tier": "Enrichment", "stars": 3, "band": "Above grade — Dig Deeper",
+            "tiers": [{"tier": "Enrichment", "stars": 3, "band": band,
                        "tlc_sessions": 1, "days": gen.get("days", []),
                        "opm": gen.get("opm", [])}],
             "ai_generated": True, "generated_by": settings.ai_model})

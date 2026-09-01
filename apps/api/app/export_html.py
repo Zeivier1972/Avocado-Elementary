@@ -511,10 +511,14 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
                f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')
     if enrich:
-        out.append('<div class="missed" style="border-left-color:#117A65;">'
-                   '<b>You already know this — now go deeper. 🚀</b> These challenges '
-                   'stretch you above grade level: take your time, show your thinking, '
-                   'and try more than one way.</div>')
+        young = str(packet.get("grade_level", "")).upper() in ("PK", "K", "1")
+        msg = ("<b>You are a math star! ⭐</b> Keep practicing these in fun new "
+               "ways — count carefully and show what you know."
+               if young else
+               "<b>You already know this — now go deeper. 🚀</b> These challenges "
+               "stretch you above grade level: take your time, show your thinking, "
+               "and try more than one way.")
+        out.append(f'<div class="missed" style="border-left-color:#117A65;">{msg}</div>')
     if missed and not enrich:
         items = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
         out.append(f'<div class="missed"><b>We are fixing the questions the class missed most:</b> {items}. '
