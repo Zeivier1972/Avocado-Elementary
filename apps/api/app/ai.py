@@ -1266,10 +1266,16 @@ _DI_MODELS = ("ten_frame", "pairing", "base_ten", "array", "number_line",
               "equal_teams", "bar_model", "none")
 
 
-def suggest_di_model(code: str, description: str) -> str:
-    """A sensible default visual model for a benchmark, from its strand + words."""
+def suggest_di_model(code: str, description: str, grade: str = "") -> str:
+    """A sensible default visual model for a benchmark, from its strand + words.
+    Grade-aware: Kindergarten counts by ONES to 5, so it uses five-frames /
+    countable objects — never ten-frames or base-ten (no grouping by ten yet)."""
     c = (code or "").upper()
     d = (description or "").lower()
+    if (grade or "").upper() == "K":
+        # K Topic assessments are count-to-5: a set of counters in a FIVE-frame,
+        # or countable objects. Match the test — never tens/base-ten.
+        return "five_frame"
     if "NSO.1" in c or "place value" in d or "hundreds" in d or "tens and ones" in d:
         return "base_ten"
     if "even" in d or "odd" in d:
@@ -1314,7 +1320,7 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
     students with autism (predictable structure, literal language, task-analysis
     checklists, fewer items, answer frames, a clear finish line)."""
     code = standard.get("code", "")
-    model = suggest_di_model(code, standard.get("description", ""))
+    model = suggest_di_model(code, standard.get("description", ""), grade)
     base = {"standard": code, "description": standard.get("description", ""),
             "grade_level": grade, "model": model, "asd": asd,
             "tiers": [], "ai_generated": False}
@@ -1363,10 +1369,18 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"equal_teams, for '3 groups of 2'.\n"
             f"  - equal_teams: TWO equal addends a + b (even/odd only) — \"a\",\"b\"\n"
             f"  - number_line: skip-counting / jumps to a total — \"value\",\"max\"\n"
+            f"  - five_frame: a row of 5 cells with counters — COUNT TO 5 (Kinder) — \"value\" (0-5)\n"
+            f"  - counters: just N countable objects, no frame — count by ones — \"value\"\n"
             f"  - ten_frame: counts/sums within 20 — \"value\" (0-20)\n"
             f"  - base_ten: place value, tens & ones — \"value\"\n"
             f"  - pairing: even/odd as pairs — \"value\" (0-30)\n"
-            f"MATCH THE TEST: the day's model MUST be the SAME representation the "
+            + ("KINDERGARTEN RULE (these kids are NOT counting by tens yet): use "
+               "ONLY 'five_frame' or 'counters', numbers 0-5, and count-the-objects "
+               "problems (starfish, cars, frogs…) that ask 'how many?'. NEVER a "
+               "ten_frame, base_ten, or any grouping into tens. The test shows a set "
+               "of red counters in a FIVE-frame — mirror that exactly.\n"
+               if (grade or "").upper() == "K" else "")
+            + f"MATCH THE TEST: the day's model MUST be the SAME representation the "
             f"MOST-MISSED items above use — arrays for array/row items, a number line "
             f"for skip-counting, equal groups for repeated addition, a ten-frame for "
             f"within-20 sums, base-ten for place value. Look at how those missed items "
@@ -1470,7 +1484,8 @@ def generate_enrichment_packet(standards: list, grade: str,
     codes = [s.get("code", "") for s in standards if s.get("code")]
     label = " + ".join(codes) if codes else "Enrichment"
     model = suggest_di_model(codes[0] if codes else "",
-                             standards[0].get("description", "") if standards else "")
+                             standards[0].get("description", "") if standards else "",
+                             grade)
     base = {"standard": label, "description": "Dig Deeper — enrichment challenge",
             "grade_level": grade, "model": model, "enrichment": True,
             "tiers": [], "ai_generated": False}

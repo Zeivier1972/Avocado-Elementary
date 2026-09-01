@@ -18,6 +18,7 @@ import tempfile
 GREEN = "#BFE3A0"
 PINK = "#F4B6AC"
 FRAME = "#B9C2AE"
+RED_CTR = "#E4322B"  # solid red counters, matching the K topic-test five-frames
 
 
 def _i(v, default=0):
@@ -50,6 +51,54 @@ def _ten_frame(n: int, filled=True) -> str:
                 cy = oy + 21 + row * 40
                 parts.append(f'<circle cx="{cx}" cy="{cy}" r="12" fill="{GREEN}"/>')
                 placed += 1
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _five_frame(n: int) -> str:
+    """A FIVE-frame (a row of 5 cells) with red counters — the exact Kinder
+    representation on the Topic test (count to 5). Numbers 6-10 use two rows of
+    5. Kids count by ONES; there is no grouping by ten."""
+    n = max(0, min(10, n))
+    rows = 1 if n <= 5 else 2
+    cw, ch = 40, 44
+    W, H = 5 * cw + 2, rows * ch + 2
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+             f'aria-label="five frame showing {n}">']
+    placed = 0
+    for r in range(rows):
+        oy = r * ch + 1
+        parts.append(f'<rect x="1" y="{oy}" width="{5*cw}" height="{ch}" fill="#fff" '
+                     f'stroke="{FRAME}" stroke-width="2"/>')
+        for k in range(1, 5):
+            x = 1 + k * cw
+            parts.append(f'<line x1="{x}" y1="{oy}" x2="{x}" y2="{oy+ch}" '
+                         f'stroke="{FRAME}" stroke-width="1.5"/>')
+        for c in range(5):
+            if placed < n:
+                cx = 1 + c * cw + cw / 2
+                parts.append(f'<circle cx="{cx:.0f}" cy="{oy+ch/2:.0f}" r="13" '
+                             f'fill="{RED_CTR}"/>')
+                placed += 1
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _counters(n: int) -> str:
+    """Just n countable objects (red dots), no frame — pure count-by-ones for the
+    youngest kids. Wraps at 5 per row."""
+    n = max(0, min(20, n))
+    per = 5
+    rows = max(1, (n + per - 1) // per)
+    sp = 34
+    W = per * sp + 8
+    H = rows * sp + 8
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+             f'aria-label="{n} counters">']
+    for i in range(n):
+        cx = 8 + (i % per) * sp + 6
+        cy = 8 + (i // per) * sp + 6
+        parts.append(f'<circle cx="{cx}" cy="{cy}" r="12" fill="{RED_CTR}"/>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -243,6 +292,10 @@ def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
     if not isinstance(spec, dict):
         return ""
     try:
+        if model == "five_frame":
+            return _five_frame(_val(spec))
+        if model == "counters":
+            return _counters(_val(spec))
         if model == "ten_frame":
             return _ten_frame(_val(spec))
         if model == "pairing":
