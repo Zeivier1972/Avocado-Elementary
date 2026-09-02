@@ -2018,8 +2018,28 @@ def _form_number_ceiling(db, form) -> int | None:
     return max(nums) if nums else None
 
 
+# When a test is picture-based (e.g. a Kindergarten counting test), its PDF has
+# almost no extractable number text, so _form_number_ceiling returns None and the
+# generator would otherwise invent numbers far above grade (e.g. "29 + 1 = 30" for
+# Kinder). These conservative per-grade caps keep an un-detected test bounded to a
+# sane range; the teacher can always raise/lower it with the manual override.
+_GRADE_CEILING = {"PK": 5, "K": 5, "1": 20, "2": 100, "3": 1000}
+
+
+def _effective_number_max(auto: int | None, override: int | None,
+                          grade: str) -> int | None:
+    """Priority: teacher's explicit override -> number detected on the test ->
+    a conservative grade default (so a picture test is never unbounded)."""
+    if override and override > 0:
+        return override
+    if auto and auto > 0:
+        return auto
+    return _GRADE_CEILING.get((grade or "").upper())
+
+
 def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
-                       teacher: str = "", asd: bool = False):
+                       teacher: str = "", asd: bool = False,
+                       number_max_override: int | None = None):
     """Background generation of the three-tier DI packet (own DB session). When
     teacher is set, everything (most-missed + tier groups) is scoped to THAT
     class, so each teacher gets a packet for their own class's deficiencies. When
@@ -2056,7 +2076,8 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
                     User.name.in_(names)).all()
                 if any((u.scope or {}).get("asd") for u in flagged):
                     asd = True
-        number_max = _form_number_ceiling(db, f)
+        auto_max = _form_number_ceiling(db, f)
+        number_max = _effective_number_max(auto_max, number_max_override, grade)
         # The ACTUAL test questions for THIS standard (stem already includes the
         # answer choices), so the packet ADAPTS real items instead of inventing.
         real_items = []
@@ -2073,6 +2094,8 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
                                      asd=asd, number_max=number_max,
                                      real_items=real_items[:12])
         packet["items_captured"] = len(real_items)
+        packet["number_max"] = number_max  # the ceiling actually used (shown in UI)
+        packet["number_max_auto"] = auto_max  # what was detected from the test text
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
         packet["teacher"] = teacher
         # Layer 2: target the class's most-missed questions ACROSS ALL standards
@@ -2158,7 +2181,8 @@ def _enrichment_student_count(db, f: AssessmentForm, teacher: str = "") -> int:
 
 
 def _run_enrichment_packet_job(packet_id: str, grade: str, form_id: str,
-                               teacher: str = ""):
+                               teacher: str = "",
+                               number_max_override: int | None = None):
     """Background generation of the ENRICHMENT / Dig Deeper packet for an all-Green
     class (or grade-wide), covering every evidence-backed benchmark on the test at
     above-grade rigor."""
@@ -2174,8 +2198,11 @@ def _run_enrichment_packet_job(packet_id: str, grade: str, form_id: str,
         standards = _enrichment_standards(db, f, teacher) if f else \
             _resolve_standards(db, [rec.standard] if rec.standard else [])
         tier2 = [e["word"] for e in tier2_for_standards(standards)]
+        number_max = _effective_number_max(
+            _form_number_ceiling(db, f), number_max_override, grade)
         packet = generate_enrichment_packet(
-            standards, grade, tier2, number_max=_form_number_ceiling(db, f))
+            standards, grade, tier2, number_max=number_max)
+        packet["number_max"] = number_max
         packet["teacher"] = teacher
         n = _enrichment_student_count(db, f, teacher) if f else 0
         for t in packet.get("tiers", []):
@@ -2211,6 +2238,7 @@ class _DiPacketReq(BaseModel):
     teacher: str = ""  # "" = grade-wide; else target this class's deficiencies
     enrichment: bool = False  # True = Dig Deeper packet for the all-Green kids
     asd: bool = False  # True = adapt the packet for a class of students with autism
+    number_max: int | None = None  # cap the biggest number used (overrides auto)
 
 
 @router.get("/di-grouping")
@@ -2249,10 +2277,10 @@ def create_di_packets(
     db.commit()
     if req.enrichment:
         background.add_task(_run_enrichment_packet_job, rec.id, req.grade,
-                            req.form_id, req.teacher)
+                            req.form_id, req.teacher, req.number_max)
     else:
         background.add_task(_run_di_packet_job, rec.id, req.grade, req.standard,
-                            req.form_id, req.teacher, req.asd)
+                            req.form_id, req.teacher, req.asd, req.number_max)
     audit(db, actor=user, action="generate", entity_type="di_packet",
           entity_id=rec.id, purpose="di_packets")
     return {"packet_id": rec.id, "status": "generating"}

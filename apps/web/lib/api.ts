@@ -224,12 +224,15 @@ export const api = {
     form_id = "",
     teacher = "",
     enrichment = false,
-    asd = false
+    asd = false,
+    number_max: number | null = null
   ) =>
     req(`/coach/di-packets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grade, standard, form_id, teacher, enrichment, asd }),
+      body: JSON.stringify({
+        grade, standard, form_id, teacher, enrichment, asd, number_max,
+      }),
     }),
   getDiPackets: (id: string) => req(`/coach/di-packets/${id}`),
   diGrouping: (form_id: string) =>

@@ -31,6 +31,17 @@ function DiFocusInner() {
   const [packetBusy, setPacketBusy] = useState(false);
   const [asd, setAsd] = useState(false);
   const [asdLocked, setAsdLocked] = useState(false);
+  // Biggest number the packet may use. Picture-based tests (e.g. Kinder counting)
+  // have no readable numbers, so we can't always auto-detect the range — this lets
+  // the teacher set it (K counts to 5, etc.) so problems never go above the topic.
+  const gradeCeiling: Record<string, string> = {
+    PK: "5", K: "5", "1": "20", "2": "100", "3": "1000",
+  };
+  const [numMax, setNumMax] = useState<string>("");
+  useEffect(() => {
+    setNumMax(gradeCeiling[(grade || "").toUpperCase()] ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grade]);
 
   // Remember the ASD setting per class (per teacher) on this device, so the
   // coach doesn't have to re-tick it for Nieves / Harrison / Persons each time.
@@ -55,7 +66,11 @@ function DiFocusInner() {
     setPacketBusy(true);
     setPackets(null);
     try {
-      const r = await api.createDiPackets(grade, standard, formId, teacher, enrich, asd);
+      const nm = numMax.trim() ? parseInt(numMax, 10) : null;
+      const r = await api.createDiPackets(
+        grade, standard, formId, teacher, enrich, asd,
+        Number.isFinite(nm as number) ? nm : null
+      );
       setPacketId(r.packet_id);
       // Poll until ready (DI packet is one AI call, usually under a minute).
       for (let i = 0; i < 60; i++) {
@@ -281,6 +296,23 @@ function DiFocusInner() {
                     </span>
                   </label>
                 )}
+                <label className="mt-2 flex items-center gap-2 text-sm text-gray-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                  <span>
+                    🔢 <b>Biggest number</b> to use
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={numMax}
+                    onChange={(e) => setNumMax(e.target.value)}
+                    placeholder="auto"
+                    className="w-20 rounded-md border border-amber-200 px-2 py-1 text-sm"
+                  />
+                  <span className="text-gray-500">
+                    keeps problems on-topic (Kinder = 5). Picture tests can't be
+                    auto-read, so set it here.
+                  </span>
+                </label>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -347,8 +379,20 @@ function DiFocusInner() {
             {packets?.tiers?.length > 0 && (
               <>
                 <div className="text-xs text-gray-500 mt-4">
-                  Model: <b>{(packets.model || "").replace("_", " ")}</b> · click{" "}
-                  <b>Open / print</b> for the full student pages with visuals.
+                  Model: <b>{(packets.model || "").replace("_", " ")}</b>
+                  {packets.number_max ? (
+                    <>
+                      {" "}· numbers <b>0–{packets.number_max}</b>
+                      {!packets.items_captured && (
+                        <span className="text-amber-700">
+                          {" "}
+                          (test images couldn&apos;t be read — set the range above if
+                          this is wrong)
+                        </span>
+                      )}
+                    </>
+                  ) : null}{" "}
+                  · click <b>Open / print</b> for the full student pages with visuals.
                 </div>
                 <div className="grid md:grid-cols-3 gap-4 mt-2">
                   {packets.tiers.map((t: any) => {
