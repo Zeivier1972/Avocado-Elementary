@@ -1310,7 +1310,7 @@ _DI_PACKET_SCHEMA = (
 
 def generate_di_packets(standard: dict, most_missed: list, grade: str,
                         tiers: list, tier2: list | None = None,
-                        asd: bool = False) -> dict:
+                        asd: bool = False, number_max: int | None = None) -> dict:
     """Generate the three rotation-tier DI packets (Intensive / Cusp / Strategic)
     as STUDENT-FACING packets, grounded in the B1G-M benchmark AND the most-missed
     test questions. Each tier is split into DAYS (its TLC count: Intensive/Cusp = 2,
@@ -1343,6 +1343,11 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"{grade} on ONE benchmark. Kids work these at a 30-minute teacher-led "
             f"center. NO teacher script — write everything TO THE STUDENT.\n\n"
             f"TARGET BENCHMARK — {code}: {standard.get('description','')}\n"
+            + (f"NUMBER RANGE — HARD LIMIT: this test only used numbers up to "
+               f"{number_max}. EVERY number in EVERY statement, step, problem, "
+               f"choice and OPM must be between 0 and {number_max}. Never use a "
+               f"number larger than {number_max}.\n" if number_max else "")
+            +
             f"CRITICAL: EVERY problem, in EVERY tier and EVERY section (watch_it, "
             f"try_it, on_your_own, OPM), MUST assess THIS EXACT benchmark ({code}). "
             f"Differentiate ONLY by number size and scaffolding (Intensive = smaller "
@@ -1374,15 +1379,14 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"  - ten_frame: counts/sums within 20 — \"value\" (0-20)\n"
             f"  - base_ten: place value, tens & ones — \"value\"\n"
             f"  - pairing: even/odd as pairs — \"value\" (0-30)\n"
-            + ("KINDERGARTEN RULE — ABSOLUTE AND NON-NEGOTIABLE: this class was "
-               "tested ONLY on numbers 0-5. EVERY number in EVERY statement, step, "
-               "problem, choice and OPM must be 0-5 — never larger. Use ONLY "
-               "'five_frame' or 'counters', and 'count the objects / how many?' "
-               "problems (starfish, cars, frogs…). NEVER use a two-digit number, "
-               "never count to 10/20/30, never 'crossing tens' / 'a new ten' / place "
-               "value / tens and ones, and never one-more/one-less or count-backward "
-               "above 5. If any number above 5 appears anywhere, the packet is WRONG. "
-               "The test shows a set of red counters in a FIVE-frame — mirror that.\n"
+            + ("KINDERGARTEN RULE — ABSOLUTE: stay inside the NUMBER RANGE above "
+               + (f"(0-{number_max}) " if number_max else "(the numbers this test "
+                  "used — for Topic 1 that is 0-5) ")
+               + "for EVERY number. Use ONLY 'five_frame' or 'counters', and 'count "
+               "the objects / how many?' problems (starfish, cars, frogs…). NEVER "
+               "'crossing tens' / 'a new ten' / place value / tens and ones, and "
+               "never go past the test's largest number. The test shows a set of red "
+               "counters in a FIVE-frame — mirror that.\n"
                if (grade or "").upper() == "K" else "")
             + f"MATCH THE TEST: the day's model MUST be the SAME representation the "
             f"MOST-MISSED items above use — arrays for array/row items, a number line "
@@ -1479,7 +1483,8 @@ _ENRICH_SCHEMA = (
 
 
 def generate_enrichment_packet(standards: list, grade: str,
-                               tier2: list | None = None) -> dict:
+                               tier2: list | None = None,
+                               number_max: int | None = None) -> dict:
     """Generate ONE student-facing ENRICHMENT / 'Dig Deeper' packet for the high
     (all-Green) kids, covering ALL the given benchmarks together at ABOVE-GRADE
     rigor — multi-step problems, explain/prove your thinking, open-ended and
@@ -1547,6 +1552,9 @@ def generate_enrichment_packet(standards: list, grade: str,
             f"script — write everything TO THE STUDENT.\n\n"
             f"Extend these benchmarks — do NOT reteach, but stay ON these standards:\n"
             f"{std_ctx}\n\n"
+            + (f"NUMBER RANGE — HARD LIMIT: the test used numbers only up to "
+               f"{number_max}. Keep EVERY number between 0 and {number_max} — never "
+               f"larger, in any part.\n\n" if number_max else "")
             + rigor
             + f"TIER 2 academic words to weave in: {', '.join(tier2 or [])}\n\n"
             + build

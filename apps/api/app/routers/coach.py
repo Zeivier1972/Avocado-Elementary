@@ -2000,6 +2000,24 @@ def _di_students_by_tier(db, f: AssessmentForm, standard: str,
     return groups
 
 
+def _form_number_ceiling(db, form) -> int | None:
+    """The largest math number that appears on THIS test (from the item stems +
+    their answer choices), so DI packets never use numbers bigger than the test
+    did. Ignores 4-digit years and long ids. None if no numbers are captured."""
+    import re as _re
+    if not form:
+        return None
+    items = db.query(AssessmentItem).filter(
+        AssessmentItem.form_id == form.id).all()
+    nums = []
+    for it in items:
+        for m in _re.findall(r"\d+", it.stem or ""):
+            n = int(m)
+            if len(m) <= 3 and n <= 200:  # skip test ids / years like 2026
+                nums.append(n)
+    return max(nums) if nums else None
+
+
 def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
                        teacher: str = "", asd: bool = False):
     """Background generation of the three-tier DI packet (own DB session). When
@@ -2038,7 +2056,9 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
                     User.name.in_(names)).all()
                 if any((u.scope or {}).get("asd") for u in flagged):
                     asd = True
-        packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2, asd=asd)
+        number_max = _form_number_ceiling(db, f)
+        packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2,
+                                     asd=asd, number_max=number_max)
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
         packet["teacher"] = teacher
         # Layer 2: target the class's most-missed questions ACROSS ALL standards
@@ -2140,7 +2160,8 @@ def _run_enrichment_packet_job(packet_id: str, grade: str, form_id: str,
         standards = _enrichment_standards(db, f, teacher) if f else \
             _resolve_standards(db, [rec.standard] if rec.standard else [])
         tier2 = [e["word"] for e in tier2_for_standards(standards)]
-        packet = generate_enrichment_packet(standards, grade, tier2)
+        packet = generate_enrichment_packet(
+            standards, grade, tier2, number_max=_form_number_ceiling(db, f))
         packet["teacher"] = teacher
         n = _enrichment_student_count(db, f, teacher) if f else 0
         for t in packet.get("tiers", []):
