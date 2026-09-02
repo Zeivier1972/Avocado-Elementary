@@ -2078,48 +2078,59 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
                     asd = True
         auto_max = _form_number_ceiling(db, f)
         number_max = _effective_number_max(auto_max, number_max_override, grade)
-        # The ACTUAL test questions for THIS standard (stem already includes the
-        # answer choices), so the packet ADAPTS real items instead of inventing.
-        real_items = []
-        for form in [x for x in forms if x]:
-            for it in (db.query(AssessmentItem)
-                       .filter(AssessmentItem.form_id == form.id,
-                               AssessmentItem.standard == standard)
-                       .order_by(AssessmentItem.position).all()):
-                stem = (it.stem or "").strip()
-                if stem:
-                    real_items.append({"position": it.position, "stem": stem,
-                                       "answer": it.correct_response})
-        packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2,
-                                     asd=asd, number_max=number_max,
-                                     real_items=real_items[:12])
-        packet["items_captured"] = len(real_items)
-        packet["number_max"] = number_max  # the ceiling actually used (shown in UI)
-        packet["number_max_auto"] = auto_max  # what was detected from the test text
-        packet["test_items"] = missed[:8]  # show which missed questions we reteach
-        packet["teacher"] = teacher
-        # Layer 2: target the class's most-missed questions ACROSS ALL standards
-        # (only forms that exist), so the 'Fix the Misses' page also hits questions
-        # outside the packet's reteach standard.
-        all_missed = []
-        for form in [x for x in forms if x]:
-            all_missed.extend(_class_top_missed(db, form, teacher, limit=8))
-        all_missed.sort(key=lambda m: -m.get("missed", 0))
-        misses = generate_target_the_misses(
-            s, all_missed[:8], grade, packet.get("model", "none"))
-        # Label every cluster with the ITEM BANK'S true standard for its questions
-        # (not the model's guess), so the extra-review block and the Fix-the-Misses
-        # page detect off-standard misses reliably — the deciding factor for whether
-        # a class gets extra practice on questions outside the reteach standard.
-        pos_std = {m["position"]: (m.get("standard") or "") for m in all_missed}
-        for cl in misses:
-            for q in (cl.get("questions") or []):
-                digits = "".join(ch for ch in str(q) if ch.isdigit())
-                if digits and int(digits) in pos_std and pos_std[int(digits)]:
-                    cl["standard"] = pos_std[int(digits)]
-                    break
-        packet["target_the_misses"] = misses
-        packet["stems_captured"] = any((m.get("stem") or "").strip() for m in all_missed)
+
+        # Kindergarten counting benchmarks ('count a set / match the quantity') are
+        # fully algorithmic — we BUILD them deterministically (no AI), so the numbers
+        # always stay in range, the visuals are always correct, and it costs zero
+        # tokens. Everything else goes through the grounded AI generator.
+        from app.count_match import build_count_match_packet, is_count_match_standard
+        if is_count_match_standard(s.get("code", ""), s.get("description", ""), grade):
+            packet = build_count_match_packet(s, grade, _DI_ROTATION,
+                                              number_max=number_max)
+            packet["teacher"] = teacher
+        else:
+            # The ACTUAL test questions for THIS standard (stem already includes the
+            # answer choices), so the packet ADAPTS real items instead of inventing.
+            real_items = []
+            for form in [x for x in forms if x]:
+                for it in (db.query(AssessmentItem)
+                           .filter(AssessmentItem.form_id == form.id,
+                                   AssessmentItem.standard == standard)
+                           .order_by(AssessmentItem.position).all()):
+                    stem = (it.stem or "").strip()
+                    if stem:
+                        real_items.append({"position": it.position, "stem": stem,
+                                           "answer": it.correct_response})
+            packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2,
+                                         asd=asd, number_max=number_max,
+                                         real_items=real_items[:12])
+            packet["items_captured"] = len(real_items)
+            packet["number_max"] = number_max  # the ceiling actually used (UI)
+            packet["number_max_auto"] = auto_max  # what was detected from test text
+            packet["test_items"] = missed[:8]  # which missed questions we reteach
+            packet["teacher"] = teacher
+            # Layer 2: target the class's most-missed questions ACROSS ALL standards
+            # (only forms that exist), so the 'Fix the Misses' page also hits
+            # questions outside the packet's reteach standard.
+            all_missed = []
+            for form in [x for x in forms if x]:
+                all_missed.extend(_class_top_missed(db, form, teacher, limit=8))
+            all_missed.sort(key=lambda m: -m.get("missed", 0))
+            misses = generate_target_the_misses(
+                s, all_missed[:8], grade, packet.get("model", "none"))
+            # Label every cluster with the ITEM BANK'S true standard for its
+            # questions (not the model's guess), so the extra-review block and the
+            # Fix-the-Misses page detect off-standard misses reliably.
+            pos_std = {m["position"]: (m.get("standard") or "") for m in all_missed}
+            for cl in misses:
+                for q in (cl.get("questions") or []):
+                    digits = "".join(ch for ch in str(q) if ch.isdigit())
+                    if digits and int(digits) in pos_std and pos_std[int(digits)]:
+                        cl["standard"] = pos_std[int(digits)]
+                        break
+            packet["target_the_misses"] = misses
+            packet["stems_captured"] = any(
+                (m.get("stem") or "").strip() for m in all_missed)
 
         # Attach the student groups (who is in each tier + counts), scoped to class.
         groups = _di_students_by_tier(db, f, standard, teacher) if f else {}

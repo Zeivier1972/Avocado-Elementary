@@ -103,6 +103,101 @@ def _counters(n: int) -> str:
     return "".join(parts)
 
 
+# --- Countable object glyphs (for the 'count the objects' Kinder packet) -------
+# Simple, recognizable SVG shapes drawn in a 48x48 box, tiled n-across. Drawn as
+# vector (not emoji) so they print identically in headless Chromium.
+def _glyph(kind: str) -> str:
+    k = (kind or "").rstrip("s").lower()
+    g = {
+        "sun": '<circle cx="24" cy="24" r="11" fill="#FFD21E" stroke="#E0A800"/>'
+               + "".join(
+                   f'<line x1="{24+16*math.cos(a):.0f}" y1="{24+16*math.sin(a):.0f}"'
+                   f' x2="{24+22*math.cos(a):.0f}" y2="{24+22*math.sin(a):.0f}"'
+                   f' stroke="#E0A800" stroke-width="2"/>'
+                   for a in [i*math.pi/4 for i in range(8)]),
+        "star": '<polygon points="24,4 29,18 44,18 32,27 37,42 24,33 11,42 16,27'
+                ' 4,18 19,18" fill="#FFD21E" stroke="#E0A800"/>',
+        "apple": '<path d="M24 14 C14 14 10 22 12 30 C14 40 22 44 24 44 C26 44 34 40'
+                 ' 36 30 C38 22 34 14 24 14 Z" fill="#E4322B"/>'
+                 '<rect x="23" y="8" width="2" height="8" fill="#7A4a25"/>'
+                 '<path d="M25 10 C30 6 36 8 34 13 C30 15 26 14 25 10 Z" fill="#5FA83A"/>',
+        "fish": '<ellipse cx="22" cy="24" rx="15" ry="9" fill="#F5A623"/>'
+                '<polygon points="37,24 46,16 46,32" fill="#F5A623"/>'
+                '<circle cx="15" cy="22" r="2" fill="#333"/>',
+        "flower": "".join(
+            f'<circle cx="{24+11*math.cos(a):.0f}" cy="{24+11*math.sin(a):.0f}"'
+            f' r="7" fill="#EC7CB0"/>' for a in [i*2*math.pi/6 for i in range(6)])
+            + '<circle cx="24" cy="24" r="7" fill="#FFD21E"/>',
+        "balloon": '<ellipse cx="24" cy="20" rx="13" ry="16" fill="#E4322B"/>'
+                   '<polygon points="24,36 21,40 27,40" fill="#E4322B"/>'
+                   '<line x1="24" y1="40" x2="24" y2="46" stroke="#888"/>',
+        "sailboat": '<polygon points="24,6 24,26 10,26" fill="#FFD21E"'
+                    ' stroke="#E0A800"/><line x1="24" y1="6" x2="24" y2="30"'
+                    ' stroke="#7A4a25" stroke-width="2"/>'
+                    '<polygon points="8,30 40,30 34,40 14,40" fill="#E4322B"/>',
+        "butterflie": '<ellipse cx="16" cy="18" rx="10" ry="9" fill="#7C5CEC"/>'
+                      '<ellipse cx="32" cy="18" rx="10" ry="9" fill="#7C5CEC"/>'
+                      '<ellipse cx="16" cy="31" rx="8" ry="8" fill="#B08CF0"/>'
+                      '<ellipse cx="32" cy="31" rx="8" ry="8" fill="#B08CF0"/>'
+                      '<rect x="23" y="12" width="2" height="26" fill="#333"/>',
+        "beach ball": '<circle cx="24" cy="24" r="15" fill="#fff" stroke="#333"/>'
+                      '<line x1="9" y1="24" x2="39" y2="24" stroke="#E4322B"/>'
+                      '<line x1="24" y1="9" x2="24" y2="39" stroke="#E4322B"/>'
+                      '<path d="M13 13 L35 35 M35 13 L13 35" stroke="#2E86C1"/>',
+        "turtle": '<ellipse cx="24" cy="26" rx="14" ry="10" fill="#5FA83A"'
+                  ' stroke="#3B6B22"/><circle cx="39" cy="24" r="4" fill="#5FA83A"/>'
+                  '<circle cx="12" cy="33" r="3" fill="#5FA83A"/>'
+                  '<circle cx="36" cy="33" r="3" fill="#5FA83A"/>',
+    }.get(k, '<circle cx="24" cy="24" r="13" fill="#E4322B"/>')
+    return g
+
+
+def _object_row(kind: str, n: int) -> str:
+    """n object glyphs in a row (wraps at 5), for the 'count the ___' prompt."""
+    n = max(0, min(10, n))
+    per = 5
+    rows = max(1, (n + per - 1) // per)
+    box = 52
+    W, H = per * box, rows * box
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img"'
+             f' aria-label="{n} {_esc(kind)}">']
+    for i in range(n):
+        x = (i % per) * box + 2
+        y = (i // per) * box + 2
+        parts.append(f'<g transform="translate({x},{y})">{_glyph(kind)}</g>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _count_choices(choices: list) -> str:
+    """Four labelled five-frames (A-D), each showing its number of red counters."""
+    rows = []
+    for i, c in enumerate(choices[:4]):
+        rows.append(
+            f'<div class="cchoice"><span class="clet">{_LETTERS_C[i]}.</span>'
+            f'{_five_frame(_i(c))}</div>')
+    return f'<div class="cchoices">{"".join(rows)}</div>'
+
+
+_LETTERS_C = ["A", "B", "C", "D"]
+
+
+def _count_item_html(item: dict, show_answer: bool = False, num: str = "") -> str:
+    """One count-and-match question card: the prompt, the objects to count, and
+    the four five-frame answer choices. The answer letter is a teacher key."""
+    obj = _esc(item.get("objects", "objects"))
+    n = _i(item.get("count"))
+    lead = f'<span class="qn">{_esc(num)}.</span> ' if num else ""
+    key = (f'<div class="ckey">Answer: <b>{_esc(item.get("answer"))}</b></div>'
+           if show_answer else "")
+    return (
+        '<div class="citem">'
+        f'<p class="cq">{lead}Count the {obj}. Which set of counters shows how '
+        f'many {obj}?</p>'
+        f'<div class="cobjs">{_object_row(item.get("objects"), n)}</div>'
+        f'{_count_choices(item.get("choices") or [])}{key}</div>')
+
+
 def _pairing(n: int, reveal: bool = True, per_row: int = 10) -> str:
     """Counters for even/odd, wrapped into rows so large numbers never overflow.
     reveal=True (worked example) colors even green / odd pink and draws the pairs +
@@ -389,6 +484,23 @@ _CSS = """
 .finish{margin-top:10px;background:#EAF6EA;border:1px solid #BFE3A0;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#2e7d32;}
 .opm{background:#FBEBE8;border:1px solid #EAD2CE;border-radius:20px;padding:18px 20px;margin-top:22px;border-top:8px solid #C0392B;}
 .opm h2{margin:0;font-size:20px;color:#C0392B;}.foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;}
+.ctarget{background:#EEF4E6;border:1px solid #CFE0BC;border-radius:12px;padding:10px 14px;margin-top:12px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;color:var(--brand-deep);font-size:15px;}
+.cvocab{display:flex;flex-wrap:wrap;gap:6px 16px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 14px;margin-top:8px;font-size:13px;color:var(--ink);}
+.cvocab b{color:var(--brand-deep);}
+.cnote{font-size:12px;color:var(--muted);margin:4px 0 0;font-style:italic;}
+.citem{border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff;break-inside:avoid;}
+.cq{font-family:"Baloo 2";font-weight:700;font-size:15px;margin:0 0 8px;color:var(--ink);}
+.cq .qn{color:var(--brand-deep);}
+.cobjs{display:flex;justify-content:center;padding:6px 0 12px;}
+.cobjs svg{max-width:100%;height:auto;}
+.cchoices{display:grid;gap:7px;}
+.cchoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:5px 10px;}
+.cchoice .clet{font-family:"Baloo 2";font-weight:800;font-size:16px;color:var(--ink);width:20px;flex:none;}
+.ckey{margin-top:8px;font-size:12px;color:#C0392B;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.ckeybox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-top:22px;}
+.ckeybox h2{margin:0 0 8px;font-size:18px;color:var(--ink);}
+.ckeybox .krow{font-size:13px;margin:3px 0;color:var(--ink);}
+.ckeybox .krow b{color:var(--brand-deep);}
 @media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}
 .tier,.phase-body,.opm{break-inside:auto;}.prob,.example{break-inside:avoid;}
 .phase,.day{break-after:avoid;}.band{border-radius:0;}
@@ -478,6 +590,105 @@ def _extra_review_html(packet: dict) -> str:
             f'<div class="grid">{cards}</div>')
 
 
+_CM_SECTIONS = [
+    ("i_do", "I DO — Teacher Models",
+     "Touch each object once, count aloud, say the total, then check the counters."),
+    ("we_do", "WE DO — Guided Practice",
+     "Complete together. Ask: Which counter set has the same amount?"),
+    ("cfu", "CHECK FOR UNDERSTANDING", "Student answers with minimal prompting."),
+    ("you_do", "YOU DO — Work independently",
+     "Each question and all answer choices stay together."),
+    ("exit", "EXIT SLIP", "One quick check before you finish."),
+]
+_CM_KEY_LABEL = {"i_do": "I Do", "we_do": "We Do", "cfu": "CFU",
+                 "you_do": "You Do", "exit": "Exit"}
+
+
+def _render_count_match(out: list, packet: dict) -> None:
+    """Render the deterministic count-and-match packet: target + vocab, then each
+    tier's days (I Do / We Do / CFU / You Do / Exit) and OPM, plus a teacher key."""
+    target = _esc(packet.get("target"))
+    if target:
+        out.append(f'<div class="ctarget">🎯 Target: {target}</div>')
+    vocab = packet.get("vocab") or []
+    if vocab:
+        cells = " ".join(f'<span><b>{_esc(w)}</b> = {_esc(d)}</span>' for w, d in vocab)
+        out.append(f'<div class="cvocab">{cells}</div>')
+
+    tiers = packet.get("tiers", []) or []
+    tcount = {t.get("tier"): t.get("student_count", 0) for t in tiers}
+    total = sum(tcount.values())
+    teacher = _esc(packet.get("teacher"))
+    who = teacher or "grade-wide"
+    if total:
+        chips = "".join(
+            f'<span class="cc" style="background:{_TIER_META.get(name, ("", "#888", ""))[1]}">'
+            f'{label} ×{tcount.get(name,0)}</span>'
+            for name, label in (("Intensive", "Red"), ("Cusp", "Yellow"),
+                                ("Strategic", "Green")))
+        out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
+                   f'{chips}<span class="cc" style="background:#38601F">Total ×{total}</span></div>')
+
+    key_lines = []  # teacher answer key, collected as we render
+    for ti, t in enumerate(tiers):
+        _cssname, hexc, stars = _TIER_META.get(t.get("tier"), ("blue", "#2E86C1", ""))
+        red_yellow_green = {"Intensive": "Red", "Cusp": "Yellow",
+                            "Strategic": "Green"}.get(t.get("tier"), t.get("tier"))
+        tpb = "" if ti == 0 else " pbreak"
+        out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
+        out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">'
+                   f'{stars} {_esc(red_yellow_green)}</span><h2>{_esc(t.get("band"))}</h2></div>')
+        for di, day in enumerate(t.get("days", [])):
+            dpb = "" if di == 0 else " pbreak"
+            out.append(f'<div class="day{dpb}" style="background:{hexc}">'
+                       f'Day {_esc(day.get("day"))} — {_esc(day.get("title"))}'
+                       f'<span class="small">{_esc(day.get("pacing"))}</span></div>')
+            sect = day.get("sections") or {}
+            day_key = []
+            for key, label, note in _CM_SECTIONS:
+                items = sect.get(key) or []
+                if not items:
+                    continue
+                out.append(f'<div class="phase"><span class="pn" style="background:{hexc}">'
+                           f'{"✎" if key in ("you_do","exit") else "▶"}</span>'
+                           f'<h3>{_esc(label)}</h3></div>')
+                out.append(f'<div class="phase-body"><p class="cnote">{_esc(note)}</p>')
+                if key == "you_do":
+                    cards = "".join(_count_item_html(it, num=str(i + 1))
+                                    for i, it in enumerate(items))
+                    out.append(f'<div class="grid">{cards}</div>')
+                else:
+                    out.append("".join(_count_item_html(it) for it in items))
+                out.append("</div>")
+                day_key.append(f'{_CM_KEY_LABEL[key]} '
+                               + ", ".join(it.get("answer", "?") for it in items))
+            key_lines.append(f'{red_yellow_green} Day {day.get("day")}: '
+                             + "; ".join(day_key))
+        # OPM (10 items) after the days, for Red & Yellow.
+        opm = t.get("opm") or []
+        if opm:
+            cards = "".join(_count_item_html(it, num=str(i + 1))
+                            for i, it in enumerate(opm))
+            out.append(f'<div class="opm pbreak"><h2>OPM — 10-item Progress Check ✅</h2>'
+                       f'<p class="cnote">Administer once, after Day 2.</p>'
+                       f'<div class="grid" style="margin-top:10px;">{cards}</div>'
+                       f'<p class="frame" style="margin-top:12px;">Score: ______ / 10</p></div>')
+            key_lines.append(f'{red_yellow_green} OPM: '
+                             + ", ".join(f'{i+1}-{it.get("answer","?")}'
+                                         for i, it in enumerate(opm)))
+        out.append('</section>')
+
+    # Teacher answer key (all tiers), on its own page.
+    if key_lines:
+        rows = "".join(f'<div class="krow">{_esc(line)}</div>' for line in key_lines)
+        out.append(f'<div class="ckeybox pbreak"><h2>Teacher Answer Key</h2>{rows}</div>')
+
+    grade = _esc(packet.get("grade_level"))
+    std = _esc(packet.get("standard"))
+    out.append(f'<div class="foot">Avocado · Grade {grade} · {std} — Count &amp; match '
+               f'the set of counters · Red &amp; Yellow = 2 days + OPM · Green = 1 day</div>')
+
+
 def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     model = packet.get("model", "none")
     std = _esc(packet.get("standard"))
@@ -510,6 +721,14 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     out.append(f'<div class="band"><div><div class="eyebrow">{eyebrow}</div>'
                f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
                f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')
+
+    # Deterministic 'count the objects -> match the set of counters' packet: its
+    # own layout (I Do / We Do / CFU / You Do / Exit + OPM), no AI models.
+    if packet.get("format") == "count_match":
+        _render_count_match(out, packet)
+        out.append('</div></body></html>')
+        return "".join(out)
+
     if enrich:
         young = str(packet.get("grade_level", "")).upper() in ("PK", "K", "1")
         msg = ("<b>You are a math star! ⭐</b> Keep practicing these in fun new "
