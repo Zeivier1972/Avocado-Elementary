@@ -1310,7 +1310,8 @@ _DI_PACKET_SCHEMA = (
 
 def generate_di_packets(standard: dict, most_missed: list, grade: str,
                         tiers: list, tier2: list | None = None,
-                        asd: bool = False, number_max: int | None = None) -> dict:
+                        asd: bool = False, number_max: int | None = None,
+                        real_items: list | None = None) -> dict:
     """Generate the three rotation-tier DI packets (Intensive / Cusp / Strategic)
     as STUDENT-FACING packets, grounded in the B1G-M benchmark AND the most-missed
     test questions. Each tier is split into DAYS (its TLC count: Intensive/Cusp = 2,
@@ -1336,13 +1337,29 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"- Q{m.get('position')}: {(m.get('stem') or '').strip()[:220]} "
             f"(answer {m.get('correct_response','')}, missed by {m.get('miss_pct','')}%)"
             for m in (most_missed or [])[:8]) or "(no item stems captured)"
+        real_txt = "\n".join(
+            f"- Q{it.get('position')}: {(it.get('stem') or '').strip()[:300]} "
+            f"(correct: {it.get('answer','')})"
+            for it in (real_items or [])[:12])
         day_map = "\n".join(
             f"- {t['name']} ({t['band']}): {t['tlc_sessions']} day(s)" for t in tiers)
+        source_block = (
+            f"THE ACTUAL TEST QUESTIONS FOR THIS STANDARD — build the packet by "
+            f"ADAPTING THESE, do NOT invent new problem types:\n{real_txt}\n"
+            f"Every watch_it, try_it and on_your_own MUST be a close version of one "
+            f"of these real questions — SAME context/objects, SAME format, SAME kind "
+            f"of picture and answer choices, SAME number range. Change ONLY the "
+            f"specific quantity (and the object) so it is fresh practice, never a "
+            f"photocopy. If a question shows a set and asks 'how many?', yours does "
+            f"too. Do NOT introduce a skill, number, or representation that is not in "
+            f"these items.\n\n"
+            if real_txt else "")
         prompt = (
             f"You are an elementary math coach writing STUDENT DI PACKETS for Grade "
             f"{grade} on ONE benchmark. Kids work these at a 30-minute teacher-led "
             f"center. NO teacher script — write everything TO THE STUDENT.\n\n"
-            f"TARGET BENCHMARK — {code}: {standard.get('description','')}\n"
+            + source_block
+            + f"TARGET BENCHMARK — {code}: {standard.get('description','')}\n"
             + (f"NUMBER RANGE — HARD LIMIT: this test only used numbers up to "
                f"{number_max}. EVERY number in EVERY statement, step, problem, "
                f"choice and OPM must be between 0 and {number_max}. Never use a "

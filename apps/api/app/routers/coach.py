@@ -2057,8 +2057,21 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
                 if any((u.scope or {}).get("asd") for u in flagged):
                     asd = True
         number_max = _form_number_ceiling(db, f)
+        # The ACTUAL test questions for THIS standard (stem already includes the
+        # answer choices), so the packet ADAPTS real items instead of inventing.
+        real_items = []
+        for form in [x for x in forms if x]:
+            for it in (db.query(AssessmentItem)
+                       .filter(AssessmentItem.form_id == form.id,
+                               AssessmentItem.standard == standard)
+                       .order_by(AssessmentItem.position).all()):
+                stem = (it.stem or "").strip()
+                if stem:
+                    real_items.append({"position": it.position, "stem": stem,
+                                       "answer": it.correct_response})
         packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2,
-                                     asd=asd, number_max=number_max)
+                                     asd=asd, number_max=number_max,
+                                     real_items=real_items[:12])
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
         packet["teacher"] = teacher
         # Layer 2: target the class's most-missed questions ACROSS ALL standards
