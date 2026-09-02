@@ -148,6 +148,13 @@ def _glyph(kind: str) -> str:
                   ' stroke="#3B6B22"/><circle cx="39" cy="24" r="4" fill="#5FA83A"/>'
                   '<circle cx="12" cy="33" r="3" fill="#5FA83A"/>'
                   '<circle cx="36" cy="33" r="3" fill="#5FA83A"/>',
+        "frog": '<ellipse cx="24" cy="30" rx="15" ry="11" fill="#5FA83A"'
+                ' stroke="#3B6B22"/><circle cx="16" cy="14" r="6" fill="#5FA83A"'
+                ' stroke="#3B6B22"/><circle cx="32" cy="14" r="6" fill="#5FA83A"'
+                ' stroke="#3B6B22"/><circle cx="16" cy="14" r="2.5" fill="#111"/>'
+                '<circle cx="32" cy="14" r="2.5" fill="#111"/>'
+                '<path d="M17 33 Q24 39 31 33" fill="none" stroke="#2c5016"'
+                ' stroke-width="2"/>',
     }.get(k, '<circle cx="24" cy="24" r="13" fill="#E4322B"/>')
     return g
 
@@ -169,6 +176,9 @@ def _object_row(kind: str, n: int) -> str:
     return "".join(parts)
 
 
+_LETTERS_C = ["A", "B", "C", "D"]
+
+
 def _count_choices(choices: list) -> str:
     """Four labelled five-frames (A-D), each showing its number of red counters."""
     rows = []
@@ -179,17 +189,46 @@ def _count_choices(choices: list) -> str:
     return f'<div class="cchoices">{"".join(rows)}</div>'
 
 
-_LETTERS_C = ["A", "B", "C", "D"]
+def _numeral_choices(choices: list) -> str:
+    """Four labelled numeral cards (A-D) — the 'how many?' answer style."""
+    cells = []
+    for i, c in enumerate(choices[:4]):
+        cells.append(f'<div class="ncard"><span class="nnum">{_esc(_i(c))}</span>'
+                     f'<span class="nlet">{_LETTERS_C[i]}</span></div>')
+    return f'<div class="nchoices">{"".join(cells)}</div>'
+
+
+def _order_choices(sequences: list) -> str:
+    """Labelled number-string choices (A, B, …) — the 'put in order' answer style."""
+    rows = []
+    for i, seq in enumerate(sequences[:4]):
+        nums = " ".join(f'<span class="onum">{_esc(x)}</span>' for x in seq)
+        rows.append(f'<div class="ochoice"><span class="clet">{_LETTERS_C[i]}.</span>'
+                    f'<span class="oseq">{nums}</span></div>')
+    return f'<div class="ochoices">{"".join(rows)}</div>'
 
 
 def _count_item_html(item: dict, show_answer: bool = False, num: str = "") -> str:
-    """One count-and-match question card: the prompt, the objects to count, and
-    the four five-frame answer choices. The answer letter is a teacher key."""
-    obj = _esc(item.get("objects", "objects"))
-    n = _i(item.get("count"))
+    """One Kinder question card, dispatched by item type. The answer letter is a
+    teacher key (shown only when show_answer)."""
     lead = f'<span class="qn">{_esc(num)}.</span> ' if num else ""
     key = (f'<div class="ckey">Answer: <b>{_esc(item.get("answer"))}</b></div>'
            if show_answer else "")
+    t = item.get("type", "count_counters")
+    obj = _esc(item.get("objects", "objects"))
+    n = _i(item.get("count"))
+    if t == "number_order":
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}{_esc(item.get("prompt"))}</p>'
+            f'{_order_choices(item.get("sequences") or [])}{key}</div>')
+    if t == "count_numeral":
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}How many {obj} are there?</p>'
+            f'<div class="cobjs">{_object_row(item.get("objects"), n)}</div>'
+            f'{_numeral_choices(item.get("choices") or [])}{key}</div>')
+    # default: count -> match the set of counters (five-frames)
     return (
         '<div class="citem">'
         f'<p class="cq">{lead}Count the {obj}. Which set of counters shows how '
@@ -496,6 +535,14 @@ _CSS = """
 .cchoices{display:grid;gap:7px;}
 .cchoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:5px 10px;}
 .cchoice .clet{font-family:"Baloo 2";font-weight:800;font-size:16px;color:var(--ink);width:20px;flex:none;}
+.nchoices{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;}
+.ncard{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 16px;min-width:56px;}
+.ncard .nnum{font-family:"Baloo 2";font-weight:800;font-size:26px;color:var(--ink);line-height:1;}
+.ncard .nlet{font-family:"Baloo 2";font-weight:800;font-size:12px;color:var(--muted);margin-top:4px;}
+.ochoices{display:grid;gap:7px;}
+.ochoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:7px 12px;}
+.ochoice .oseq{display:flex;gap:14px;}
+.ochoice .onum{font-family:"Baloo 2";font-weight:800;font-size:20px;color:var(--ink);}
 .ckey{margin-top:8px;font-size:12px;color:#C0392B;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
 .ckeybox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-top:22px;}
 .ckeybox h2{margin:0 0 8px;font-size:18px;color:var(--ink);}
