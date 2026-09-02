@@ -128,23 +128,35 @@ _DASHES = re.compile(r"_{5,}")
 
 def parse_test_questions(data: bytes) -> dict:
     """Best-effort: map question number -> its text (stem + choices). Figures in
-    the PDF are lost, but the wording is enough to pick items for DI packets."""
+    the PDF are lost, but the wording is enough to pick items for DI packets.
+
+    Handles BOTH numbering styles: '12. Which…' (period) AND the Performance
+    Matters style where the item number is a graphic badge that extracts as a
+    bare number ('1 Count the starfish…'). A question starts at a 1-2 digit
+    number followed by a capital-letter word (the stem), which avoids splitting
+    on answer choices like '1 2 3 4' or on page numbers."""
     text = _pdf_text(data)
     if not text.strip():
         return {"questions": {}}
     text = _DASHES.sub("\n", text)
     text = _HEADER_LINE.sub("", text)
-    # Split on a line that begins a numbered question ("\n12. ...").
-    parts = re.split(r"\n\s*(\d{1,2})\.\s", "\n" + text)
+    text = "\n" + text
+    pat = re.compile(r"\n\s*(\d{1,2})[.)]?\s+(?=[A-Z][a-z])")
+    matches = list(pat.finditer(text))
     questions: dict = {}
-    # parts = [pre, num, body, num, body, ...]
-    for i in range(1, len(parts) - 1, 2):
+    for idx, mt in enumerate(matches):
         try:
-            num = int(parts[i])
+            num = int(mt.group(1))
         except ValueError:
             continue
-        body = re.sub(r"\s+", " ", parts[i + 1]).strip()
+        start = mt.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+        body = re.sub(r"\s+", " ", text[start:end]).strip()
         body = body.split("You have reached the end")[0].strip()
-        if body and (num not in questions or len(body) > len(questions[num])):
+        # Drop a leading 'Name ___ Date ___' and any leading punctuation/underscores.
+        body = re.sub(r"^\s*Name\b.*?Date\b\S*\s*", "", body, flags=re.I)
+        body = re.sub(r"^[\W_]+", "", body).strip()
+        if body and len(body) > 8 and (num not in questions or
+                                       len(body) > len(questions[num])):
             questions[num] = body[:1200]
     return {"questions": questions}

@@ -523,6 +523,12 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         items = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
         out.append(f'<div class="missed"><b>We are fixing the questions the class missed most:</b> {items}. '
                    f'These packets reteach those exact ideas.</div>')
+    if not enrich and packet.get("items_captured") == 0:
+        out.append('<div class="missed" style="border-left-color:#C0392B;">'
+                   '<b>⚠ Heads up:</b> the actual test questions for this standard '
+                   'were not found, so these problems are generic (not built from '
+                   'your test). Re-upload the topic <b>test PDF</b> with its answer '
+                   'key so the packet mirrors the real items.</div>')
     if asd:
         out.append('<div class="routine"><span>Every day we do the same steps:</span>'
                    '👀 Watch it <span class="arw">→</span> ✍️ Try it '

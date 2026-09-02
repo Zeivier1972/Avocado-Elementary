@@ -2072,6 +2072,7 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
         packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2,
                                      asd=asd, number_max=number_max,
                                      real_items=real_items[:12])
+        packet["items_captured"] = len(real_items)
         packet["test_items"] = missed[:8]  # show which missed questions we reteach
         packet["teacher"] = teacher
         # Layer 2: target the class's most-missed questions ACROSS ALL standards
