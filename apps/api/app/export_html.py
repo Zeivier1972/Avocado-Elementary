@@ -418,6 +418,77 @@ def _val(spec: dict, default=0) -> int:
     return nums[0] if nums else default
 
 
+def _bar_model(spec: dict, reveal: bool = True) -> str:
+    """Part-part-whole bar model — the core Grade-1 add/subtract picture, and an
+    ideal ASD scaffold (same structure every problem). Shows a WHOLE bar over two
+    PART boxes. The unknown box shows '?' on practice (reveal=False); the worked
+    example (reveal=True) fills every box so kids see how it solves.
+
+    Fields: whole, part_a, part_b, unknown in {"whole","a","b"} (default "whole").
+    Numbers are recovered from the problem text when the fields are missing."""
+    whole = spec.get("whole", spec.get("total"))
+    pa = spec.get("part_a", spec.get("a"))
+    pb = spec.get("part_b", spec.get("b"))
+    unknown = str(spec.get("unknown", "") or "").lower()
+    if whole is None and pa is None and pb is None:
+        nums = _ints(_ctx_text(spec))
+        if len(nums) >= 2:
+            pa, pb = nums[0], nums[1]
+            whole = pa + pb
+            unknown = unknown or "whole"
+    if not unknown:
+        unknown = "whole" if whole is None else ("a" if pa is None else
+                                                 ("b" if pb is None else "whole"))
+
+    def cell(v, is_unknown):
+        if is_unknown and not reveal:
+            return "?"
+        return "" if v is None else str(_i(v))
+
+    W, H = 320, 150
+    gp = "#EAF4E0"  # whole (green tint)
+    gs = "#4E7C2F"
+    pp = "#E4EEF7"  # parts (blue tint)
+    ps = "#2E86C1"
+    qp, qs = "#FDF0D5", "#C9880E"  # unknown highlight (amber)
+    wx, wy, ww, wh = 60, 14, 200, 46
+    ax, ay, aw, ah = 60, 92, 95, 46
+    bx = 165
+
+    def box(x, y, w, h, txt, is_unknown, fill, stroke):
+        f, s = (qp, qs) if (is_unknown and not reveal) else (fill, stroke)
+        return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="9" fill="{f}" '
+                f'stroke="{s}" stroke-width="2.5"/>'
+                f'<text x="{x + w/2:.0f}" y="{y + h/2 + 8:.0f}" text-anchor="middle" '
+                f'font-family="Baloo 2, sans-serif" font-weight="800" font-size="26" '
+                f'fill="#26302A">{_esc(txt)}</text>')
+
+    parts = [f'<svg width="100%" height="{H}" viewBox="0 0 {W} {H}" '
+             f'preserveAspectRatio="xMidYMid meet" style="max-width:340px" '
+             f'role="img" aria-label="part part whole bar model">']
+    # connectors from the whole down to each part
+    parts.append(f'<line x1="{ax+aw/2:.0f}" y1="{wy+wh}" x2="{ax+aw/2:.0f}" y2="{ay}" '
+                 f'stroke="#B9C2AE" stroke-width="2"/>')
+    parts.append(f'<line x1="{bx+aw/2:.0f}" y1="{wy+wh}" x2="{bx+aw/2:.0f}" y2="{ay}" '
+                 f'stroke="#B9C2AE" stroke-width="2"/>')
+    parts.append(box(wx, wy, ww, wh, cell(whole, unknown == "whole"),
+                     unknown == "whole", gp, gs))
+    parts.append(box(ax, ay, aw, ah, cell(pa, unknown == "a"),
+                     unknown == "a", pp, ps))
+    parts.append(box(bx, ay, aw, ah, cell(pb, unknown == "b"),
+                     unknown == "b", pp, ps))
+    # labels
+    parts.append(f'<text x="{wx+ww/2:.0f}" y="10" text-anchor="middle" '
+                 f'font-family="Atkinson Hyperlegible, sans-serif" font-size="10" '
+                 f'fill="#6B7A6E">whole</text>')
+    for lx in (ax, bx):
+        parts.append(f'<text x="{lx+aw/2:.0f}" y="{ay+ah+13:.0f}" text-anchor="middle" '
+                     f'font-family="Atkinson Hyperlegible, sans-serif" font-size="10" '
+                     f'fill="#6B7A6E">part</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
     """Draw the chosen model for one problem's spec, recovering the numbers from
     the problem text when the structured fields are missing. reveal=False renders a
@@ -426,6 +497,8 @@ def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
     if not isinstance(spec, dict):
         return ""
     try:
+        if model in ("bar_model", "part_whole", "number_bond"):
+            return _bar_model(spec, reveal=reveal)
         if model == "five_frame":
             return _five_frame(_val(spec))
         if model == "counters":
@@ -521,6 +594,8 @@ _CSS = """
 .routine .arw{color:var(--muted);font-weight:400;}
 .frame{margin-top:10px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;font-size:17px;color:var(--ink);letter-spacing:.02em;}
 .finish{margin-top:10px;background:#EAF6EA;border:1px solid #BFE3A0;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#2e7d32;}
+.exitprob{border:2px solid #C9880E;background:#FFFBF3;}
+.exitprob svg{margin:8px 0;}
 .opm{background:#FBEBE8;border:1px solid #EAD2CE;border-radius:20px;padding:18px 20px;margin-top:22px;border-top:8px solid #C0392B;}
 .opm h2{margin:0;font-size:20px;color:#C0392B;}.foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;}
 .ctarget{background:#EEF4E6;border:1px solid #CFE0BC;border-radius:12px;padding:10px 14px;margin-top:12px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;color:var(--brand-deep);font-size:15px;}
@@ -594,13 +669,23 @@ def _steps_html(steps, asd: bool = False) -> str:
     return "".join(rows)
 
 
+def _has_model_fields(spec: dict, model: str) -> bool:
+    """Whether a problem can draw its model. Bar models always can (they recover
+    numbers from the problem text); the others need a structured field."""
+    if model in ("bar_model", "part_whole", "number_bond"):
+        return True
+    return (spec.get("value") is not None or "rows" in spec or "a" in spec
+            or "whole" in spec or "part_a" in spec)
+
+
 def _problem_html(model, p, show_default=True) -> str:
     q = _esc(p.get("text") or p.get("problem"))
     vis = ""
-    if p.get("show_model", show_default) and (p.get("value") is not None or "rows" in p or "a" in p):
+    mdl = p.get("model", model)
+    if p.get("show_model", show_default) and _has_model_fields(p, mdl) and mdl != "none":
         # Practice picture — neutral, so it doesn't reveal the answer. A problem
         # may name its own model (enrichment mixes benchmarks).
-        vis = svg_model(p.get("model", model), p, reveal=False)
+        vis = svg_model(mdl, p, reveal=False)
     choices = _choices_html(p.get("choices"))
     frame = p.get("answer_frame")
     if choices:
@@ -756,6 +841,10 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     out = list(head)
     enrich = bool(packet.get("enrichment"))
     asd = bool(packet.get("asd"))
+    # Young grades (and ASD) get the visual MODEL drawn on every step — I do, We
+    # do AND You do — as a scaffold, instead of an empty 'draw it yourself' box.
+    young = str(packet.get("grade_level", "")).upper() in ("PK", "K", "1", "2")
+    scaffold = young or asd
     teacher = _esc(packet.get("teacher"))
     kind = "Enrichment · Dig Deeper" if enrich else "DI Center Packet"
     if asd:
@@ -840,8 +929,8 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             # heavy visual for Red & Yellow). The answer belongs here, not later.
             w = day.get("watch_it") or {}
             if w:
-                wvis = (svg_model(dmodel, w)
-                        if (w.get("value") is not None or "rows" in w or "a" in w) else "")
+                wvis = (svg_model(dmodel, w, reveal=True)
+                        if _has_model_fields(w, dmodel) else "")
                 wsteps = _steps_html(w.get("steps"), asd)
                 steps_block = (f'<div class="modelsteps"><div class="mslabel">How we did it — '
                                f'follow these steps:</div><div class="steps">{wsteps}</div></div>'
@@ -851,20 +940,25 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                            + wvis
                            + f'<div class="st">{_esc(w.get("statement"))}</div></div>'
                            + steps_block + '</div>')
-            # Try it — the student draws and solves. No pre-drawn model (that would
-            # contradict "draw it"), no answer given: just the problem + steps.
+            # Try it — guided. For young/ASD we DRAW the model with the unknown
+            # blanked (a scaffold to fill in), instead of only an empty box.
             tr = day.get("try_it") or {}
             if tr:
                 out.append('<div class="phase"><span class="pn" style="background:%s">2</span><h3>Try it</h3><span class="gr">We do</span></div>' % hexc)
                 steps = _steps_html(tr.get("steps"), asd)
+                trvis = (svg_model(dmodel, tr, reveal=False)
+                         if scaffold and _has_model_fields(tr, dmodel) else "")
                 out.append(f'<div class="phase-body"><div class="prob"><p class="q">{_esc(tr.get("problem"))}</p>'
+                           + trvis
                            + (f'<div class="steps">{steps}</div>' if steps else "")
-                           + '<div class="drawbox">Draw your model and solve here.</div></div></div>')
-            # On your own — independent practice: no drawn model, no answer.
+                           + '<div class="drawbox">Fill in the model, then solve.</div></div></div>')
+            # On your own — independent practice. Young/ASD get the model drawn
+            # (unknown blanked) on each problem so the scaffold stays consistent.
             oyo = day.get("on_your_own") or []
             if oyo:
                 out.append('<div class="phase"><span class="pn" style="background:%s">3</span><h3>On your own</h3><span class="gr">You do</span></div>' % hexc)
-                cards = "".join(_problem_html("none", p) for p in oyo)
+                oyo_model = dmodel if scaffold else "none"
+                cards = "".join(_problem_html(oyo_model, p) for p in oyo)
                 extra = _extra_review_html(packet)
                 label = ("Do each problem. Use the same steps."
                          if asd else "Practice — keep going until time is up")
@@ -872,6 +966,18 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                           f'{len(oyo)} problems on this page.</div>' if asd else "")
                 out.append(f'<div class="phase-body"><p class="practicelabel">{label}</p>'
                            f'<div class="grid">{cards}</div>{extra}{finish}</div>')
+            # Exit slip — one quick check to close the day (teacher scores it).
+            ex = day.get("exit_ticket") or day.get("exit_slip") or {}
+            if ex:
+                exvis = (svg_model(dmodel, ex, reveal=False)
+                         if scaffold and _has_model_fields(ex, dmodel) else "")
+                exch = _choices_html(ex.get("choices"))
+                exans = exch or ('<div class="drawbox">Solve here.</div>')
+                out.append('<div class="phase"><span class="pn" style="background:%s">🎟</span>'
+                           '<h3>Exit Slip</h3><span class="gr">Show what you learned</span></div>' % hexc)
+                out.append(f'<div class="phase-body"><div class="prob exitprob">'
+                           f'<p class="q">{_esc(ex.get("problem") or ex.get("text"))}</p>'
+                           f'{exvis}{exans}</div></div>')
         # OPM
         opm = t.get("opm") or []
         if opm:

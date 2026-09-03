@@ -1299,11 +1299,14 @@ _DI_PACKET_SCHEMA = (
     '[{"tier":"Intensive|Cusp|Strategic",'
     '"days":[{"day":1,"title":"kid-friendly focus for the day","model":"array",'
     '"pacing":"Model 5 min · Try it 10 min · On your own 15 min",'
-    '"watch_it":{"rows":2,"cols":3,"statement":"the big idea in one kid sentence, WITH the answer",'
+    '"watch_it":{"rows":2,"cols":3,"whole":8,"part_a":6,"part_b":2,"unknown":"whole",'
+    '"statement":"the big idea in one kid sentence, WITH the answer",'
     '"steps":["Step 1 — name/draw the model","Step 2 — the action (skip count / add groups)","Step 3 — write the equation and answer"]},'
     '"try_it":{"problem":"one guided problem in student words — SAME method as Watch it, new numbers",'
+    '"whole":7,"part_a":5,"part_b":2,"unknown":"b",'
     '"steps":["Step 1 — same first move, no answer","Step 2","Step 3 — set up the equation but do NOT state the final answer"]},'
-    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","choices":["option A","option B","option C","option D"],"answer_frame":"____ groups of ____ = ____ (ASD packets only; a fill-in frame, no answer)","answer":"correct option — TEACHER KEY ONLY, not shown to students"}]}],'
+    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","whole":9,"part_a":4,"part_b":5,"unknown":"whole","choices":["option A","option B","option C","option D"],"answer_frame":"____ groups of ____ = ____ (ASD packets only; a fill-in frame, no answer)","answer":"correct option — TEACHER KEY ONLY, not shown to students"}],'
+    '"exit_ticket":{"problem":"ONE quick check on THIS skill in student words","whole":6,"part_a":2,"part_b":4,"unknown":"whole","choices":["A","B","C","D"],"answer":"correct option — TEACHER KEY ONLY"}}],'
     '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer — teacher key only"}]}]'
 )
 
@@ -1396,6 +1399,18 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"  - ten_frame: counts/sums within 20 — \"value\" (0-20)\n"
             f"  - base_ten: place value, tens & ones — \"value\"\n"
             f"  - pairing: even/odd as pairs — \"value\" (0-30)\n"
+            f"  - bar_model: PART-PART-WHOLE bar (the go-to for add/subtract, "
+            f"compare, missing-addend and take-apart WORD PROBLEMS) — give \"whole\", "
+            f"\"part_a\", \"part_b\" and \"unknown\" (which box the problem asks for: "
+            f"\"whole\", \"a\", or \"b\"). For 'how many more/fewer', the bigger amount "
+            f"is the whole and the difference is the unknown part.\n"
+            + ("EVERY problem in EVERY section — watch_it, try_it, EACH on_your_own, "
+               "and the exit_ticket — MUST carry its model's number fields (for "
+               "bar_model: whole/part_a/part_b/unknown) so the picture draws for the "
+               "student. Watch it shows every box filled; try_it / on_your_own / "
+               "exit_ticket leave the UNKNOWN box for the child (the picture never "
+               "reveals the answer). Keep the SAME model all day.\n"
+               if model == "bar_model" else "")
             + ("KINDERGARTEN RULE — ABSOLUTE: stay inside the NUMBER RANGE above "
                + (f"(0-{number_max}) " if number_max else "(the numbers this test "
                   "used — for Topic 1 that is 0-5) ")
@@ -1429,8 +1444,11 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"never see it). Do not tell students to 'draw' a model you have already "
             f"drawn for them.\n\n"
             f"Split EACH tier into this many DAYS:\n{day_map}\n"
-            "Each day: watch_it (one worked example), try_it (one guided problem with "
-            "2-3 student steps), and on_your_own with ENOUGH problems to fill ~15 "
+            "Each day MUST include: watch_it (one worked example), try_it (one guided "
+            "problem with 2-3 student steps), on_your_own (independent practice), and "
+            "an exit_ticket (ONE short check that closes the day and shows whether the "
+            "child got it — with 'choices' and a teacher-key 'answer'). on_your_own "
+            "should fill ~15 "
             + ("minutes (ASD: keep it SHORT — 3 problems per day, one clear idea "
                "each). " if asd else
                "minutes of independent work (Intensive & Cusp: 5-6 per day; "
