@@ -98,6 +98,24 @@ def _phase_cell(L: dict, key: str) -> str:
     ph = L.get(key)
     if not isinstance(ph, dict):
         return ""
+    # You Do: don't write out every problem — reference the book's independent set
+    # (page numbers) and name the strategy, then walk CUBS on ONE specific
+    # 'Modeling Real Life' problem. Much less writing, same rigor.
+    if key == "you_do":
+        br = L.get("book_reference") or {}
+        ip = (br.get("independent_practice") or "").strip()
+        ipg = (br.get("independent_pages") or "").strip()
+        ref = ip or "the In-Class Practice / Apply and Grow set"
+        ref_line = ("Students work independently on " + ref
+                    + (f" (p. {ipg})" if ipg else "") + " — utilizing CUBS.")
+        parts = [ref_line]
+        if ph.get("problem"):
+            parts.append(f"Model Real Life (CUBS on this one): {ph['problem']}")
+        if ph.get("cubs"):
+            parts.append(f"CUBS: {ph['cubs']}")
+        elif ph.get("look_for"):
+            parts.append(f"Look for: {ph['look_for']}")
+        return "\n".join(parts)
     # Prefer the phase's explicit guiding questions (We Do), else parse them from
     # the 'say' lines.
     questions = _as_list(ph.get("questions"))
