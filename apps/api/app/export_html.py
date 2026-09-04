@@ -1,0 +1,1074 @@
+"""Render a DI packet (from ai.generate_di_packets) into a printable, student-
+facing HTML page with real visual MODELS drawn as SVG (ten-frames, pairing
+counters, base-ten blocks, arrays, number lines, equal teams). The model is
+chosen per benchmark; each problem carries an integer value so it can be drawn.
+
+Self-contained HTML (Google-Fonts link only) so it prints cleanly from the
+browser and matches the approved packet design.
+"""
+from __future__ import annotations
+
+import html
+import math
+import os
+import shutil
+import subprocess
+import tempfile
+
+GREEN = "#BFE3A0"
+PINK = "#F4B6AC"
+FRAME = "#B9C2AE"
+RED_CTR = "#E4322B"  # solid red counters, matching the K topic-test five-frames
+
+
+def _i(v, default=0):
+    try:
+        return int(round(float(v)))
+    except Exception:
+        return default
+
+
+def _ten_frame(n: int, filled=True) -> str:
+    """One or two 2x5 ten-frames holding n dots (n clamped 0-20)."""
+    n = max(0, min(20, n))
+    frames = 1 if n <= 10 else 2
+    W = 202
+    parts = [f'<svg width="{W}" height="{86*frames-6}" viewBox="0 0 {W} {86*frames-6}" role="img" aria-label="ten frame showing {n}">']
+    placed = 0
+    for f in range(frames):
+        oy = f * 86
+        parts.append(f'<rect x="1" y="{oy+1}" width="200" height="80" rx="6" fill="#fff" stroke="{FRAME}" stroke-width="2"/>')
+        for x in (41, 81, 121, 161):
+            parts.append(f'<line x1="{x}" y1="{oy+1}" x2="{x}" y2="{oy+81}" stroke="{FRAME}"/>')
+        parts.append(f'<line x1="1" y1="{oy+41}" x2="201" y2="{oy+41}" stroke="{FRAME}" stroke-width="2"/>')
+        if filled:
+            for cell in range(10):
+                if placed >= n:
+                    break
+                col = cell % 5
+                row = cell // 5
+                cx = 21 + col * 40
+                cy = oy + 21 + row * 40
+                parts.append(f'<circle cx="{cx}" cy="{cy}" r="12" fill="{GREEN}"/>')
+                placed += 1
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _five_frame(n: int) -> str:
+    """A FIVE-frame (a row of 5 cells) with red counters — the exact Kinder
+    representation on the Topic test (count to 5). Numbers 6-10 use two rows of
+    5. Kids count by ONES; there is no grouping by ten."""
+    n = max(0, min(10, n))
+    rows = 1 if n <= 5 else 2
+    cw, ch = 40, 44
+    W, H = 5 * cw + 2, rows * ch + 2
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+             f'aria-label="five frame showing {n}">']
+    placed = 0
+    for r in range(rows):
+        oy = r * ch + 1
+        parts.append(f'<rect x="1" y="{oy}" width="{5*cw}" height="{ch}" fill="#fff" '
+                     f'stroke="{FRAME}" stroke-width="2"/>')
+        for k in range(1, 5):
+            x = 1 + k * cw
+            parts.append(f'<line x1="{x}" y1="{oy}" x2="{x}" y2="{oy+ch}" '
+                         f'stroke="{FRAME}" stroke-width="1.5"/>')
+        for c in range(5):
+            if placed < n:
+                cx = 1 + c * cw + cw / 2
+                parts.append(f'<circle cx="{cx:.0f}" cy="{oy+ch/2:.0f}" r="13" '
+                             f'fill="{RED_CTR}"/>')
+                placed += 1
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _counters(n: int) -> str:
+    """Just n countable objects (red dots), no frame — pure count-by-ones for the
+    youngest kids. Wraps at 5 per row."""
+    n = max(0, min(20, n))
+    per = 5
+    rows = max(1, (n + per - 1) // per)
+    sp = 34
+    W = per * sp + 8
+    H = rows * sp + 8
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+             f'aria-label="{n} counters">']
+    for i in range(n):
+        cx = 8 + (i % per) * sp + 6
+        cy = 8 + (i // per) * sp + 6
+        parts.append(f'<circle cx="{cx}" cy="{cy}" r="12" fill="{RED_CTR}"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# --- Countable object glyphs (for the 'count the objects' Kinder packet) -------
+# Simple, recognizable SVG shapes drawn in a 48x48 box, tiled n-across. Drawn as
+# vector (not emoji) so they print identically in headless Chromium.
+def _glyph(kind: str) -> str:
+    k = (kind or "").rstrip("s").lower()
+    g = {
+        "sun": '<circle cx="24" cy="24" r="11" fill="#FFD21E" stroke="#E0A800"/>'
+               + "".join(
+                   f'<line x1="{24+16*math.cos(a):.0f}" y1="{24+16*math.sin(a):.0f}"'
+                   f' x2="{24+22*math.cos(a):.0f}" y2="{24+22*math.sin(a):.0f}"'
+                   f' stroke="#E0A800" stroke-width="2"/>'
+                   for a in [i*math.pi/4 for i in range(8)]),
+        "star": '<polygon points="24,4 29,18 44,18 32,27 37,42 24,33 11,42 16,27'
+                ' 4,18 19,18" fill="#FFD21E" stroke="#E0A800"/>',
+        "apple": '<path d="M24 14 C14 14 10 22 12 30 C14 40 22 44 24 44 C26 44 34 40'
+                 ' 36 30 C38 22 34 14 24 14 Z" fill="#E4322B"/>'
+                 '<rect x="23" y="8" width="2" height="8" fill="#7A4a25"/>'
+                 '<path d="M25 10 C30 6 36 8 34 13 C30 15 26 14 25 10 Z" fill="#5FA83A"/>',
+        "fish": '<ellipse cx="22" cy="24" rx="15" ry="9" fill="#F5A623"/>'
+                '<polygon points="37,24 46,16 46,32" fill="#F5A623"/>'
+                '<circle cx="15" cy="22" r="2" fill="#333"/>',
+        "flower": "".join(
+            f'<circle cx="{24+11*math.cos(a):.0f}" cy="{24+11*math.sin(a):.0f}"'
+            f' r="7" fill="#EC7CB0"/>' for a in [i*2*math.pi/6 for i in range(6)])
+            + '<circle cx="24" cy="24" r="7" fill="#FFD21E"/>',
+        "balloon": '<ellipse cx="24" cy="20" rx="13" ry="16" fill="#E4322B"/>'
+                   '<polygon points="24,36 21,40 27,40" fill="#E4322B"/>'
+                   '<line x1="24" y1="40" x2="24" y2="46" stroke="#888"/>',
+        "sailboat": '<polygon points="24,6 24,26 10,26" fill="#FFD21E"'
+                    ' stroke="#E0A800"/><line x1="24" y1="6" x2="24" y2="30"'
+                    ' stroke="#7A4a25" stroke-width="2"/>'
+                    '<polygon points="8,30 40,30 34,40 14,40" fill="#E4322B"/>',
+        "butterflie": '<ellipse cx="16" cy="18" rx="10" ry="9" fill="#7C5CEC"/>'
+                      '<ellipse cx="32" cy="18" rx="10" ry="9" fill="#7C5CEC"/>'
+                      '<ellipse cx="16" cy="31" rx="8" ry="8" fill="#B08CF0"/>'
+                      '<ellipse cx="32" cy="31" rx="8" ry="8" fill="#B08CF0"/>'
+                      '<rect x="23" y="12" width="2" height="26" fill="#333"/>',
+        "beach ball": '<circle cx="24" cy="24" r="15" fill="#fff" stroke="#333"/>'
+                      '<line x1="9" y1="24" x2="39" y2="24" stroke="#E4322B"/>'
+                      '<line x1="24" y1="9" x2="24" y2="39" stroke="#E4322B"/>'
+                      '<path d="M13 13 L35 35 M35 13 L13 35" stroke="#2E86C1"/>',
+        "turtle": '<ellipse cx="24" cy="26" rx="14" ry="10" fill="#5FA83A"'
+                  ' stroke="#3B6B22"/><circle cx="39" cy="24" r="4" fill="#5FA83A"/>'
+                  '<circle cx="12" cy="33" r="3" fill="#5FA83A"/>'
+                  '<circle cx="36" cy="33" r="3" fill="#5FA83A"/>',
+        "frog": '<ellipse cx="24" cy="30" rx="15" ry="11" fill="#5FA83A"'
+                ' stroke="#3B6B22"/><circle cx="16" cy="14" r="6" fill="#5FA83A"'
+                ' stroke="#3B6B22"/><circle cx="32" cy="14" r="6" fill="#5FA83A"'
+                ' stroke="#3B6B22"/><circle cx="16" cy="14" r="2.5" fill="#111"/>'
+                '<circle cx="32" cy="14" r="2.5" fill="#111"/>'
+                '<path d="M17 33 Q24 39 31 33" fill="none" stroke="#2c5016"'
+                ' stroke-width="2"/>',
+    }.get(k, '<circle cx="24" cy="24" r="13" fill="#E4322B"/>')
+    return g
+
+
+def _object_row(kind: str, n: int) -> str:
+    """n object glyphs in a row (wraps at 5), for the 'count the ___' prompt."""
+    n = max(0, min(10, n))
+    per = 5
+    rows = max(1, (n + per - 1) // per)
+    box = 52
+    W, H = per * box, rows * box
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img"'
+             f' aria-label="{n} {_esc(kind)}">']
+    for i in range(n):
+        x = (i % per) * box + 2
+        y = (i // per) * box + 2
+        parts.append(f'<g transform="translate({x},{y})">{_glyph(kind)}</g>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+_LETTERS_C = ["A", "B", "C", "D"]
+
+
+def _count_choices(choices: list) -> str:
+    """Four labelled five-frames (A-D), each showing its number of red counters."""
+    rows = []
+    for i, c in enumerate(choices[:4]):
+        rows.append(
+            f'<div class="cchoice"><span class="clet">{_LETTERS_C[i]}.</span>'
+            f'{_five_frame(_i(c))}</div>')
+    return f'<div class="cchoices">{"".join(rows)}</div>'
+
+
+def _numeral_choices(choices: list) -> str:
+    """Four labelled numeral cards (A-D) — the 'how many?' answer style."""
+    cells = []
+    for i, c in enumerate(choices[:4]):
+        cells.append(f'<div class="ncard"><span class="nnum">{_esc(_i(c))}</span>'
+                     f'<span class="nlet">{_LETTERS_C[i]}</span></div>')
+    return f'<div class="nchoices">{"".join(cells)}</div>'
+
+
+def _order_choices(sequences: list) -> str:
+    """Labelled number-string choices (A, B, …) — the 'put in order' answer style."""
+    rows = []
+    for i, seq in enumerate(sequences[:4]):
+        nums = " ".join(f'<span class="onum">{_esc(x)}</span>' for x in seq)
+        rows.append(f'<div class="ochoice"><span class="clet">{_LETTERS_C[i]}.</span>'
+                    f'<span class="oseq">{nums}</span></div>')
+    return f'<div class="ochoices">{"".join(rows)}</div>'
+
+
+def _count_item_html(item: dict, show_answer: bool = False, num: str = "") -> str:
+    """One Kinder question card, dispatched by item type. The answer letter is a
+    teacher key (shown only when show_answer)."""
+    lead = f'<span class="qn">{_esc(num)}.</span> ' if num else ""
+    key = (f'<div class="ckey">Answer: <b>{_esc(item.get("answer"))}</b></div>'
+           if show_answer else "")
+    t = item.get("type", "count_counters")
+    obj = _esc(item.get("objects", "objects"))
+    n = _i(item.get("count"))
+    if t == "number_order":
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}{_esc(item.get("prompt"))}</p>'
+            f'{_order_choices(item.get("sequences") or [])}{key}</div>')
+    if t == "count_numeral":
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}How many {obj} are there?</p>'
+            f'<div class="cobjs">{_object_row(item.get("objects"), n)}</div>'
+            f'{_numeral_choices(item.get("choices") or [])}{key}</div>')
+    # default: count -> match the set of counters (five-frames)
+    return (
+        '<div class="citem">'
+        f'<p class="cq">{lead}Count the {obj}. Which set of counters shows how '
+        f'many {obj}?</p>'
+        f'<div class="cobjs">{_object_row(item.get("objects"), n)}</div>'
+        f'{_count_choices(item.get("choices") or [])}{key}</div>')
+
+
+def _pairing(n: int, reveal: bool = True, per_row: int = 10) -> str:
+    """Counters for even/odd, wrapped into rows so large numbers never overflow.
+    reveal=True (worked example) colors even green / odd pink and draws the pairs +
+    the leftover, modeling the answer. reveal=False (practice) shows plain neutral
+    counters in rows — the STUDENT pairs them, so the picture doesn't give away the
+    answer. Rows wrap at `per_row` (kept even so a pair never splits a row)."""
+    n = max(0, min(30, n))
+    even = n % 2 == 0
+    per_row = max(2, per_row - (per_row % 2))
+    r, sp, pad, rowh = 11, 26, 8, 30
+    rows = max(1, (n + per_row - 1) // per_row)
+    ncols = min(n, per_row) if n else per_row
+    W = pad * 2 + ncols * sp
+    H = pad * 2 + rows * rowh
+    def cx(i):
+        return pad + r + (i % per_row) * sp
+    def cy(i):
+        return pad + r + (i // per_row) * rowh
+    color = (GREEN if even else PINK) if reveal else "#DDE6CE"
+    parts = [f'<svg width="100%" height="{H}" viewBox="0 0 {W} {H}" '
+             f'preserveAspectRatio="xMinYMin meet" style="max-width:{W}px" '
+             f'role="img" aria-label="{n} counters">']
+    if reveal:
+        # Outline each pair; dash the leftover on an odd count.
+        i = 0
+        while i + 1 < n:
+            if i % per_row == per_row - 1:      # pair would straddle a row — skip box
+                i += 1
+                continue
+            x0, y0 = cx(i) - r - 3, cy(i) - r - 3
+            parts.append(f'<rect x="{x0}" y="{y0}" width="{sp + 2 * r + 6}" '
+                         f'height="{2 * r + 6}" rx="{r + 3}" fill="none" '
+                         f'stroke="#8a9b7f" stroke-width="2"/>')
+            i += 2
+        if not even and n:
+            x0, y0 = cx(n - 1) - r - 3, cy(n - 1) - r - 3
+            parts.append(f'<rect x="{x0}" y="{y0}" width="{2 * r + 6}" '
+                         f'height="{2 * r + 6}" rx="{r + 2}" fill="none" '
+                         f'stroke="#c9807a" stroke-width="2" stroke-dasharray="4 4"/>')
+    for i in range(n):
+        parts.append(f'<circle cx="{cx(i)}" cy="{cy(i)}" r="{r}" fill="{color}" '
+                     f'stroke="#9aa98c" stroke-width="1"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _base_ten(v: int) -> str:
+    """Base-ten blocks: hundreds flats, tens rods, ones units for v (0-999)."""
+    v = max(0, min(999, v))
+    h, t, o = v // 100, (v % 100) // 10, v % 10
+    parts = [f'<svg width="100%" height="90" viewBox="0 0 320 90" role="img" aria-label="base ten blocks for {v}">']
+    x = 6
+    for _ in range(h):  # flat 30x30 grid
+        parts.append(f'<rect x="{x}" y="10" width="34" height="34" fill="#CFE3BE" stroke="#4E7C2F"/>')
+        for gx in range(1, 3):
+            parts.append(f'<line x1="{x+gx*11}" y1="10" x2="{x+gx*11}" y2="44" stroke="#4E7C2F" stroke-width=".6"/>')
+            parts.append(f'<line x1="{x}" y1="{10+gx*11}" x2="{x+34}" y2="{10+gx*11}" stroke="#4E7C2F" stroke-width=".6"/>')
+        x += 40
+    for _ in range(t):  # rod 8x34
+        parts.append(f'<rect x="{x}" y="10" width="10" height="34" fill="#BFE3A0" stroke="#4E7C2F"/>')
+        x += 15
+    for _ in range(o):  # unit 8x8
+        parts.append(f'<rect x="{x}" y="34" width="10" height="10" fill="#EED9A8" stroke="#C9880E"/>')
+        x += 14
+    parts.append('</svg>')
+    return "".join(parts)
+
+
+def _array(r: int, c: int) -> str:
+    r = max(1, min(10, r))
+    c = max(1, min(10, c))
+    step = 26
+    W, H = c * step + 6, r * step + 6
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="{r} by {c} array">']
+    for i in range(r):
+        for j in range(c):
+            parts.append(f'<circle cx="{9+j*step}" cy="{9+i*step}" r="9" fill="{GREEN}" stroke="#4E7C2F"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _number_line(v: int, mx: int) -> str:
+    mx = max(5, min(30, mx or 20))
+    v = max(0, min(mx, v))
+    W = 360
+    x0, x1 = 20, W - 20
+    def px(k):
+        return x0 + (x1 - x0) * k / mx
+    parts = [f'<svg width="100%" height="56" viewBox="0 0 {W} 56" role="img" aria-label="number line 0 to {mx}, mark at {v}">']
+    parts.append(f'<line x1="{x0}" y1="34" x2="{x1}" y2="34" stroke="#4E7C2F" stroke-width="2.5"/>')
+    for k in range(mx + 1):
+        X = px(k)
+        parts.append(f'<line x1="{X}" y1="28" x2="{X}" y2="40" stroke="#4E7C2F" stroke-width="1.5"/>')
+        if k % 5 == 0 or k == v:
+            parts.append(f'<text x="{X}" y="52" font-size="10" text-anchor="middle" fill="#26302A">{k}</text>')
+    parts.append(f'<circle cx="{px(v)}" cy="34" r="7" fill="{PINK}" stroke="#C0392B" stroke-width="2"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _equal_teams(a: int, b: int) -> str:
+    a, b = max(0, min(10, a)), max(0, min(10, b))
+    def team(vals, ox, color):
+        s = [f'<rect x="{ox-4}" y="10" width="{max(1,vals)*26+8}" height="40" rx="10" fill="none" stroke="#8a9b7f"/>']
+        for i in range(vals):
+            s.append(f'<circle cx="{ox+9+i*26}" cy="30" r="10" fill="{color}"/>')
+        return "".join(s)
+    w = (max(1, a) + max(1, b)) * 26 + 70
+    return (f'<svg width="{w}" height="60" viewBox="0 0 {w} 60" role="img" aria-label="two equal teams">'
+            + team(a, 8, GREEN)
+            + f'<text x="{a*26+30}" y="36" font-size="20" fill="#26302A">+</text>'
+            + team(b, a * 26 + 48, "#EED9A8") + "</svg>")
+
+
+def _equal_groups(groups: int, per: int) -> str:
+    """`groups` boxes, each holding `per` counters — the CORRECT picture for
+    'N groups of M' (repeated addition / multiplication as equal groups). Unlike
+    equal_teams (two addends a + b), this shows N equal groups of M."""
+    groups = max(1, min(6, groups))
+    per = max(1, min(8, per))
+    r, gap, pad, bh, sp = 9, 24, 12, 44, 16
+    bw = per * gap + pad
+    W = groups * (bw + sp) + 4
+    parts = [f'<svg width="100%" viewBox="0 0 {W} {bh + 14}" '
+             f'preserveAspectRatio="xMinYMin meet" style="max-width:{W}px" '
+             f'role="img" aria-label="{groups} groups of {per}">']
+    x = 4
+    for _g in range(groups):
+        parts.append(f'<rect x="{x}" y="7" width="{bw}" height="{bh}" rx="12" '
+                     f'fill="none" stroke="#8a9b7f" stroke-width="2"/>')
+        for i in range(per):
+            cx = x + pad / 2 + i * gap + r
+            parts.append(f'<circle cx="{cx:.0f}" cy="{7 + bh / 2:.0f}" r="{r}" '
+                         f'fill="{GREEN}" stroke="#4E7C2F"/>')
+        x += bw + sp
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+import re as _re
+
+
+def _ctx_text(spec: dict) -> str:
+    """All the words attached to one problem — used to recover model numbers the
+    AI wrote in the text but didn't pass as structured fields."""
+    return " ".join(str(spec.get(k, "")) for k in ("statement", "problem", "text"))
+
+
+def _ints(text: str) -> list:
+    return [int(n) for n in _re.findall(r"\d+", text or "")]
+
+
+def _array_dims(spec: dict) -> tuple:
+    """rows x cols for an array — structured fields first, else parsed from text
+    (e.g. '3 equal rows with 3 counters in each row' -> 3 x 3)."""
+    r, c = spec.get("rows"), spec.get("cols")
+    if r is not None and c is not None:
+        return _i(r, 1), _i(c, 1)
+    t = _ctx_text(spec)
+    rm = _re.search(r"(\d+)\s*(?:equal\s+)?rows", t, _re.I)
+    cm = (_re.search(r"(?:each row (?:has|of|with)|in each row|in one row)\s*(\d+)", t, _re.I)
+          or _re.search(r"(\d+)\s*counters?\s*(?:in each|per row|in one row|in each row)", t, _re.I))
+    rows = _i(rm.group(1), 0) if rm else 0
+    cols = _i(cm.group(1), 0) if cm else 0
+    if not rows or not cols:
+        nums = _ints(t)
+        if len(nums) >= 2:
+            rows = rows or nums[0]
+            cols = cols or nums[1]
+    return max(1, rows or 2), max(1, cols or 2)
+
+
+def _val(spec: dict, default=0) -> int:
+    """A single value for ten_frame/pairing/base_ten/number_line — structured
+    'value' first, else the first number in the problem's text."""
+    if spec.get("value") is not None:
+        return _i(spec.get("value"), default)
+    nums = _ints(_ctx_text(spec))
+    return nums[0] if nums else default
+
+
+def _bar_model(spec: dict, reveal: bool = True) -> str:
+    """Part-part-whole bar model — the core Grade-1 add/subtract picture, and an
+    ideal ASD scaffold (same structure every problem). Shows a WHOLE bar over two
+    PART boxes. The unknown box shows '?' on practice (reveal=False); the worked
+    example (reveal=True) fills every box so kids see how it solves.
+
+    Fields: whole, part_a, part_b, unknown in {"whole","a","b"} (default "whole").
+    Numbers are recovered from the problem text when the fields are missing."""
+    whole = spec.get("whole", spec.get("total"))
+    pa = spec.get("part_a", spec.get("a"))
+    pb = spec.get("part_b", spec.get("b"))
+    unknown = str(spec.get("unknown", "") or "").lower()
+    if whole is None and pa is None and pb is None:
+        nums = _ints(_ctx_text(spec))
+        if len(nums) >= 2:
+            pa, pb = nums[0], nums[1]
+            whole = pa + pb
+            unknown = unknown or "whole"
+    if not unknown:
+        unknown = "whole" if whole is None else ("a" if pa is None else
+                                                 ("b" if pb is None else "whole"))
+
+    def cell(v, is_unknown):
+        if is_unknown and not reveal:
+            return "?"
+        return "" if v is None else str(_i(v))
+
+    W, H = 320, 150
+    gp = "#EAF4E0"  # whole (green tint)
+    gs = "#4E7C2F"
+    pp = "#E4EEF7"  # parts (blue tint)
+    ps = "#2E86C1"
+    qp, qs = "#FDF0D5", "#C9880E"  # unknown highlight (amber)
+    wx, wy, ww, wh = 60, 14, 200, 46
+    ax, ay, aw, ah = 60, 92, 95, 46
+    bx = 165
+
+    def box(x, y, w, h, txt, is_unknown, fill, stroke):
+        f, s = (qp, qs) if (is_unknown and not reveal) else (fill, stroke)
+        return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="9" fill="{f}" '
+                f'stroke="{s}" stroke-width="2.5"/>'
+                f'<text x="{x + w/2:.0f}" y="{y + h/2 + 8:.0f}" text-anchor="middle" '
+                f'font-family="Baloo 2, sans-serif" font-weight="800" font-size="26" '
+                f'fill="#26302A">{_esc(txt)}</text>')
+
+    parts = [f'<svg width="100%" height="{H}" viewBox="0 0 {W} {H}" '
+             f'preserveAspectRatio="xMidYMid meet" style="max-width:340px" '
+             f'role="img" aria-label="part part whole bar model">']
+    # connectors from the whole down to each part
+    parts.append(f'<line x1="{ax+aw/2:.0f}" y1="{wy+wh}" x2="{ax+aw/2:.0f}" y2="{ay}" '
+                 f'stroke="#B9C2AE" stroke-width="2"/>')
+    parts.append(f'<line x1="{bx+aw/2:.0f}" y1="{wy+wh}" x2="{bx+aw/2:.0f}" y2="{ay}" '
+                 f'stroke="#B9C2AE" stroke-width="2"/>')
+    parts.append(box(wx, wy, ww, wh, cell(whole, unknown == "whole"),
+                     unknown == "whole", gp, gs))
+    parts.append(box(ax, ay, aw, ah, cell(pa, unknown == "a"),
+                     unknown == "a", pp, ps))
+    parts.append(box(bx, ay, aw, ah, cell(pb, unknown == "b"),
+                     unknown == "b", pp, ps))
+    # labels
+    parts.append(f'<text x="{wx+ww/2:.0f}" y="10" text-anchor="middle" '
+                 f'font-family="Atkinson Hyperlegible, sans-serif" font-size="10" '
+                 f'fill="#6B7A6E">whole</text>')
+    for lx in (ax, bx):
+        parts.append(f'<text x="{lx+aw/2:.0f}" y="{ay+ah+13:.0f}" text-anchor="middle" '
+                     f'font-family="Atkinson Hyperlegible, sans-serif" font-size="10" '
+                     f'fill="#6B7A6E">part</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
+    """Draw the chosen model for one problem's spec, recovering the numbers from
+    the problem text when the structured fields are missing. reveal=False renders a
+    practice picture that does not give away the answer (used for problems the
+    student solves)."""
+    if not isinstance(spec, dict):
+        return ""
+    try:
+        if model in ("bar_model", "part_whole", "number_bond"):
+            return _bar_model(spec, reveal=reveal)
+        if model == "five_frame":
+            return _five_frame(_val(spec))
+        if model == "counters":
+            return _counters(_val(spec))
+        if model == "ten_frame":
+            return _ten_frame(_val(spec))
+        if model == "pairing":
+            # Vary the row width by the number so problems don't all look alike.
+            v = _val(spec)
+            per = 8 if (v % 3 == 0) else (12 if v > 14 else 10)
+            return _pairing(v, reveal=reveal, per_row=per)
+        if model == "base_ten":
+            return _base_ten(_val(spec))
+        if model == "array":
+            r, c = _array_dims(spec)
+            return _array(r, c)
+        if model == "number_line":
+            return _number_line(_val(spec), _i(spec.get("max"), 20))
+        if model in ("equal_groups", "equal_teams"):
+            # groups (a) and amount-in-each (b). Accept a/b or groups/per, else
+            # parse "N groups of M" from the text.
+            a = spec.get("a", spec.get("groups"))
+            b = spec.get("b", spec.get("per"))
+            if a is None or b is None:
+                t = _ctx_text(spec)
+                gm = _re.search(r"(\d+)\s*(?:equal\s+)?groups?", t, _re.I)
+                pm = _re.search(r"of\s*(\d+)|(\d+)\s*(?:counters?|in each|per group|each)", t, _re.I)
+                nums = _ints(t)
+                if a is None:
+                    a = _i(gm.group(1)) if gm else (nums[0] if nums else 0)
+                if b is None:
+                    b = _i(pm.group(1) or pm.group(2)) if pm else (nums[1] if len(nums) > 1 else 0)
+            # equal_groups = N groups of M (correct for repeated addition /
+            # multiplication); equal_teams stays two addends a + b (even/odd).
+            if model == "equal_groups":
+                return _equal_groups(_i(a), _i(b))
+            return _equal_teams(_i(a), _i(b))
+    except Exception:
+        return ""
+    return ""
+
+
+_TIER_META = {
+    "Intensive": ("red", "#C0392B", "★"),
+    "Cusp": ("amber", "#C9880E", "★★"),
+    "Strategic": ("blue", "#2E86C1", "★★★"),
+    "Enrichment": ("teal", "#117A65", "★★★＋"),
+}
+
+_CSS = """
+:root{--paper:#FBF8F1;--ink:#26302A;--muted:#6B7A6E;--line:#DED7C6;--brand:#4E7C2F;--brand-deep:#38601F;--frame:#B9C2AE;}
+*{box-sizing:border-box;}body{margin:0;background:var(--paper);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:16px;line-height:1.5;}
+.wrap{max-width:820px;margin:0 auto;padding:26px 22px 60px;}h1,h2,h3{font-family:"Baloo 2","Atkinson Hyperlegible",cursive;}
+.band{background:var(--brand-deep);color:#fff;border-radius:14px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;}
+.band .eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#CFE3BE;font-weight:700;}
+.band h1{margin:.1em 0 0;font-size:18px;font-weight:800;line-height:1.15;}.band .std{font-size:12px;color:#DDEBCE;margin-top:3px;}
+.namebar{display:flex;gap:12px;font-size:13px;color:#E8F1DE;}.namebar span{border-bottom:2px solid #7BA35C;padding:0 24px 2px 6px;}
+.copies{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:12px;font-size:13px;}
+.copies .lbl{font-weight:700;color:var(--ink);}
+.copies .cc{font-weight:700;color:#fff;border-radius:999px;padding:2px 10px;}
+.choices{display:flex;flex-direction:column;gap:9px;margin-top:10px;}
+.choice{display:flex;align-items:center;gap:9px;border:1.5px solid var(--line);border-radius:10px;padding:7px 12px;font-size:15px;}
+.choice .b{width:24px;height:24px;border-radius:50%;border:2px solid var(--frame);display:inline-grid;place-items:center;font-family:"Baloo 2";font-weight:700;font-size:13px;flex:none;}
+.ican{font-family:"Baloo 2";font-size:19px;font-weight:700;color:var(--brand-deep);margin:16px 2px 4px;}
+.missed{background:#fff;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:12px;padding:12px 16px;margin-top:12px;font-size:14px;}
+.tier{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;margin-top:22px;border-top-width:8px;}
+.tier-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.pill{font-family:"Baloo 2";font-weight:800;font-size:15px;color:#fff;padding:4px 14px;border-radius:999px;}
+.tier-head h2{margin:0;font-size:22px;}
+.day{display:flex;align-items:center;gap:10px;margin:18px 0 6px;padding:7px 14px;border-radius:12px;font-family:"Baloo 2";font-weight:800;font-size:17px;color:#fff;}
+.day .small{font-family:"Atkinson Hyperlegible";font-weight:400;font-size:13px;opacity:.9;margin-left:auto;}
+.phase{display:flex;align-items:center;gap:10px;margin:14px 0 6px;}
+.phase .pn{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-family:"Baloo 2";font-weight:800;color:#fff;font-size:15px;background:var(--muted);}
+.phase h3{margin:0;font-size:17px;}.phase .gr{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-left:auto;}
+.phase-body{border-left:3px solid var(--line);margin-left:13px;padding-left:18px;}
+.example{background:#EEF4E6;color:var(--ink);border:1px solid #CFE0BC;border-left:5px solid var(--brand);border-radius:12px;padding:11px 14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+.example .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand-deep);font-weight:700;width:100%;}
+.example .st{font-family:"Baloo 2";font-weight:800;font-size:16px;color:var(--ink);}
+.example .cap{color:var(--muted);}
+.example .verdict .even{color:#2e7d32;}.example .verdict .odd{color:#C0392B;}
+.modelsteps{margin-top:10px;background:#F4F8EE;border:1px solid #DCE7CC;border-radius:12px;padding:10px 14px;}
+.mslabel{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--brand-deep);margin-bottom:6px;}
+.steps{display:grid;gap:7px;margin:4px 0;}.step{display:grid;grid-template-columns:26px 1fr;gap:9px;align-items:start;}
+.step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:"Baloo 2";font-weight:800;color:#fff;font-size:13px;background:var(--muted);}
+.prob{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:#fff;}
+.drawbox{margin-top:10px;border:2px dashed var(--frame);border-radius:10px;min-height:74px;padding:8px 10px;color:var(--muted);font-size:12px;}
+.prob .q{font-family:"Baloo 2";font-weight:700;font-size:15px;margin:0 0 6px;}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}@media(max-width:560px){.grid{grid-template-columns:1fr;}}
+.practicelabel{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:8px 0 4px;}
+.chkstep{grid-template-columns:26px 22px 1fr;}
+.chk{width:18px;height:18px;border:2px solid var(--frame);border-radius:5px;margin-top:2px;}
+.routine{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#EEF4E6;border:1px solid #CFE0BC;border-radius:12px;padding:10px 14px;margin-top:12px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;color:var(--brand-deep);font-size:14px;}
+.routine .arw{color:var(--muted);font-weight:400;}
+.frame{margin-top:10px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;font-size:17px;color:var(--ink);letter-spacing:.02em;}
+.finish{margin-top:10px;background:#EAF6EA;border:1px solid #BFE3A0;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#2e7d32;}
+.exitprob{border:2px solid #C9880E;background:#FFFBF3;}
+.exitprob svg{margin:8px 0;}
+.opm{background:#FBEBE8;border:1px solid #EAD2CE;border-radius:20px;padding:18px 20px;margin-top:22px;border-top:8px solid #C0392B;}
+.opm h2{margin:0;font-size:20px;color:#C0392B;}.foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;}
+.ctarget{background:#EEF4E6;border:1px solid #CFE0BC;border-radius:12px;padding:10px 14px;margin-top:12px;font-family:"Baloo 2","Atkinson Hyperlegible";font-weight:700;color:var(--brand-deep);font-size:15px;}
+.cvocab{display:flex;flex-wrap:wrap;gap:6px 16px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 14px;margin-top:8px;font-size:13px;color:var(--ink);}
+.cvocab b{color:var(--brand-deep);}
+.cnote{font-size:12px;color:var(--muted);margin:4px 0 0;font-style:italic;}
+.citem{border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff;break-inside:avoid;}
+.cq{font-family:"Baloo 2";font-weight:700;font-size:15px;margin:0 0 8px;color:var(--ink);}
+.cq .qn{color:var(--brand-deep);}
+.cobjs{display:flex;justify-content:center;padding:6px 0 12px;}
+.cobjs svg{max-width:100%;height:auto;}
+.cchoices{display:grid;gap:7px;}
+.cchoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:5px 10px;}
+.cchoice .clet{font-family:"Baloo 2";font-weight:800;font-size:16px;color:var(--ink);width:20px;flex:none;}
+.nchoices{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;}
+.ncard{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 16px;min-width:56px;}
+.ncard .nnum{font-family:"Baloo 2";font-weight:800;font-size:26px;color:var(--ink);line-height:1;}
+.ncard .nlet{font-family:"Baloo 2";font-weight:800;font-size:12px;color:var(--muted);margin-top:4px;}
+.ochoices{display:grid;gap:7px;}
+.ochoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:7px 12px;}
+.ochoice .oseq{display:flex;gap:14px;}
+.ochoice .onum{font-family:"Baloo 2";font-weight:800;font-size:20px;color:var(--ink);}
+.ckey{margin-top:8px;font-size:12px;color:#C0392B;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.ckeybox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-top:22px;}
+.ckeybox h2{margin:0 0 8px;font-size:18px;color:var(--ink);}
+.ckeybox .krow{font-size:13px;margin:3px 0;color:var(--ink);}
+.ckeybox .krow b{color:var(--brand-deep);}
+@media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}
+.tier,.phase-body,.opm{break-inside:auto;}.prob,.example{break-inside:avoid;}
+.phase,.day{break-after:avoid;}.band{border-radius:0;}
+.pbreak{break-before:page;page-break-before:always;}
+.tier{margin-top:0;padding:16px 16px 0;}.day{margin:0 0 6px;}.phase{margin:10px 0 6px;}
+.wrap{padding-bottom:0;}@page{margin:1.1cm;}}
+"""
+# For PDF rendering (WeasyPrint) the same rules apply without @media print.
+_CSS_PDF_EXTRA = """
+.tier,.phase-body,.opm{break-inside:auto;}.prob,.example{break-inside:avoid;}
+.phase,.day{break-after:avoid;}
+.pbreak{break-before:page;page-break-before:always;}
+@page{size:Letter;margin:1.1cm;}
+body{background:#fff;}
+"""
+
+
+def _esc(s) -> str:
+    return html.escape(str(s or ""))
+
+
+def _choices_html(choices) -> str:
+    """Multiple-choice answers, stacked one per line with a lettered bubble and
+    clear spacing so young students don't confuse them (A. / B. / C. / D.)."""
+    if not isinstance(choices, list) or not choices:
+        return ""
+    letters = "ABCDEFGH"
+    rows = []
+    for i, ch in enumerate(choices[:8]):
+        rows.append(f'<div class="choice"><span class="b">{letters[i]}</span>'
+                    f'<span>{_esc(ch)}</span></div>')
+    return f'<div class="choices">{"".join(rows)}</div>'
+
+
+def _steps_html(steps, asd: bool = False) -> str:
+    """Numbered steps. For ASD packets each step gets a check box to tick off, so
+    the method reads as a discrete task-analysis checklist."""
+    rows = []
+    for i, s in enumerate(steps or []):
+        chk = '<span class="chk"></span>' if asd else ''
+        cls = "step chkstep" if asd else "step"
+        rows.append(f'<div class="{cls}"><span class="n">{i+1}</span>{chk}'
+                    f'<p>{_esc(s)}</p></div>')
+    return "".join(rows)
+
+
+def _has_model_fields(spec: dict, model: str) -> bool:
+    """Whether a problem can draw its model. Bar models always can (they recover
+    numbers from the problem text); the others need a structured field."""
+    if model in ("bar_model", "part_whole", "number_bond"):
+        return True
+    return (spec.get("value") is not None or "rows" in spec or "a" in spec
+            or "whole" in spec or "part_a" in spec)
+
+
+def _problem_html(model, p, show_default=True) -> str:
+    q = _esc(p.get("text") or p.get("problem"))
+    vis = ""
+    mdl = p.get("model", model)
+    if p.get("show_model", show_default) and _has_model_fields(p, mdl) and mdl != "none":
+        # Practice picture — neutral, so it doesn't reveal the answer. A problem
+        # may name its own model (enrichment mixes benchmarks).
+        vis = svg_model(mdl, p, reveal=False)
+    choices = _choices_html(p.get("choices"))
+    frame = p.get("answer_frame")
+    if choices:
+        ans = choices  # multiple choice — no write-in box needed
+    elif frame:
+        # ASD: a structured fill-in frame (e.g. "___ groups of ___ = ___").
+        ans = f'<div class="frame">{_esc(frame)}</div>'
+    else:
+        ans = ('<div style="margin-top:10px;color:var(--muted);font-size:13px;">'
+               'Answer: <span style="border:2px dashed var(--frame);border-radius:8px;'
+               'display:inline-block;width:110px;height:30px;vertical-align:middle;"></span></div>')
+    return f'<div class="prob"><p class="q">{q}</p>{vis}{ans}</div>'
+
+
+def _extra_review_html(packet: dict) -> str:
+    """A few OTHER questions the class missed — on standards outside this packet's
+    reteach — added to each tier's practice so the teacher can review them too.
+    Drawn from the 'Target the Misses' clusters whose standard differs from the
+    packet's. Text + choices (no forced model). Cached on the packet."""
+    if "_extra_review" not in packet:
+        std = str(packet.get("standard", ""))
+        samples = []
+        for cl in (packet.get("target_the_misses") or []):
+            if str(cl.get("standard", "")) and str(cl.get("standard")) != std:
+                for s in (cl.get("fix_samples") or []):
+                    samples.append({**s, "_std": cl.get("standard")})
+        packet["_extra_review"] = samples[:3]
+    samples = packet.get("_extra_review") or []
+    if not samples:
+        return ""
+    cards = "".join(_problem_html("none", s) for s in samples)
+    return ('<p class="practicelabel" style="color:#8E44AD;margin-top:12px;">'
+            '⭐ Extra review — other questions the class missed</p>'
+            f'<div class="grid">{cards}</div>')
+
+
+_CM_SECTIONS = [
+    ("i_do", "I DO — Teacher Models",
+     "Touch each object once, count aloud, say the total, then check the counters."),
+    ("we_do", "WE DO — Guided Practice",
+     "Complete together. Ask: Which counter set has the same amount?"),
+    ("cfu", "CHECK FOR UNDERSTANDING", "Student answers with minimal prompting."),
+    ("you_do", "YOU DO — Work independently",
+     "Each question and all answer choices stay together."),
+    ("exit", "EXIT SLIP", "One quick check before you finish."),
+]
+_CM_KEY_LABEL = {"i_do": "I Do", "we_do": "We Do", "cfu": "CFU",
+                 "you_do": "You Do", "exit": "Exit"}
+
+
+def _render_count_match(out: list, packet: dict) -> None:
+    """Render the deterministic count-and-match packet: target + vocab, then each
+    tier's days (I Do / We Do / CFU / You Do / Exit) and OPM, plus a teacher key."""
+    target = _esc(packet.get("target"))
+    if target:
+        out.append(f'<div class="ctarget">🎯 Target: {target}</div>')
+    vocab = packet.get("vocab") or []
+    if vocab:
+        cells = " ".join(f'<span><b>{_esc(w)}</b> = {_esc(d)}</span>' for w, d in vocab)
+        out.append(f'<div class="cvocab">{cells}</div>')
+
+    tiers = packet.get("tiers", []) or []
+    tcount = {t.get("tier"): t.get("student_count", 0) for t in tiers}
+    total = sum(tcount.values())
+    teacher = _esc(packet.get("teacher"))
+    who = teacher or "grade-wide"
+    if total:
+        chips = "".join(
+            f'<span class="cc" style="background:{_TIER_META.get(name, ("", "#888", ""))[1]}">'
+            f'{label} ×{tcount.get(name,0)}</span>'
+            for name, label in (("Intensive", "Red"), ("Cusp", "Yellow"),
+                                ("Strategic", "Green")))
+        out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
+                   f'{chips}<span class="cc" style="background:#38601F">Total ×{total}</span></div>')
+
+    key_lines = []  # teacher answer key, collected as we render
+    for ti, t in enumerate(tiers):
+        _cssname, hexc, stars = _TIER_META.get(t.get("tier"), ("blue", "#2E86C1", ""))
+        red_yellow_green = {"Intensive": "Red", "Cusp": "Yellow",
+                            "Strategic": "Green"}.get(t.get("tier"), t.get("tier"))
+        tpb = "" if ti == 0 else " pbreak"
+        out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
+        out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">'
+                   f'{stars} {_esc(red_yellow_green)}</span><h2>{_esc(t.get("band"))}</h2></div>')
+        for di, day in enumerate(t.get("days", [])):
+            dpb = "" if di == 0 else " pbreak"
+            out.append(f'<div class="day{dpb}" style="background:{hexc}">'
+                       f'Day {_esc(day.get("day"))} — {_esc(day.get("title"))}'
+                       f'<span class="small">{_esc(day.get("pacing"))}</span></div>')
+            sect = day.get("sections") or {}
+            day_key = []
+            for key, label, note in _CM_SECTIONS:
+                items = sect.get(key) or []
+                if not items:
+                    continue
+                out.append(f'<div class="phase"><span class="pn" style="background:{hexc}">'
+                           f'{"✎" if key in ("you_do","exit") else "▶"}</span>'
+                           f'<h3>{_esc(label)}</h3></div>')
+                out.append(f'<div class="phase-body"><p class="cnote">{_esc(note)}</p>')
+                if key == "you_do":
+                    cards = "".join(_count_item_html(it, num=str(i + 1))
+                                    for i, it in enumerate(items))
+                    out.append(f'<div class="grid">{cards}</div>')
+                else:
+                    out.append("".join(_count_item_html(it) for it in items))
+                out.append("</div>")
+                day_key.append(f'{_CM_KEY_LABEL[key]} '
+                               + ", ".join(it.get("answer", "?") for it in items))
+            key_lines.append(f'{red_yellow_green} Day {day.get("day")}: '
+                             + "; ".join(day_key))
+        # OPM (10 items) after the days, for Red & Yellow.
+        opm = t.get("opm") or []
+        if opm:
+            cards = "".join(_count_item_html(it, num=str(i + 1))
+                            for i, it in enumerate(opm))
+            out.append(f'<div class="opm pbreak"><h2>OPM — 10-item Progress Check ✅</h2>'
+                       f'<p class="cnote">Administer once, after Day 2.</p>'
+                       f'<div class="grid" style="margin-top:10px;">{cards}</div>'
+                       f'<p class="frame" style="margin-top:12px;">Score: ______ / 10</p></div>')
+            key_lines.append(f'{red_yellow_green} OPM: '
+                             + ", ".join(f'{i+1}-{it.get("answer","?")}'
+                                         for i, it in enumerate(opm)))
+        out.append('</section>')
+
+    # Teacher answer key (all tiers), on its own page.
+    if key_lines:
+        rows = "".join(f'<div class="krow">{_esc(line)}</div>' for line in key_lines)
+        out.append(f'<div class="ckeybox pbreak"><h2>Teacher Answer Key</h2>{rows}</div>')
+
+    grade = _esc(packet.get("grade_level"))
+    std = _esc(packet.get("standard"))
+    out.append(f'<div class="foot">Avocado · Grade {grade} · {std} — Count &amp; match '
+               f'the set of counters · Red &amp; Yellow = 2 days + OPM · Green = 1 day</div>')
+
+
+def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
+    model = packet.get("model", "none")
+    std = _esc(packet.get("standard"))
+    desc = _esc(packet.get("description"))
+    grade = _esc(packet.get("grade_level"))
+    missed = packet.get("test_items") or []
+
+    css = _CSS + (_CSS_PDF_EXTRA if for_pdf else "")
+    head = [f'<!doctype html><html><head><meta charset="utf-8">',
+            f'<meta name="viewport" content="width=device-width, initial-scale=1">',
+            f'<title>DI Packet — {std}</title>']
+    if not for_pdf:
+        # WeasyPrint renders with locally installed fonts, so the web font link is
+        # only useful for the browser-print path.
+        head += ['<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
+                 '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">']
+    head.append(f'<style>{css}</style></head><body><div class="wrap">')
+    out = list(head)
+    enrich = bool(packet.get("enrichment"))
+    asd = bool(packet.get("asd"))
+    # Young grades (and ASD) get the visual MODEL drawn on every step — I do, We
+    # do AND You do — as a scaffold, instead of an empty 'draw it yourself' box.
+    young = str(packet.get("grade_level", "")).upper() in ("PK", "K", "1", "2")
+    scaffold = young or asd
+    teacher = _esc(packet.get("teacher"))
+    kind = "Enrichment · Dig Deeper" if enrich else "DI Center Packet"
+    if asd:
+        kind += " · ASD supports"
+    eyebrow = f"Grade {grade} · Math · {kind}"
+    if teacher:
+        n_classes = teacher.count(",") + 1
+        eyebrow += (f" · {n_classes} classes: {teacher}" if n_classes > 1
+                    else f" · {teacher}'s class")
+    out.append(f'<div class="band"><div><div class="eyebrow">{eyebrow}</div>'
+               f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
+               f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')
+
+    # Deterministic 'count the objects -> match the set of counters' packet: its
+    # own layout (I Do / We Do / CFU / You Do / Exit + OPM), no AI models.
+    if packet.get("format") == "count_match":
+        _render_count_match(out, packet)
+        out.append('</div></body></html>')
+        return "".join(out)
+
+    if enrich:
+        young = str(packet.get("grade_level", "")).upper() in ("PK", "K", "1")
+        msg = ("<b>You are a math star! ⭐</b> Keep practicing these in fun new "
+               "ways — count carefully and show what you know."
+               if young else
+               "<b>You already know this — now go deeper. 🚀</b> These challenges "
+               "stretch you above grade level: take your time, show your thinking, "
+               "and try more than one way.")
+        out.append(f'<div class="missed" style="border-left-color:#117A65;">{msg}</div>')
+    if missed and not enrich:
+        items = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
+        out.append(f'<div class="missed"><b>We are fixing the questions the class missed most:</b> {items}. '
+                   f'These packets reteach those exact ideas.</div>')
+    if not enrich and packet.get("items_captured") == 0:
+        out.append('<div class="missed" style="border-left-color:#C0392B;">'
+                   '<b>⚠ Heads up:</b> the actual test questions for this standard '
+                   'were not found, so these problems are generic (not built from '
+                   'your test). Re-upload the topic <b>test PDF</b> with its answer '
+                   'key so the packet mirrors the real items.</div>')
+    if asd:
+        out.append('<div class="routine"><span>Every day we do the same steps:</span>'
+                   '👀 Watch it <span class="arw">→</span> ✍️ Try it '
+                   '<span class="arw">→</span> ✅ On your own '
+                   '<span class="arw">→</span> 🎉 Done</div>')
+
+    # Copies to make — how many of each tier to print (for the copier).
+    tiers = packet.get("tiers", []) or []
+    tcount = {t.get("tier"): t.get("student_count", 0) for t in tiers}
+    total = sum(tcount.values())
+    who = f"{_esc(teacher)}" if teacher else "grade-wide"
+    if total and enrich:
+        out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
+                   f'<span class="cc" style="background:#117A65">Enrichment ×{total}</span></div>')
+    elif total:
+        chips = "".join(
+            f'<span class="cc" style="background:{_TIER_META.get(name, ("", "#888", ""))[1]}">'
+            f'{label} ×{tcount.get(name,0)}</span>'
+            for name, label in (("Intensive", "Red"), ("Cusp", "Yellow"),
+                                ("Strategic", "Green")))
+        out.append(f'<div class="copies"><span class="lbl">📋 Copies to make ({who}):</span>'
+                   f'{chips}<span class="cc" style="background:#38601F">Total ×{total}</span></div>')
+
+    for ti, t in enumerate(packet.get("tiers", [])):
+        css, hexc, stars = _TIER_META.get(t.get("tier"), ("blue", "#2E86C1", ""))
+        # Each tier starts on a fresh printed page, so a teacher can pull a clean
+        # stack per group (Red / Yellow / Green) without another tier bleeding in.
+        tpb = "" if ti == 0 else " pbreak"
+        out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
+        out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">{stars} {_esc(t.get("tier"))}</span>'
+                   f'<h2>{_esc(t.get("band"))}</h2></div>')
+        for di, day in enumerate(t.get("days", [])):
+            # Each Day after the first also breaks to its own page, so Day 1 and
+            # Day 2 print as separate handouts.
+            dpb = "" if di == 0 else " pbreak"
+            # One visual model per DAY, so I do -> We do -> You do all use the
+            # SAME representation (gradual release). Variety happens between days
+            # and tiers, never within a day.
+            dmodel = day.get("model", model)
+            out.append(f'<div class="day{dpb}" style="background:{hexc}">Day {_esc(day.get("day"))} — {_esc(day.get("title"))}'
+                       f'<span class="small">{_esc(day.get("pacing"))}</span></div>')
+            # Watch it — the ONLY place the model is drawn and worked (the demo /
+            # heavy visual for Red & Yellow). The answer belongs here, not later.
+            w = day.get("watch_it") or {}
+            if w:
+                wvis = (svg_model(dmodel, w, reveal=True)
+                        if _has_model_fields(w, dmodel) else "")
+                wsteps = _steps_html(w.get("steps"), asd)
+                steps_block = (f'<div class="modelsteps"><div class="mslabel">How we did it — '
+                               f'follow these steps:</div><div class="steps">{wsteps}</div></div>'
+                               if wsteps else "")
+                out.append('<div class="phase"><span class="pn" style="background:%s">1</span><h3>Watch it</h3><span class="gr">I do</span></div>' % hexc)
+                out.append('<div class="phase-body"><div class="example"><div class="tag">Study this one</div>'
+                           + wvis
+                           + f'<div class="st">{_esc(w.get("statement"))}</div></div>'
+                           + steps_block + '</div>')
+            # Try it — guided. For young/ASD we DRAW the model with the unknown
+            # blanked (a scaffold to fill in), instead of only an empty box.
+            tr = day.get("try_it") or {}
+            if tr:
+                out.append('<div class="phase"><span class="pn" style="background:%s">2</span><h3>Try it</h3><span class="gr">We do</span></div>' % hexc)
+                steps = _steps_html(tr.get("steps"), asd)
+                trvis = (svg_model(dmodel, tr, reveal=False)
+                         if scaffold and _has_model_fields(tr, dmodel) else "")
+                out.append(f'<div class="phase-body"><div class="prob"><p class="q">{_esc(tr.get("problem"))}</p>'
+                           + trvis
+                           + (f'<div class="steps">{steps}</div>' if steps else "")
+                           + '<div class="drawbox">Fill in the model, then solve.</div></div></div>')
+            # On your own — independent practice. Young/ASD get the model drawn
+            # (unknown blanked) on each problem so the scaffold stays consistent.
+            oyo = day.get("on_your_own") or []
+            if oyo:
+                out.append('<div class="phase"><span class="pn" style="background:%s">3</span><h3>On your own</h3><span class="gr">You do</span></div>' % hexc)
+                oyo_model = dmodel if scaffold else "none"
+                cards = "".join(_problem_html(oyo_model, p) for p in oyo)
+                extra = _extra_review_html(packet)
+                label = ("Do each problem. Use the same steps."
+                         if asd else "Practice — keep going until time is up")
+                finish = (f'<div class="finish">✅ You are done when you finish all '
+                          f'{len(oyo)} problems on this page.</div>' if asd else "")
+                out.append(f'<div class="phase-body"><p class="practicelabel">{label}</p>'
+                           f'<div class="grid">{cards}</div>{extra}{finish}</div>')
+            # Exit slip — one quick check to close the day (teacher scores it).
+            ex = day.get("exit_ticket") or day.get("exit_slip") or {}
+            if ex:
+                exvis = (svg_model(dmodel, ex, reveal=False)
+                         if scaffold and _has_model_fields(ex, dmodel) else "")
+                exch = _choices_html(ex.get("choices"))
+                exans = exch or ('<div class="drawbox">Solve here.</div>')
+                out.append('<div class="phase"><span class="pn" style="background:%s">🎟</span>'
+                           '<h3>Exit Slip</h3><span class="gr">Show what you learned</span></div>' % hexc)
+                out.append(f'<div class="phase-body"><div class="prob exitprob">'
+                           f'<p class="q">{_esc(ex.get("problem") or ex.get("text"))}</p>'
+                           f'{exvis}{exans}</div></div>')
+        # OPM
+        opm = t.get("opm") or []
+        if opm:
+            cards = "".join(_problem_html(model, {**p, "show_model": False}) for p in opm)
+            out.append(f'<div class="opm pbreak"><h2>Quick Check — Did I Grow? ✅</h2><div class="grid" style="margin-top:10px;">{cards}</div></div>')
+        out.append('</section>')
+
+    # Layer 2 — Target the Misses: matched fix-it samples per misconception cluster.
+    misses = packet.get("target_the_misses") or []
+    if misses:
+        out.append('<section class="tier pbreak" style="border-top-color:#8E44AD">')
+        out.append('<div class="tier-head"><span class="pill" style="background:#8E44AD">🎯 Fix the Questions We Missed</span></div>')
+        out.append('<p class="tier-sub">Matched practice for the exact questions the class missed most — do these after the reteach to rectify the mistake.</p>')
+        if not packet.get("stems_captured", True):
+            out.append('<p class="helper">Note: the test PDF wasn\'t uploaded for this topic, so these mirror the skill and format. Upload the test to match the exact wording.</p>')
+        for cl in misses:
+            qs = ", ".join(_esc(q) for q in (cl.get("questions") or []))
+            std = _esc(cl.get("standard"))
+            head = qs or "Missed items"
+            if std:
+                head += f" · {std}"
+            out.append(f'<div class="day" style="background:#8E44AD">{head}'
+                       f'<span class="small">{_esc(cl.get("why_missed"))}</span></div>')
+            # Mirror the real (often multiple-choice) test questions: text + choices,
+            # no forced manipulative model since a cluster may be off the packet's
+            # standard.
+            cards = "".join(_problem_html("none", p) for p in (cl.get("fix_samples") or []))
+            out.append(f'<div class="phase-body"><div class="grid">{cards}</div></div>')
+        out.append('</section>')
+
+    foot = (f'Avocado · Grade {grade} · {std} — Enrichment · Dig Deeper (above grade)'
+            if enrich else
+            f'Avocado · Grade {grade} · {std} — Reteach the skill, then Target the '
+            f'Misses · Red &amp; Yellow = 2 days · Green = 1 day')
+    out.append(f'<div class="foot">{foot}</div>')
+    out.append('</div></body></html>')
+    return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# PDF export — render the same print HTML through headless Chromium so teachers
+# get a real .pdf (not an .html file). Chromium is installed in the API image;
+# if it is somehow unavailable this returns None and the caller falls back to
+# serving HTML, so the download never hard-fails.
+# ---------------------------------------------------------------------------
+def _chromium_bin() -> str | None:
+    env = os.environ.get("CHROME_BIN")
+    if env and os.path.exists(env):
+        return env
+    for name in ("chromium", "chromium-browser", "google-chrome",
+                 "google-chrome-stable", "chrome"):
+        p = shutil.which(name)
+        if p:
+            return p
+    return None
+
+
+def html_to_pdf(page_html: str) -> bytes | None:
+    """Print an HTML string to PDF bytes with headless Chromium. Returns None if
+    Chromium is missing or the render fails (caller should fall back to HTML)."""
+    exe = _chromium_bin()
+    if not exe:
+        return None
+    with tempfile.TemporaryDirectory() as d:
+        src = os.path.join(d, "packet.html")
+        out = os.path.join(d, "packet.pdf")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(page_html)
+        base = [exe, "--headless=new", "--no-sandbox", "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=10000"]
+        url = "file://" + src
+        # Newer Chromium uses --no-pdf-header-footer; older uses
+        # --print-to-pdf-no-header. Try the modern flags, then fall back.
+        for extra in (["--no-pdf-header-footer"], ["--print-to-pdf-no-header"], []):
+            cmd = base + extra + [f"--print-to-pdf={out}", url]
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, timeout=90)
+            except Exception:
+                continue
+            try:
+                with open(out, "rb") as f:
+                    data = f.read()
+                if data[:4] == b"%PDF":
+                    return data
+            except OSError:
+                pass
+    return None
+
+
+def render_di_packet_pdf(packet: dict) -> bytes | None:
+    """The DI packet as PDF bytes, or None if Chromium is unavailable."""
+    return html_to_pdf(render_di_packet_html(packet, for_pdf=True))
