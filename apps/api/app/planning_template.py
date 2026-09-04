@@ -98,6 +98,22 @@ def _phase_cell(L: dict, key: str) -> str:
     ph = L.get(key)
     if not isinstance(ph, dict):
         return ""
+    # Y'all Do: lead with the NAMED collaborative strategy (first line of the box),
+    # then the roles and the shared task.
+    if key == "explore_yall_do":
+        structure = (ph.get("structure") or "").strip() or "Rally Coach (pairs)"
+        parts = [f"Collaborative strategy: {structure}"]
+        if ph.get("roles"):
+            parts.append(f"Roles: {ph['roles']}")
+        if ph.get("problem"):
+            parts.append(f"Problem: {ph['problem']}")
+        _q, moves = _split_questions(ph.get("say"))
+        move = moves[0] if moves else " ".join(_as_list(ph.get("do"))[:1])
+        if move:
+            parts.append(f"You: {move}")
+        if ph.get("look_for"):
+            parts.append(f"Look for: {ph['look_for']}")
+        return "\n".join(parts)
     # You Do: don't write out every problem — reference the book's independent set
     # (page numbers) and name the strategy, then walk CUBS on ONE specific
     # 'Modeling Real Life' problem. Much less writing, same rigor.

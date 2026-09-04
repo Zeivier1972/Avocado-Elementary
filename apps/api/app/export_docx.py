@@ -92,7 +92,7 @@ def _phase(doc, header, phase):
     if phase.get("connect"):
         _label(doc, "Connect to what we just modeled", phase.get("connect"))
     if phase.get("structure"):
-        _label(doc, "Collaborative structure", phase.get("structure"))
+        _label(doc, "Collaborative strategy", phase.get("structure"))
         _label(doc, "Each partner/group role", phase.get("roles"))
     _label(doc, "Problem worked", phase.get("problem"))
     say = phase.get("say")
@@ -420,6 +420,30 @@ def _cell(cell, text, size=8, bold=False, italic=False, color=None):
     return cell
 
 
+def _grid_cell(cell, text, size=7):
+    """Write a filled phase cell, bolding the leading 'Label:' on each line (e.g.
+    'Collaborative strategy:', 'Strategy:', 'Connect:', 'Check:') so the box leads
+    with the labeled move."""
+    cell.text = ""
+    p = cell.paragraphs[0]
+    lines = str(text or "").split("\n")
+    for i, line in enumerate(lines):
+        if i > 0:
+            p.add_run("\n")
+        # Bold a short leading label (before the first colon) if it looks like one.
+        if ":" in line and len(line.split(":", 1)[0]) <= 40:
+            label, rest = line.split(":", 1)
+            rb = p.add_run(label + ":")
+            rb.bold = True
+            rb.font.size = Pt(size)
+            rr = p.add_run(rest)
+            rr.font.size = Pt(size)
+        else:
+            r = p.add_run(line)
+            r.font.size = Pt(size)
+    return cell
+
+
 def _vocab_line(words, cap=8):
     """'word (meaning); …' compact for the weekly one-pager strip."""
     parts = []
@@ -528,7 +552,7 @@ def template_to_docx(t: dict, filled: bool = False) -> bytes:
                 # Always show the lesson's activities (they're a menu to pick from).
                 _cell(cell, d.get("activities", "") or "", 7)
             elif filled:
-                _cell(cell, (d.get("phase_example", {}) or {}).get(key, ""), 7)
+                _grid_cell(cell, (d.get("phase_example", {}) or {}).get(key, ""), 7)
             else:
                 _cell(cell, "", 8)  # blank for the teacher to plan
 

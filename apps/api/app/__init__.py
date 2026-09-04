@@ -3,5 +3,5 @@
 # Bump BUILD whenever behavior changes so the running deploy is identifiable
 # from the UI (Coach header) and /health. This lets us confirm at a glance
 # whether the latest code is actually live before regenerating guides.
-__version__ = "0.66.2"
-__build__ = "2026-09-04-you-do-reference-plus-cubs-problem"
+__version__ = "0.66.3"
+__build__ = "2026-09-04-yall-do-collab-strategy-first-bold-labels"

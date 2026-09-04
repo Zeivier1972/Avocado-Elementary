@@ -1526,7 +1526,7 @@ function Phase({ label, phase }: { label: string; phase: any }) {
         </div>
       )}
       {phase.connect && <Line label="Connect to what we just modeled" value={phase.connect} />}
-      {phase.structure && <Line label="Collaborative structure" value={phase.structure} />}
+      {phase.structure && <Line label="Collaborative strategy" value={phase.structure} />}
       {phase.roles && <Line label="Each partner/group role" value={phase.roles} />}
       {phase.problem && <Line label="Problem worked" value={phase.problem} />}
       {Array.isArray(phase.questions) && phase.questions.length > 0 && (
