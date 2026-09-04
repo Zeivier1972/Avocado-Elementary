@@ -25,7 +25,7 @@ const NAV: Group[] = [
     children: [
       { href: "/coach", label: "🗂 Planning" },
       { href: "/framework", label: "🧭 Framework" },
-      { href: "/tier2", label: "🔤 Tier 2" },
+      { href: "/tier2", label: "🔤 Power Words" },
     ],
   },
   {

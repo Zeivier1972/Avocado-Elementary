@@ -42,7 +42,7 @@ export default function Tier2Page() {
       <div className="max-w-4xl mx-auto p-6 space-y-5">
         <div>
           <h1 className="text-xl font-bold text-gray-800">
-            Tier 2 Academic Vocabulary
+            Power Words
           </h1>
           <p className="text-sm text-gray-500">
             The cross-curricular academic words (determine, explain, justify,
@@ -72,7 +72,7 @@ export default function Tier2Page() {
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="font-bold text-gray-800">
-              {GRADE_LABEL(grade)} — {words.length} Tier 2 words
+              {GRADE_LABEL(grade)} — {words.length} Power Words
             </div>
             <div className="text-xs text-gray-400">
               Ordered by how often they appear across the standards

@@ -1519,9 +1519,32 @@ function Phase({ label, phase }: { label: string; phase: any }) {
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-2 ml-1">
       <div className="font-semibold text-avocado-dark text-xs mb-1">{label}</div>
+      {phase.strategy && (
+        <div className="rounded border border-avocado/30 bg-avocado/5 px-2 py-1 mb-1">
+          <span className="font-semibold text-gray-700 text-xs">🎯 Strategy we are modeling: </span>
+          <span className="text-xs text-gray-700">{phase.strategy}</span>
+        </div>
+      )}
+      {phase.connect && <Line label="Connect to what we just modeled" value={phase.connect} />}
       {phase.structure && <Line label="Collaborative structure" value={phase.structure} />}
       {phase.roles && <Line label="Each partner/group role" value={phase.roles} />}
       {phase.problem && <Line label="Problem worked" value={phase.problem} />}
+      {Array.isArray(phase.questions) && phase.questions.length > 0 && (
+        <div className="my-1">
+          <div className="text-xs font-semibold text-gray-700">Ask these questions:</div>
+          <ul className="list-disc ml-5 text-sm text-gray-700 space-y-0.5">
+            {phase.questions.map((q: string, i: number) => (
+              <li key={i}>{q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {phase.check && (
+        <div className="rounded border border-sky-100 bg-sky-50/60 px-2 py-1 my-1">
+          <span className="font-semibold text-gray-700 text-xs">✅ Check for understanding: </span>
+          <span className="text-xs text-gray-700">{phase.check}</span>
+        </div>
+      )}
       {say.length > 0 && (
         <div className="my-1">
           <div className="text-xs font-semibold text-gray-700">Teacher says:</div>

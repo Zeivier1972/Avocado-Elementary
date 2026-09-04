@@ -144,7 +144,7 @@ function DiFocusInner() {
           <p className="text-sm text-gray-500">
             {enrich
               ? "Plan a Dig Deeper challenge for the already-proficient kids: extend both benchmarks together at above-grade rigor with the ACES gradual-release model."
-              : "One place to plan reteach for a weak standard: what it is, the Tier 2 words to grow, the questions students missed, and a Red / Yellow / Green plan using the ACES gradual-release model."}
+              : "One place to plan reteach for a weak standard: what it is, the Power Words to grow, the questions students missed, and a Red / Yellow / Green plan using the ACES gradual-release model."}
           </p>
         </div>
 
@@ -174,10 +174,10 @@ function DiFocusInner() {
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                Tier 2 academic words to grow (this year&apos;s focus)
+                Power Words to grow (this year&apos;s focus)
               </div>
               <a href="/tier2" className="text-xs text-avocado-dark hover:underline">
-                All Tier 2 →
+                All Power Words →
               </a>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">

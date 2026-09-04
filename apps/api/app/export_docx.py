@@ -87,6 +87,10 @@ def _phase(doc, header, phase):
     if isinstance(phase, str):
         doc.add_paragraph(phase)
         return
+    if phase.get("strategy"):
+        _label(doc, "Strategy we are modeling", phase.get("strategy"))
+    if phase.get("connect"):
+        _label(doc, "Connect to what we just modeled", phase.get("connect"))
     if phase.get("structure"):
         _label(doc, "Collaborative structure", phase.get("structure"))
         _label(doc, "Each partner/group role", phase.get("roles"))
@@ -97,7 +101,15 @@ def _phase(doc, header, phase):
         p.add_run("Teacher says:").bold = True
         for line in (say if isinstance(say, list) else [say]):
             doc.add_paragraph(f"“{line}”", style="List Bullet")
+    questions = phase.get("questions")
+    if questions:
+        p = doc.add_paragraph()
+        p.add_run("Ask these questions:").bold = True
+        for q in (questions if isinstance(questions, list) else [questions]):
+            doc.add_paragraph(str(q), style="List Bullet")
     _label(doc, "Teacher does", phase.get("do"))
+    if phase.get("check"):
+        _label(doc, "Check for understanding", phase.get("check"))
     _label(doc, "Concrete (manipulative)", phase.get("concrete"))
     _label(doc, "Pictorial (drawing)", phase.get("pictorial"))
     _label(doc, "Abstract (equation)", phase.get("abstract"))
@@ -146,7 +158,7 @@ def guide_to_docx(guide: dict) -> bytes:
 
     # Tier 2 academic vocabulary (this year's focus) — mined from the standards.
     if guide.get("tier2_vocabulary"):
-        _heading(doc, "Tier 2 Academic Vocabulary (focus — words in the "
+        _heading(doc, "Power Words (academic vocabulary — the words in the "
                       "question stems)", 12)
         table = doc.add_table(rows=1, cols=2)
         table.style = "Light Grid Accent 1"
@@ -455,7 +467,7 @@ def template_to_docx(t: dict, filled: bool = False) -> bytes:
     voc = t.get("vocabulary", {}) or {}
     vt = doc.add_table(rows=2, cols=2)
     vt.style = "Light Grid Accent 1"
-    _cell(vt.rows[0].cells[0], "Tier 2 — academic (words in the questions)", 8,
+    _cell(vt.rows[0].cells[0], "Power Words — academic (words in the questions)", 8,
           bold=True, color=(0x2E, 0x86, 0xC1))
     _cell(vt.rows[0].cells[1], _vocab_line(voc.get("tier2")), 8)
     _cell(vt.rows[1].cells[0], "Tier 3 — subject-specific math words", 8,

@@ -1705,7 +1705,7 @@ def tier2_vocabulary(
     for g in grades:
         out[g] = tier2_for_standards(_standards_as_dicts(db, g))
     return {"by_grade": out,
-            "note": "Tier 2 = academic words used across every subject (the "
+            "note": "Power Words = academic words used across every subject (the "
                     "school's focus this year). Tier 3 = subject-specific."}
 
 

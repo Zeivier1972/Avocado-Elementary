@@ -985,12 +985,21 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
             "and introduce vocabulary: " + (", ".join(vocab[:4]) if vocab else "key terms") + ".")
         # ACES phases as scripted objects (Assemble → Connect → Explore → Solo).
         i_do = _as_phase(L.get("i_do"),
+            strategy=f"Read-Draw-Write: model {skill} with a think-aloud, naming each "
+                     "step as you draw the model (not just 'solve the word problem').",
             problem=f"a worked example of {skill}",
             say=[f"Watch how I {skill}. First I…", "I'll think out loud so you hear my reasoning."],
             do=f"Model {skill} step by step with {conc}; write each step where students can see it.",
             concrete=c_conc, pictorial=c_pict, abstract=c_abst,
             look_for="Students track the steps and can name what I did first.")
         we_do = _as_phase(L.get("we_do"),
+            connect=f"In I Do we modeled {skill}; now we solve one together using the "
+                    "SAME strategy and steps.",
+            questions=["What do we do first — and why?",
+                       "What is our next step?",
+                       "How do we know our answer makes sense?"],
+            check="Students show the next step on their whiteboards; look for the correct "
+                  "step and a reason before moving on.",
             problem=f"a second example of {skill} (different numbers)",
             say=["Let's do this one together — what should we do first?",
                  "Tell your partner the next step, then we'll check."],
@@ -1134,6 +1143,26 @@ _PHASE_SHAPE = (
     '"look_for":"what a correct student response sounds/looks like in this phase"}'
 )
 
+# I Do adds an explicit STRATEGY (what we model, by name). We Do adds CONNECT
+# (link back to the I Do), guiding QUESTIONS, and a CHECK for understanding.
+_IDO_SHAPE = (
+    '{"strategy":"NAME the specific instructional strategy being MODELED here — '
+    'e.g. \'Read-Draw-Write with a part-part-whole bar model\', \'CUBES close-read '
+    'of the word problem\', \'think-aloud + number bond\' — never just '
+    '\'word problem\' or \'think-aloud\' alone",' + _PHASE_SHAPE[1:]
+)
+_WEDO_SHAPE = (
+    '{"connect":"one sentence linking THIS guided problem back to what was just '
+    'modeled in I Do (\'In I Do we __; now together we __\'), naming the SAME '
+    'strategy",'
+    '"questions":["a real guiding question the teacher asks during We Do that '
+    'walks the strategy","another guiding question","a question that surfaces the '
+    'next strategy step"],'
+    '"check":"a quick check for understanding done INSIDE the We Do (whiteboard '
+    'show-me / thumbs / a targeted question) and what a correct response looks '
+    'like",' + _PHASE_SHAPE[1:]
+)
+
 _LESSON_SCHEMA = (
     '[{"code":"7.1","title":"...","benchmarks":["MA.3..."],"focus":"...",'
     '"learning_goal":"I can ... (student-friendly)",'
@@ -1146,8 +1175,8 @@ _LESSON_SCHEMA = (
     '"vocabulary":["the pacing-guide vocabulary terms used in THIS lesson"],'
     '"vocabulary_integration":"specifically how to teach these exact terms in THIS lesson (kid-friendly definition, where in the lesson they are introduced/used, the sentence frame)",'
     '"activate_prior_knowledge":"a specific warm-up (with its actual review problem) that connects to THIS lesson",'
-    f'"i_do":{_PHASE_SHAPE},'
-    f'"we_do":{_PHASE_SHAPE},'
+    f'"i_do":{_IDO_SHAPE},'
+    f'"we_do":{_WEDO_SHAPE},'
     '"explore_yall_do":{"structure":"the NAMED collaborative structure (e.g. Rally Coach in pairs, Numbered Heads Together in groups of 4)",'
     '"roles":"exactly what each partner/member does, step by step",'
     '"problem":"the shared task with real numbers (DIFFERENT from every other phase)",'
@@ -1197,6 +1226,14 @@ _LESSON_RULES = (
     "Use REAL, grade-appropriate examples like a math textbook would: small whole "
     "numbers for K–1, larger/multi-step for 2–3, fractions where the benchmark calls "
     "for it. Keep every number and word appropriate for the grade in the header.\n"
+    "- i_do: set 'strategy' to the NAMED instructional strategy you model (e.g. "
+    "'Read-Draw-Write with a part-part-whole bar model', 'CUBES close-read') — be "
+    "explicit; never just 'word problem' or 'think-aloud'. The 'say' lines are the "
+    "think-aloud that ENACTS that strategy.\n"
+    "- we_do: 'connect' must link back to the I Do and name the SAME strategy; give "
+    "2-3 real guiding 'questions' the teacher asks that walk the strategy WITH the "
+    "students; and a 'check' — a quick check for understanding done inside the We Do "
+    "(whiteboard show-me / thumbs / targeted question) with the correct response.\n"
     "- explore_yall_do: NAME the collaborative structure (Rally Coach / Pairs Check in "
     "pairs; Numbered Heads Together / Round Robin / Team Huddle in groups of 4) and give "
     "each partner/member's exact role.\n"

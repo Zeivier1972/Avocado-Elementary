@@ -102,7 +102,7 @@ export default function AssistantPage() {
         </div>
         <p className="text-sm text-gray-500 mb-2">
           It knows your live system — goal progress, every teacher&apos;s data,
-          pacing, standards &amp; Tier 2 vocabulary, assessments, your notes, and
+          pacing, standards &amp; Power Words, assessments, your notes, and
           key dates — and it <b>remembers your past conversations</b>. Ask a
           question, or have it draft a teacher email.
         </p>
