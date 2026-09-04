@@ -98,7 +98,12 @@ def _phase_cell(L: dict, key: str) -> str:
     ph = L.get(key)
     if not isinstance(ph, dict):
         return ""
-    questions, moves = _split_questions(ph.get("say"))
+    # Prefer the phase's explicit guiding questions (We Do), else parse them from
+    # the 'say' lines.
+    questions = _as_list(ph.get("questions"))
+    say_q, moves = _split_questions(ph.get("say"))
+    if not questions:
+        questions = say_q
     move = (moves[0] if moves else "") or (" ".join(_as_list(ph.get("do"))[:1]))
     q = questions[0] if questions else ""
     if key == "explore_yall_do":
@@ -110,14 +115,22 @@ def _phase_cell(L: dict, key: str) -> str:
     else:
         students = ph.get("look_for", "") or "Try it with support"
     parts = []
-    # Show the actual problem first, so the lesson plan uses the SAME book problem
-    # the planning guide models for this phase.
+    # I Do names the STRATEGY it models; We Do CONNECTS back to it — so the grid
+    # shows the strategy and think-aloud, not just the problem.
+    if key == "i_do" and ph.get("strategy"):
+        parts.append(f"Strategy: {ph['strategy']}")
+    if key == "we_do" and ph.get("connect"):
+        parts.append(f"Connect: {ph['connect']}")
+    # Show the actual problem, so the lesson plan uses the SAME book problem the
+    # planning guide models for this phase.
     if ph.get("problem"):
         parts.append(f"Problem: {ph['problem']}")
     if move:
         parts.append(f"You: {move}")
     if q:
         parts.append(f"Ask: {q}")
+    if key == "we_do" and ph.get("check"):
+        parts.append(f"Check: {ph['check']}")
     if students:
         parts.append(f"Students: {students}")
     return "\n".join(parts)
