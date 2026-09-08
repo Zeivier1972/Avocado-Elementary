@@ -1525,18 +1525,30 @@ function Phase({ label, phase }: { label: string; phase: any }) {
           <span className="text-xs text-gray-700">{phase.strategy}</span>
         </div>
       )}
+      {phase.why_it_works && (
+        <div className="rounded border border-emerald-100 bg-emerald-50/60 px-2 py-1 mb-1">
+          <span className="font-semibold text-gray-700 text-xs">💡 Why it works (say it aloud): </span>
+          <span className="text-xs text-gray-700">{phase.why_it_works}</span>
+        </div>
+      )}
       {phase.connect && <Line label="Connect to what we just modeled" value={phase.connect} />}
       {phase.structure && <Line label="Collaborative strategy" value={phase.structure} />}
       {phase.roles && <Line label="Each partner/group role" value={phase.roles} />}
       {phase.problem && <Line label="Problem worked" value={phase.problem} />}
       {Array.isArray(phase.questions) && phase.questions.length > 0 && (
         <div className="my-1">
-          <div className="text-xs font-semibold text-gray-700">Ask these questions:</div>
+          <div className="text-xs font-semibold text-gray-700">Ask these questions (DOK 1 → 3):</div>
           <ul className="list-disc ml-5 text-sm text-gray-700 space-y-0.5">
             {phase.questions.map((q: string, i: number) => (
               <li key={i}>{q}</li>
             ))}
           </ul>
+        </div>
+      )}
+      {phase.mine_wrong_answer && (
+        <div className="rounded border border-rose-100 bg-rose-50/60 px-2 py-1 my-1">
+          <span className="font-semibold text-gray-700 text-xs">🔍 Mine a wrong answer: </span>
+          <span className="text-xs text-gray-700">{phase.mine_wrong_answer}</span>
         </div>
       )}
       {phase.check && (

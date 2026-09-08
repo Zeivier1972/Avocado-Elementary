@@ -89,6 +89,8 @@ def _phase(doc, header, phase):
         return
     if phase.get("strategy"):
         _label(doc, "Strategy we are modeling", phase.get("strategy"))
+    if phase.get("why_it_works"):
+        _label(doc, "Why it works (say the reasoning aloud)", phase.get("why_it_works"))
     if phase.get("connect"):
         _label(doc, "Connect to what we just modeled", phase.get("connect"))
     if phase.get("structure"):
@@ -104,9 +106,11 @@ def _phase(doc, header, phase):
     questions = phase.get("questions")
     if questions:
         p = doc.add_paragraph()
-        p.add_run("Ask these questions:").bold = True
+        p.add_run("Ask these questions (DOK 1 → 3):").bold = True
         for q in (questions if isinstance(questions, list) else [questions]):
             doc.add_paragraph(str(q), style="List Bullet")
+    if phase.get("mine_wrong_answer"):
+        _label(doc, "Mine a wrong answer", phase.get("mine_wrong_answer"))
     _label(doc, "Teacher does", phase.get("do"))
     if phase.get("check"):
         _label(doc, "Check for understanding", phase.get("check"))

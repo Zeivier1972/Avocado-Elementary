@@ -149,10 +149,12 @@ def _phase_cell(L: dict, key: str) -> str:
     else:
         students = ph.get("look_for", "") or "Try it with support"
     parts = []
-    # I Do names the STRATEGY it models; We Do CONNECTS back to it — so the grid
-    # shows the strategy and think-aloud, not just the problem.
+    # I Do names the STRATEGY it models and the reasoning (why it works); We Do
+    # CONNECTS back to it — so the grid shows the thinking, not just the problem.
     if key == "i_do" and ph.get("strategy"):
         parts.append(f"Strategy: {ph['strategy']}")
+    if key == "i_do" and ph.get("why_it_works"):
+        parts.append(f"Why it works: {ph['why_it_works']}")
     if key == "we_do" and ph.get("connect"):
         parts.append(f"Connect: {ph['connect']}")
     # Show the actual problem, so the lesson plan uses the SAME book problem the
@@ -161,8 +163,14 @@ def _phase_cell(L: dict, key: str) -> str:
         parts.append(f"Problem: {ph['problem']}")
     if move:
         parts.append(f"You: {move}")
-    if q:
+    # We Do lists all THREE DOK questions; other phases show one guiding question.
+    if key == "we_do" and len(questions) > 1:
+        for qq in questions[:3]:
+            parts.append(f"Ask: {qq}")
+    elif q:
         parts.append(f"Ask: {q}")
+    if key == "we_do" and ph.get("mine_wrong_answer"):
+        parts.append(f"Mine wrong answer: {ph['mine_wrong_answer']}")
     if key == "we_do" and ph.get("check"):
         parts.append(f"Check: {ph['check']}")
     if students:

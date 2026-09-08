@@ -987,6 +987,8 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
         i_do = _as_phase(L.get("i_do"),
             strategy=f"Read-Draw-Write: model {skill} with a think-aloud, naming each "
                      "step as you draw the model (not just 'solve the word problem').",
+            why_it_works=f"Say the reasoning out loud, not just the steps — WHY {skill} "
+                         "works (the math idea behind it), so students hear the thinking.",
             problem=f"a worked example of {skill}",
             say=[f"Watch how I {skill}. First I…", "I'll think out loud so you hear my reasoning."],
             do=f"Model {skill} step by step with {conc}; write each step where students can see it.",
@@ -995,9 +997,12 @@ def _template_lessons(topic: dict, std_by_code: dict) -> list[dict]:
         we_do = _as_phase(L.get("we_do"),
             connect=f"In I Do we modeled {skill}; now we solve one together using the "
                     "SAME strategy and steps.",
-            questions=["What do we do first — and why?",
-                       "What is our next step?",
-                       "How do we know our answer makes sense?"],
+            questions=["DOK 1 — What did we do first?",
+                       "DOK 2 — Why does that step work?",
+                       "DOK 3 — When would this strategy NOT work?"],
+            mine_wrong_answer="Anticipate a likely wrong answer; instead of correcting, "
+                              "ask the student to show it on the model and find where it "
+                              "breaks down.",
             check="Students show the next step on their whiteboards; look for the correct "
                   "step and a reason before moving on.",
             problem=f"a second example of {skill} (different numbers)",
@@ -1149,15 +1154,22 @@ _IDO_SHAPE = (
     '{"strategy":"NAME the specific instructional strategy being MODELED here — '
     'e.g. \'Read-Draw-Write with a part-part-whole bar model\', \'CUBES close-read '
     'of the word problem\', \'think-aloud + number bond\' — never just '
-    '\'word problem\' or \'think-aloud\' alone",' + _PHASE_SHAPE[1:]
+    '\'word problem\' or \'think-aloud\' alone",'
+    '"why_it_works":"the REASONING the teacher says out loud that makes the steps '
+    'work — the \'why does this work?\', not the steps themselves (e.g. \'I can '
+    'add in any order because the total is the same set of objects\')",'
+    + _PHASE_SHAPE[1:]
 )
 _WEDO_SHAPE = (
     '{"connect":"one sentence linking THIS guided problem back to what was just '
     'modeled in I Do (\'In I Do we __; now together we __\'), naming the SAME '
     'strategy",'
-    '"questions":["a real guiding question the teacher asks during We Do that '
-    'walks the strategy","another guiding question","a question that surfaces the '
-    'next strategy step"],'
+    '"questions":["DOK 1 — a recall/procedure question (\'what did you do?\')",'
+    '"DOK 2 — a skill/concept question (\'why does that work?\')",'
+    '"DOK 3 — a strategic-reasoning question (\'when would that NOT work?\')"],'
+    '"mine_wrong_answer":"ONE anticipated wrong answer for THIS problem and the '
+    'exact question that turns it into reasoning — e.g. \'A student says 3x4=7 '
+    '(they added). Ask: show it on the array — are the groups equal?\'",'
     '"check":"a quick check for understanding done INSIDE the We Do (whiteboard '
     'show-me / thumbs / a targeted question) and what a correct response looks '
     'like",' + _PHASE_SHAPE[1:]
@@ -1229,10 +1241,15 @@ _LESSON_RULES = (
     "- i_do: set 'strategy' to the NAMED instructional strategy you model (e.g. "
     "'Read-Draw-Write with a part-part-whole bar model', 'CUBES close-read') — be "
     "explicit; never just 'word problem' or 'think-aloud'. The 'say' lines are the "
-    "think-aloud that ENACTS that strategy.\n"
-    "- we_do: 'connect' must link back to the I Do and name the SAME strategy; give "
-    "2-3 real guiding 'questions' the teacher asks that walk the strategy WITH the "
-    "students; and a 'check' — a quick check for understanding done inside the We Do "
+    "think-aloud that ENACTS that strategy, and 'why_it_works' is the reasoning said "
+    "aloud that makes the steps work (the 'why does this work?', NOT the steps) — a "
+    "genuine think-aloud shows the thinking, not just the procedure.\n"
+    "- we_do: 'connect' must link back to the I Do and name the SAME strategy; the "
+    "'questions' must be EXACTLY THREE and climb DOK — DOK 1 (recall/procedure: 'what "
+    "did you do?'), DOK 2 (skill/concept: 'why does that work?'), DOK 3 (strategic "
+    "reasoning: 'when would that NOT work?'); 'mine_wrong_answer' gives ONE likely "
+    "wrong answer for this problem plus the question that turns the error into "
+    "reasoning; and 'check' is a quick check for understanding inside the We Do "
     "(whiteboard show-me / thumbs / targeted question) with the correct response.\n"
     "- explore_yall_do: NAME the collaborative structure (Rally Coach / Pairs Check in "
     "pairs; Numbered Heads Together / Round Robin / Team Huddle in groups of 4) and give "
