@@ -681,12 +681,15 @@ async def pacing_from_document(
     grade_level: str = Form(...),
     subject: str = Form("MATH"),
     topic_name: str = Form(""),
+    generate: bool = Form(True),
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
-    """One step: upload a topic's pacing guide -> create the topic (folder),
-    store the file in it, and generate the Collaborative Planning Guide from the
-    document's content. This is the primary 'upload a new topic' flow.
+    """Upload a topic's pacing guide -> create the topic (folder) and store the
+    file in it. When generate is True (default) it also writes the Collaborative
+    Planning Guide from the document right away. Pass generate=false to just add
+    the topic and file, so the coach can upload the chapter/topic test into the
+    same folder and then build ONE guide from BOTH documents.
 
     The guide is written by several model calls, so generation runs in the
     BACKGROUND: this returns a guide_id with status "generating" right away and
@@ -746,6 +749,19 @@ async def pacing_from_document(
         size=len(data), data=data, uploaded_by=user.id)
     db.add(doc)
     db.commit()
+
+    # When the coach wants to add the chapter/topic test too, stop here: the topic
+    # and file are saved, and they build ONE guide from BOTH documents afterward
+    # (✨ Generate from all files on the folder). No guide is generated yet.
+    if not generate:
+        audit(db, actor=user, action="import", entity_type="planning_document",
+              entity_id=doc.id, purpose="upload_pacing_no_generate")
+        return {
+            "topic": {"id": topic.id, "topic_code": code, "name": name,
+                      "grade_level": grade_level},
+            "guide_id": None, "status": "stored", "document_id": doc.id,
+            "benchmarks_detected": benchmarks,
+        }
 
     # Pre-create the guide record in "generating" state and hand the heavy work
     # to a background task — the request returns now instead of holding the

@@ -155,9 +155,10 @@ export default function CoachPage() {
     await loadGuides(grade);
   }
 
-  async function uploadPacingAndGenerate(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
+  // Upload a pacing guide to CREATE the topic folder and store the file — but do
+  // NOT generate yet. The coach then adds the Topic/Chapter test to the same
+  // folder and clicks "✨ Generate from all files" to build ONE guide from both.
+  async function uploadPacingDoc(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const base = file.name.replace(/\.[^.]+$/, "");
@@ -172,21 +173,26 @@ export default function CoachPage() {
       return;
     }
     setBusy(true);
-    setGuide(null);
-    setTopic(null);
     try {
       const form = new FormData();
       form.append("file", file);
       form.append("grade_level", grade);
       form.append("subject", "MATH");
       form.append("topic_name", topicName);
+      form.append("generate", "false"); // store only — generate after both docs
       const r = await api.pacingFromDocument(form);
       const d = await api.coachDashboard();
       setDash(d);
       await loadDocs(grade);
       await loadGuides(grade);
-      if (r.guide_id) await pollGuide(r.guide_id);
-      else if (r.guide) setGuide(r.guide);
+      const code = r?.topic?.topic_code || topicName;
+      alert(
+        `✅ Pacing guide added to "${code}".\n\n` +
+          "Next: open that topic folder below, upload the Topic/Chapter test into " +
+          "it, then click “✨ Generate from all files” to build one planning guide " +
+          "from BOTH documents.\n\n" +
+          "(Want a guide from just the pacing guide? Use “✨ This file” on it.)"
+      );
     } catch (err) {
       alert("Upload failed: " + (err as Error).message);
     } finally {
@@ -504,15 +510,18 @@ export default function CoachPage() {
           })}
         </div>
 
-        {/* Primary flow: upload a topic's pacing guide → generate the guide */}
+        {/* Primary flow: upload a topic's pacing guide → creates the topic folder
+            (does NOT auto-generate, so you can add the chapter test first) */}
         <div className="bg-avocado-dark text-white rounded-xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="font-semibold">
-              Upload {grade === "K" ? "Kindergarten" : `Grade ${grade}`} pacing guide → generate planning guide
+              Upload {grade === "K" ? "Kindergarten" : `Grade ${grade}`} pacing guide → creates the topic folder
             </div>
             <div className="text-xs opacity-80">
               Pick this grade's topic pacing guide (PDF, Word, or Excel). It creates
-              the topic and writes the Collaborative Planning Guide from it.
+              the topic and stores the file — then add the Topic/Chapter test to the
+              same folder and click “✨ Generate from all files” to build one guide
+              from both. (It no longer generates the instant you upload.)
             </div>
           </div>
           <label className="inline-block bg-white text-avocado-dark hover:bg-gray-100 text-sm font-bold rounded-lg px-4 py-2 cursor-pointer whitespace-nowrap">
@@ -522,7 +531,7 @@ export default function CoachPage() {
               accept=".pdf,.docx,.xlsx,.xls,.txt,.csv"
               className="hidden"
               disabled={busy}
-              onChange={uploadPacingAndGenerate}
+              onChange={uploadPacingDoc}
             />
           </label>
         </div>
