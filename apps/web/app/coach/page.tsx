@@ -15,6 +15,20 @@ import CoachHeader from "@/app/_components/CoachHeader";
 
 const GRADES = ["K", "1", "2", "3"];
 
+// Warn before uploading a large file. Big PDFs over a phone/cellular connection
+// often time out mid-upload (the browser aborts → "Failed to fetch"). Let the
+// coach proceed anyway (e.g. on Wi-Fi), but set expectations first.
+function confirmLargeFile(file: File): boolean {
+  const mb = file.size / (1024 * 1024);
+  if (mb <= 15) return true;
+  return window.confirm(
+    `This file is ${mb.toFixed(0)} MB — that's large.\n\n` +
+      "On a phone or cellular connection, uploads this big often time out and " +
+      "fail. For best results, connect to Wi-Fi or compress the PDF first " +
+      "(a scanned chapter usually shrinks to a few MB).\n\nUpload anyway?"
+  );
+}
+
 export default function CoachPage() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
@@ -105,6 +119,10 @@ export default function CoachPage() {
   ) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!confirmLargeFile(file)) {
+      e.target.value = "";
+      return;
+    }
     setDocBusy(topicCode || "_grade");
     try {
       const form = new FormData();
@@ -169,6 +187,10 @@ export default function CoachPage() {
       suggested
     );
     if (topicName === null) {
+      e.target.value = "";
+      return;
+    }
+    if (!confirmLargeFile(file)) {
       e.target.value = "";
       return;
     }
