@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     ai_provider: str = "none"  # none | anthropic
     ai_api_key: str = ""
     ai_model: str = "claude-sonnet-5"
+    # A cheaper model for light, low-stakes calls (lesson-list skeleton, fix-it
+    # samples). ~5x cheaper than Sonnet; the scripted lesson detail still uses
+    # ai_model. Override with AI_MODEL_LIGHT.
+    ai_model_light: str = "claude-haiku-4-5"
 
     @property
     def sqlalchemy_url(self) -> str:

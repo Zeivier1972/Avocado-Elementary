@@ -777,6 +777,7 @@ def ai_diagnostics() -> dict:
     out = {
         "provider": settings.ai_provider,
         "model": settings.ai_model,
+        "model_light": settings.ai_model_light,
         "key_present": bool(settings.ai_api_key),
         "sdk_installed": False,
         "test_call": "not_attempted",
@@ -1732,16 +1733,26 @@ def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
             f"\n{_PLAIN}")
         arr, _ = _llm_json(
             client, prompt,
-            "You output ONLY a valid JSON array, no prose or fences.", 6000)
+            "You output ONLY a valid JSON array, no prose or fences.", 6000,
+            model=settings.ai_model_light)
         return arr or []
     except Exception:
         return []
 
 
-def _llm_json(client, prompt: str, system: str, max_tokens: int):
-    """One streamed call returning (parsed_json_array | None, reason)."""
+def _llm_json(client, prompt: str, system, max_tokens: int,
+              model: str | None = None, cache_system: bool = False):
+    """One streamed call returning (parsed_json_array | None, reason).
+
+    model overrides settings.ai_model (e.g. a cheaper model for light calls).
+    cache_system marks the (large, reused) system prompt for prompt caching, so
+    repeated calls in the same generation pay ~90% less for those input tokens."""
+    sys_arg = system
+    if cache_system and isinstance(system, str) and system:
+        sys_arg = [{"type": "text", "text": system,
+                    "cache_control": {"type": "ephemeral"}}]
     with client.messages.stream(
-        model=settings.ai_model, max_tokens=max_tokens, system=system,
+        model=model or settings.ai_model, max_tokens=max_tokens, system=sys_arg,
         messages=[{"role": "user", "content": prompt}],
     ) as stream:
         msg = stream.get_final_message()
@@ -1774,7 +1785,8 @@ def _lesson_skeleton(client, topic, std_ctx, pacing_text):
         '[{"code":"1.1","title":"...","benchmarks":["MA.3..."],"focus":"one line"}]'
     )
     arr, _ = _llm_json(client, prompt,
-                       "You output ONLY a JSON array, no prose or fences.", 3000)
+                       "You output ONLY a JSON array, no prose or fences.", 3000,
+                       model=settings.ai_model_light)
     if not arr:
         return []
     out = []
@@ -1796,23 +1808,26 @@ def _lesson_detail(client, topic, std_ctx, batch, pacing_text, max_tokens=20000)
                     "TEXTBOOK chapter) for these lessons — match to the book's real "
                     "lesson, pages, Examples and practice sets where they appear:\n"
                     + pacing_text.strip()[:40000]) if pacing_text else ""
-    prompt = (
+    # The big, per-topic-CONSTANT instructions (role, CUBS, benchmarks, pacing,
+    # rules, schema) go in the SYSTEM prompt and are cache-flagged, so the second
+    # and later lesson batches in the same guide reuse them at ~90% off. Only the
+    # small, per-batch lesson list changes in the user message.
+    system = (
         "You are an elementary math instructional coach writing a Collaborative "
-        "Planning Guide. Expand EXACTLY these lessons (in order) into full detail.\n\n"
+        "Planning Guide. Expand EXACTLY the lessons the user lists (in order) into "
+        "full detail. You output ONLY a valid JSON array, no prose or fences. "
+        "Finish every object completely — never stop mid-object.\n\n"
         f"Grade {topic.get('grade_level')} {topic.get('subject')} — "
         f"{topic.get('topic_code','')}: {topic.get('name','')}\n"
         f"Pacing-guide vocabulary: {topic.get('vocabulary', [])}\n"
         f"Materials: {topic.get('materials', [])}\n\n"
         f"{CUBS_ROUTINE}\n\n"
-        f"Benchmarks (B1G-M detail + ALDs — use these):\n{std_ctx}\n\n"
-        f"Lessons to expand:\n{stub_txt}{pacing_block}\n\n"
+        f"Benchmarks (B1G-M detail + ALDs — use these):\n{std_ctx}{pacing_block}\n\n"
         f"{_LESSON_RULES}\n\n"
-        f"Return ONLY a JSON array (one object per lesson above) matching:\n{_LESSON_SCHEMA}"
+        f"Return ONLY a JSON array (one object per lesson) matching:\n{_LESSON_SCHEMA}"
     )
-    return _llm_json(
-        client, prompt,
-        "You output ONLY a valid JSON array, no prose or fences. Finish every "
-        "object completely — never stop mid-object.", max_tokens)
+    prompt = f"Expand EXACTLY these lessons, in order:\n{stub_txt}"
+    return _llm_json(client, prompt, system, max_tokens, cache_system=True)
 
 
 def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = None):
