@@ -35,6 +35,24 @@ def _next(d: date) -> date:
     return _weekday(d + timedelta(days=1))
 
 
+def _dedupe_topics(topics: list) -> list:
+    """Keep ONE topic per topic_code (per grade+subject) so a re-uploaded topic
+    can't lay itself onto the calendar twice. When a code repeats, keep the most
+    complete copy (the one with the most lessons). Order is preserved from the
+    week_order the topics arrive in."""
+    best: dict = {}
+    order: list = []
+    for t in topics:
+        code = (t.topic_code or "").strip().lower()
+        key = code or f"__id__{t.id}"
+        if key not in best:
+            best[key] = t
+            order.append(key)
+        elif len(t.lessons or []) > len(best[key].lessons or []):
+            best[key] = t
+    return [best[k] for k in order]
+
+
 class GenerateIn(BaseModel):
     grade_level: str
     subject: str = "MATH"
@@ -69,7 +87,7 @@ def generate_calendar(
               .order_by(PacingTopic.week_order).all())
 
     n = 0
-    for t in topics:
+    for t in _dedupe_topics(topics):
         lessons = t.lessons or []
         if not lessons:
             # No lesson breakdown yet — reserve the topic's instructional span so
@@ -200,6 +218,7 @@ def append_topic(
     if not topics:
         raise HTTPException(404, "No topics for this grade yet — upload a pacing "
                                  "guide first.")
+    topics = _dedupe_topics(topics)
     scheduled = {c for (c,) in db.query(CalendarEntry.topic_code)
                  .filter(CalendarEntry.tenant_id == user.tenant_id,
                          CalendarEntry.grade_level == grade,

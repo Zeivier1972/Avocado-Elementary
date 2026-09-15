@@ -729,18 +729,35 @@ async def pacing_from_document(
             code = name = _re.sub(r"[_\s]+", " ", label).strip()[:40]
     benchmarks = list(dict.fromkeys(_re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text)))
 
-    last = (db.query(PacingTopic)
-            .filter(PacingTopic.tenant_id == user.tenant_id,
-                    PacingTopic.grade_level == grade_level)
-            .order_by(PacingTopic.week_order.desc()).first())
-    topic = PacingTopic(
-        tenant_id=user.tenant_id, subject=subject,
-        grade_level=grade_level, topic_code=code, name=name,
-        benchmarks=benchmarks, learning_target="", quarter="",
-        week_order=((last.week_order + 1) if last else 0),
-        source="Uploaded pacing guide", lessons=[])
-    db.add(topic)
-    db.flush()
+    # Reuse an existing topic with the SAME grade+subject+code instead of adding a
+    # duplicate — re-uploading a topic's pacing guide should refresh it in place,
+    # not schedule it onto the calendar twice.
+    existing = (db.query(PacingTopic)
+                .filter(PacingTopic.tenant_id == user.tenant_id,
+                        PacingTopic.grade_level == grade_level,
+                        PacingTopic.subject == subject,
+                        PacingTopic.topic_code == code)
+                .order_by(PacingTopic.week_order).first())
+    if existing:
+        topic = existing
+        topic.name = name or topic.name
+        if benchmarks:
+            topic.benchmarks = benchmarks
+        topic.source = "Uploaded pacing guide"
+        db.flush()
+    else:
+        last = (db.query(PacingTopic)
+                .filter(PacingTopic.tenant_id == user.tenant_id,
+                        PacingTopic.grade_level == grade_level)
+                .order_by(PacingTopic.week_order.desc()).first())
+        topic = PacingTopic(
+            tenant_id=user.tenant_id, subject=subject,
+            grade_level=grade_level, topic_code=code, name=name,
+            benchmarks=benchmarks, learning_target="", quarter="",
+            week_order=((last.week_order + 1) if last else 0),
+            source="Uploaded pacing guide", lessons=[])
+        db.add(topic)
+        db.flush()
 
     doc = PlanningDocument(
         tenant_id=user.tenant_id, grade_level=grade_level, topic_code=code,
