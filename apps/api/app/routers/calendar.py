@@ -129,6 +129,18 @@ def generate_calendar(
                 assess_day = d
         else:
             assess_day = d
+        # If the district assessment date is a few days after the lessons/review
+        # wrapped up, fill the in-between weekdays with Reteach / Test-Prep instead
+        # of leaving them blank — the time is planned, not lost.
+        cur = d
+        while cur < assess_day:
+            db.add(CalendarEntry(
+                tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+                date=cur.isoformat(), topic_code=t.topic_code,
+                title=f"{t.topic_code} Reteach / Test Prep", kind="review",
+                note="Buffer before the district assessment date"))
+            n += 1
+            cur = _next(cur)
         db.add(CalendarEntry(
             tenant_id=user.tenant_id, grade_level=grade, subject=subject,
             date=assess_day.isoformat(), topic_code=t.topic_code,
@@ -181,6 +193,17 @@ def _place_topic(db, user, grade, subject, t, d):
             assess_day = ad if ad >= d else d
         except ValueError:
             assess_day = d
+    # Fill any days between the review and the district assessment date with
+    # Reteach / Test-Prep, so the buffer isn't blank.
+    cur = d
+    while cur < assess_day:
+        db.add(CalendarEntry(
+            tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+            date=cur.isoformat(), topic_code=t.topic_code,
+            title=f"{t.topic_code} Reteach / Test Prep", kind="review",
+            note="Buffer before the district assessment date"))
+        n += 1
+        cur = _next(cur)
     db.add(CalendarEntry(
         tenant_id=user.tenant_id, grade_level=grade, subject=subject,
         date=assess_day.isoformat(), topic_code=t.topic_code,
