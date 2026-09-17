@@ -1786,7 +1786,7 @@ def _lesson_skeleton(client, topic, std_ctx, pacing_text):
                   "order — use the book's real lesson names/numbers when present. "
                   "SKIP review days and test/assessment days (review, re-teach, "
                   "topic/chapter/unit assessment or test, quiz).\n\nDOCUMENT:\n"
-                  + pacing_text.strip()[:45000])
+                  + pacing_text.strip()[:400000])
     else:
         source = "Design a logical sequence of 5-7 lessons covering the benchmarks below."
     prompt = (
@@ -1819,7 +1819,7 @@ def _lesson_detail(client, topic, std_ctx, batch, pacing_text, max_tokens=20000)
     pacing_block = ("\n\nUse this uploaded document (pacing guide and/or the actual "
                     "TEXTBOOK chapter) for these lessons — match to the book's real "
                     "lesson, pages, Examples and practice sets where they appear:\n"
-                    + pacing_text.strip()[:40000]) if pacing_text else ""
+                    + pacing_text.strip()[:120000]) if pacing_text else ""
     # The big, per-topic-CONSTANT instructions (role, CUBS, benchmarks, pacing,
     # rules, schema) go in the SYSTEM prompt and are cache-flagged, so the second
     # and later lesson batches in the same guide reuse them at ~90% off. Only the

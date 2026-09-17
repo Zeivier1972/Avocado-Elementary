@@ -1072,10 +1072,11 @@ def generate_guide_combined(
         if not text:
             skipped.append(f"{d.filename} ({reason})")
             continue
-        # The textbook is huge — keep a generous slice; the pacing guide/standards
-        # are small and kept whole so the sequence and benchmarks are never lost.
-        if role.startswith("TEXTBOOK") and len(text) > 120_000:
-            text = text[:120_000]
+        # The textbook is huge — keep a generous slice so later lessons (e.g. x.6
+        # through x.9) are never cut off; the pacing guide/standards are small and
+        # kept whole so the sequence and benchmarks are never lost.
+        if role.startswith("TEXTBOOK") and len(text) > 300_000:
+            text = text[:300_000]
         parts.append(f"===== {role} — {d.filename} =====\n{text}")
         used.append(d.filename)
         for c in _re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text):
