@@ -1553,7 +1553,7 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
         arr, reason = _llm_json(
             client, prompt,
             "You output ONLY a valid JSON array, no prose or fences. Finish every "
-            "object completely.", 14000)
+            "object completely.", 32000)
         if not arr:
             base["ai_status"] = reason or "the model did not return usable packets"
             return base
