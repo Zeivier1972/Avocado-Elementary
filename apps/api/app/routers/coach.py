@@ -2070,6 +2070,30 @@ def _effective_number_max(auto: int | None, override: int | None,
     return _GRADE_CEILING.get((grade or "").upper())
 
 
+def _fix_bar_answers(packet: dict) -> None:
+    """For every bar-model problem, compute the answer IN CODE from the bar's
+    numbers and rebuild the multiple-choice options from it — so the keyed answer
+    and the choices can never disagree with the picture (the Grade-2 compare /
+    multi-addend / two-step fix)."""
+    from app.export_html import bar_answer, bar_choices
+    for t in packet.get("tiers", []) or []:
+        tier = t.get("tier", "")
+        for day in t.get("days", []) or []:
+            dn = day.get("day", "")
+            for i, it in enumerate(day.get("on_your_own") or []):
+                if isinstance(it, dict) and isinstance(it.get("bar"), dict):
+                    ans = bar_answer(it["bar"])
+                    if ans is not None:
+                        it["answer"] = str(ans)
+                        it["choices"] = bar_choices(ans, seed=f"{tier}|{dn}|oyo|{i}")
+            ex = day.get("exit_ticket")
+            if isinstance(ex, dict) and isinstance(ex.get("bar"), dict):
+                ans = bar_answer(ex["bar"])
+                if ans is not None:
+                    ex["answer"] = str(ans)
+                    ex["choices"] = bar_choices(ans, seed=f"{tier}|{dn}|exit")
+
+
 def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
                        teacher: str = "", asd: bool = False,
                        number_max_override: int | None = None):
@@ -2137,6 +2161,7 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
             packet = generate_di_packets(s, missed, grade, _DI_ROTATION, tier2,
                                          asd=asd, number_max=number_max,
                                          real_items=real_items[:12])
+            _fix_bar_answers(packet)
             packet["items_captured"] = len(real_items)
             packet["number_max"] = number_max  # the ceiling actually used (UI)
             packet["number_max_auto"] = auto_max  # what was detected from test text

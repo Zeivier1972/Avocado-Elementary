@@ -489,6 +489,240 @@ def _bar_model(spec: dict, reveal: bool = True) -> str:
     return "".join(parts)
 
 
+# --- Bar-model variants for Grade-2 problem types --------------------------
+# A structured "bar" object (on a problem) chooses the RIGHT picture:
+#   {"kind":"part_whole","whole","part_a","part_b","unknown":"whole|a|b"}
+#   {"kind":"parts","parts":[5,3,3],"unknown":"whole"}   (2+ addends)
+#   {"kind":"compare","larger","smaller","difference","ask":"total|larger|smaller|difference"}
+#   {"kind":"two_step","start":18,"steps":[{"op":"-","n":6},{"op":"+","n":3}]}
+_BQP, _BQS = "#FDF0D5", "#C9880E"   # unknown highlight (amber)
+_BWP, _BWS = "#EAF4E0", "#4E7C2F"   # whole / total (green)
+_BPP, _BPS = "#E4EEF7", "#2E86C1"   # parts (blue)
+
+
+def _bar_box(x, y, w, h, txt, highlight=False, fill=_BPP, stroke=_BPS,
+             fs=26) -> str:
+    f, s = (_BQP, _BQS) if highlight else (fill, stroke)
+    return (f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="8" '
+            f'fill="{f}" stroke="{s}" stroke-width="2.5"/>'
+            f'<text x="{x + w/2:.0f}" y="{y + h/2 + fs*0.33:.0f}" text-anchor="middle" '
+            f'font-family="Baloo 2, sans-serif" font-weight="800" font-size="{fs}" '
+            f'fill="#26302A">{_esc(txt)}</text>')
+
+
+def _cellv(v, is_unknown, reveal):
+    if is_unknown and not reveal:
+        return "?"
+    return "" if v is None else str(_i(v))
+
+
+def _multi_part_bar(parts_vals, whole, unknown, reveal) -> str:
+    """Whole bar over N part boxes (N addends, e.g. 5 + 3 + 3)."""
+    vals = [p for p in (parts_vals or []) if p is not None]
+    n = max(2, min(5, len(vals)))
+    vals = vals[:n]
+    W, H = 340, 150
+    gap = 8
+    pw = (W - 40 - gap * (n - 1)) / n
+    px0 = 20
+    unk_whole = str(unknown or "whole").lower() == "whole"
+    out = [f'<svg width="100%" height="{H}" viewBox="0 0 {W} {H}" '
+           f'preserveAspectRatio="xMidYMid meet" style="max-width:360px" role="img" '
+           f'aria-label="part whole bar with {n} parts">']
+    out.append('<text x="{:.0f}" y="10" text-anchor="middle" font-family="Atkinson '
+               'Hyperlegible, sans-serif" font-size="10" fill="#6B7A6E">whole</text>'
+               .format(W / 2))
+    out.append(_bar_box(20, 14, W - 40, 46, _cellv(whole, unk_whole, reveal),
+                        unk_whole, _BWP, _BWS))
+    for i in range(n):
+        x = px0 + i * (pw + gap)
+        out.append(f'<line x1="{x+pw/2:.0f}" y1="60" x2="{x+pw/2:.0f}" y2="92" '
+                   f'stroke="#B9C2AE" stroke-width="2"/>')
+        out.append(_bar_box(x, 92, pw, 46, _cellv(vals[i], False, reveal), False))
+    return "".join(out) + "</svg>"
+
+
+def _compare_bar(larger, smaller, difference, ask, reveal) -> str:
+    """Two stacked bars (bigger vs smaller) with the difference segment shaded —
+    the model for 'how many more/fewer' and '__ more than' problems."""
+    la, sm, di = larger, smaller, difference
+    if sm is None and la is not None and di is not None:
+        sm = la - di
+    if la is None and sm is not None and di is not None:
+        la = sm + di
+    if di is None and la is not None and sm is not None:
+        di = la - sm
+    la = _i(la) if la is not None else 0
+    sm = _i(sm) if sm is not None else 0
+    di = _i(di) if di is not None else max(0, la - sm)
+    ask = str(ask or "total").lower()
+    W, H = 360, 150
+    unit = min(30.0, 300.0 / max(la, 1))
+    x0 = 20
+    sw = max(28.0, sm * unit)
+    dw = max(24.0, di * unit)
+
+    def lbl(v, is_unknown):
+        return _cellv(v, is_unknown, reveal)
+    out = [f'<svg width="100%" height="{H}" viewBox="0 0 {W} {H}" '
+           f'preserveAspectRatio="xMidYMin meet" style="max-width:380px" role="img" '
+           f'aria-label="comparison bars">']
+    # Row 1: smaller quantity.
+    out.append(_bar_box(x0, 22, sw, 40, lbl(sm, ask in ("smaller",)),
+                        ask in ("smaller",), _BPP, _BPS, 22))
+    out.append(f'<text x="{x0 + sw + 8:.0f}" y="47" font-family="Atkinson '
+               f'Hyperlegible, sans-serif" font-size="12" fill="#6B7A6E">smaller</text>')
+    # Row 2: larger = smaller segment + difference segment.
+    out.append(_bar_box(x0, 78, sw, 40, lbl(sm, False), False, _BPP, _BPS, 22))
+    out.append(_bar_box(x0 + sw, 78, dw, 40, lbl(di, ask in ("difference",)),
+                        ask in ("difference",), "#F4E1C6", _BQS, 20))
+    out.append(f'<text x="{x0 + sw + dw + 8:.0f}" y="103" font-family="Atkinson '
+               f'Hyperlegible, sans-serif" font-size="12" fill="#6B7A6E">larger</text>')
+    # 'How many in all' — bracket spanning both bars.
+    if ask == "total":
+        total = la + sm
+        bx = x0 + max(sw, sw + dw) + 60
+        out.append(f'<text x="{bx:.0f}" y="70" text-anchor="middle" '
+                   f'font-family="Baloo 2, sans-serif" font-weight="800" '
+                   f'font-size="24" fill="#26302A">'
+                   f'{("?" if not reveal else str(total))}</text>')
+        out.append(f'<text x="{bx:.0f}" y="90" text-anchor="middle" '
+                   f'font-family="Atkinson Hyperlegible, sans-serif" font-size="11" '
+                   f'fill="#6B7A6E">in all</text>')
+    elif ask == "larger":
+        out.append(f'<text x="{x0 + sw + dw + 60:.0f}" y="103" text-anchor="middle" '
+                   f'font-family="Baloo 2, sans-serif" font-weight="800" font-size="22" '
+                   f'fill="#26302A">{("?" if not reveal else str(la))}</text>')
+    return "".join(out) + "</svg>"
+
+
+def _two_step_bar(start, steps, reveal) -> str:
+    """A running strip: [start] op n [ ] op n [?] — for two-step problems
+    (e.g. 18, give 6 away, find 3 more)."""
+    steps = [s for s in (steps or []) if isinstance(s, dict)][:2]
+    running = _i(start) if start is not None else 0
+    W, H = 360, 96
+    bw, bh, gap = 60, 46, 46
+    out = [f'<svg width="100%" height="{H}" viewBox="0 0 {W} {H}" '
+           f'preserveAspectRatio="xMidYMid meet" style="max-width:380px" role="img" '
+           f'aria-label="two step bar">']
+    x = 8
+    out.append(_bar_box(x, 25, bw, bh, str(running), False, _BWP, _BWS, 24))
+    for idx, st in enumerate(steps):
+        op = "+" if str(st.get("op", "+")).strip().startswith("+") else "-"
+        nval = _i(st.get("n"))
+        running = running + nval if op == "+" else running - nval
+        ox = x + bw + 6
+        out.append(f'<text x="{ox + gap/2:.0f}" y="54" text-anchor="middle" '
+                   f'font-family="Baloo 2, sans-serif" font-weight="800" font-size="22" '
+                   f'fill="{_BQS}">{op}{nval}</text>')
+        x = ox + gap
+        last = idx == len(steps) - 1
+        txt = "?" if (last and not reveal) else str(running)
+        out.append(_bar_box(x, 25, bw, bh, txt, last and not reveal, _BPP, _BPS, 24))
+    return "".join(out) + "</svg>"
+
+
+def bar_answer(bar: dict):
+    """The correct numeric answer implied by a structured bar (or None)."""
+    if not isinstance(bar, dict):
+        return None
+    kind = str(bar.get("kind", "part_whole")).lower()
+    try:
+        if kind == "parts":
+            vals = [_i(v) for v in (bar.get("parts") or []) if v is not None]
+            if str(bar.get("unknown", "whole")).lower() == "whole":
+                return sum(vals)
+            w = bar.get("whole")
+            return _i(w) - sum(vals) if w is not None else None
+        if kind == "compare":
+            la, sm, di = bar.get("larger"), bar.get("smaller"), bar.get("difference")
+            la = _i(la) if la is not None else None
+            sm = _i(sm) if sm is not None else None
+            di = _i(di) if di is not None else (None if (la is None or sm is None) else la - sm)
+            ask = str(bar.get("ask", "total")).lower()
+            if ask == "total":
+                if la is None and sm is not None and di is not None:
+                    la = sm + di
+                if sm is None and la is not None and di is not None:
+                    sm = la - di
+                return (la + sm) if (la is not None and sm is not None) else None
+            if ask == "larger":
+                return (sm + di) if (sm is not None and di is not None) else la
+            if ask == "smaller":
+                return (la - di) if (la is not None and di is not None) else sm
+            if ask == "difference":
+                return (la - sm) if (la is not None and sm is not None) else di
+            return None
+        if kind == "two_step":
+            v = _i(bar.get("start"))
+            for st in (bar.get("steps") or []):
+                if not isinstance(st, dict):
+                    continue
+                op = str(st.get("op", "+")).strip()
+                n = _i(st.get("n"))
+                v = v + n if op.startswith("+") else v - n
+            return v
+        # part_whole (default)
+        w, a, b = bar.get("whole"), bar.get("part_a", bar.get("a")), bar.get("part_b", bar.get("b"))
+        unk = str(bar.get("unknown", "whole")).lower()
+        w = _i(w) if w is not None else None
+        a = _i(a) if a is not None else None
+        b = _i(b) if b is not None else None
+        if unk == "whole":
+            return (a + b) if (a is not None and b is not None) else None
+        if unk == "a":
+            return (w - b) if (w is not None and b is not None) else None
+        if unk == "b":
+            return (w - a) if (w is not None and a is not None) else None
+    except Exception:
+        return None
+    return None
+
+
+def bar_choices(answer, seed: str = "") -> list:
+    """Four distinct, positive MC options that include the correct answer,
+    with common-error distractors, shuffled deterministically."""
+    if answer is None:
+        return []
+    import random as _r
+    a = _i(answer)
+    cand = [a, a + 1, a - 1, a + 2, a - 2, a + 10]
+    seen, opts = set(), []
+    for c in cand:
+        if c >= 0 and c not in seen:
+            seen.add(c)
+            opts.append(c)
+        if len(opts) == 4:
+            break
+    while len(opts) < 4:
+        c = (opts[-1] + 1) if opts else 1
+        if c not in seen:
+            seen.add(c)
+            opts.append(c)
+    rng = _r.Random(f"{a}|{seed}")
+    rng.shuffle(opts)
+    return [str(o) for o in opts]
+
+
+def _render_bar(spec: dict, reveal: bool = True) -> str:
+    """Dispatch a problem's bar to the right picture. Reads a structured 'bar'
+    object when present, else falls back to the legacy whole/part_a/part_b."""
+    bar = spec.get("bar") if isinstance(spec.get("bar"), dict) else None
+    if bar is None:
+        return _bar_model(spec, reveal=reveal)
+    kind = str(bar.get("kind", "part_whole")).lower()
+    if kind == "parts":
+        return _multi_part_bar(bar.get("parts"), bar.get("whole"),
+                               bar.get("unknown", "whole"), reveal)
+    if kind == "compare":
+        return _compare_bar(bar.get("larger"), bar.get("smaller"),
+                            bar.get("difference"), bar.get("ask", "total"), reveal)
+    if kind == "two_step":
+        return _two_step_bar(bar.get("start"), bar.get("steps"), reveal)
+    return _bar_model(bar, reveal=reveal)
+
+
 def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
     """Draw the chosen model for one problem's spec, recovering the numbers from
     the problem text when the structured fields are missing. reveal=False renders a
@@ -498,7 +732,7 @@ def svg_model(model: str, spec: dict, reveal: bool = True) -> str:
         return ""
     try:
         if model in ("bar_model", "part_whole", "number_bond"):
-            return _bar_model(spec, reveal=reveal)
+            return _render_bar(spec, reveal=reveal)
         if model == "five_frame":
             return _five_frame(_val(spec))
         if model == "counters":

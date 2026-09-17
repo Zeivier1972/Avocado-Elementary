@@ -1354,14 +1354,15 @@ _DI_PACKET_SCHEMA = (
     '[{"tier":"Intensive|Cusp|Strategic",'
     '"days":[{"day":1,"title":"kid-friendly focus for the day","model":"array",'
     '"pacing":"Model 5 min · Try it 10 min · On your own 15 min",'
-    '"watch_it":{"rows":2,"cols":3,"whole":8,"part_a":6,"part_b":2,"unknown":"whole",'
+    '"watch_it":{"rows":2,"cols":3,'
+    '"bar":{"kind":"part_whole","whole":8,"part_a":6,"part_b":2,"unknown":"whole"},'
     '"statement":"the big idea in one kid sentence, WITH the answer",'
     '"steps":["Step 1 — name/draw the model","Step 2 — the action (skip count / add groups)","Step 3 — write the equation and answer"]},'
     '"try_it":{"problem":"one guided problem in student words — SAME method as Watch it, new numbers",'
-    '"whole":7,"part_a":5,"part_b":2,"unknown":"b",'
+    '"bar":{"kind":"part_whole","whole":7,"part_a":5,"part_b":2,"unknown":"b"},'
     '"steps":["Step 1 — same first move, no answer","Step 2","Step 3 — set up the equation but do NOT state the final answer"]},'
-    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","whole":9,"part_a":4,"part_b":5,"unknown":"whole","choices":["option A","option B","option C","option D"],"answer_frame":"____ groups of ____ = ____ (ASD packets only; a fill-in frame, no answer)","answer":"correct option — TEACHER KEY ONLY, not shown to students"}],'
-    '"exit_ticket":{"problem":"ONE quick check on THIS skill in student words","whole":6,"part_a":2,"part_b":4,"unknown":"whole","choices":["A","B","C","D"],"answer":"correct option — TEACHER KEY ONLY"}}],'
+    '"on_your_own":[{"text":"an independent problem that mirrors a missed test item","bar":{"kind":"compare","smaller":8,"difference":1,"ask":"total"},"answer_frame":"____ and ____ makes ____ (ASD packets only)","answer":"leave blank — computed from the bar"}],'
+    '"exit_ticket":{"problem":"ONE quick check on THIS skill in student words","bar":{"kind":"parts","parts":[5,3,3],"unknown":"whole"},"answer":"leave blank — computed from the bar"}}],'
     '"opm":[{"problem":"a short progress-monitoring question on THIS standard","answer":"the answer — teacher key only"}]}]'
 )
 
@@ -1454,17 +1455,28 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             f"  - ten_frame: counts/sums within 20 — \"value\" (0-20)\n"
             f"  - base_ten: place value, tens & ones — \"value\"\n"
             f"  - pairing: even/odd as pairs — \"value\" (0-30)\n"
-            f"  - bar_model: PART-PART-WHOLE bar (the go-to for add/subtract, "
-            f"compare, missing-addend and take-apart WORD PROBLEMS) — give \"whole\", "
-            f"\"part_a\", \"part_b\" and \"unknown\" (which box the problem asks for: "
-            f"\"whole\", \"a\", or \"b\"). For 'how many more/fewer', the bigger amount "
-            f"is the whole and the difference is the unknown part.\n"
+            f"  - bar_model: choose the RIGHT bar per problem and put it on the "
+            f"problem as a \"bar\" object — DO NOT force a two-part bar onto a "
+            f"problem that isn't a simple part-part-whole:\n"
+            f"      • simple join / separate / missing addend -> "
+            f"{{\"kind\":\"part_whole\",\"whole\":9,\"part_a\":4,\"part_b\":5,\"unknown\":\"whole|a|b\"}} "
+            f"(join = whole unknown; take-away / missing addend = a part unknown).\n"
+            f"      • THREE or more addends ('Sam and Lee EACH have 3', 'a, b and c "
+            f"in all') -> {{\"kind\":\"parts\",\"parts\":[5,3,3],\"unknown\":\"whole\"}} — "
+            f"list EVERY amount (repeat for 'each').\n"
+            f"      • COMPARE ('__ more/fewer than', 'how many more') -> "
+            f"{{\"kind\":\"compare\",\"smaller\":8,\"difference\":1,\"ask\":\"total|larger|difference\"}} "
+            f"— the '1 more' is the DIFFERENCE, never a second part; 'how many in all' "
+            f"with a 'more than' clause is ask=\"total\".\n"
+            f"      • TWO-STEP ('has 18, gives 6 away, finds 3 more') -> "
+            f"{{\"kind\":\"two_step\",\"start\":18,\"steps\":[{{\"op\":\"-\",\"n\":6}},{{\"op\":\"+\",\"n\":3}}]}}.\n"
             + ("EVERY problem in EVERY section — watch_it, try_it, EACH on_your_own, "
-               "and the exit_ticket — MUST carry its model's number fields (for "
-               "bar_model: whole/part_a/part_b/unknown) so the picture draws for the "
-               "student. Watch it shows every box filled; try_it / on_your_own / "
-               "exit_ticket leave the UNKNOWN box for the child (the picture never "
-               "reveals the answer). Keep the SAME model all day.\n"
+               "and the exit_ticket — MUST carry a \"bar\" object with the correct "
+               "kind and the REAL numbers from that problem, so the picture matches "
+               "the words. Do NOT write the multiple-choice 'choices' or 'answer' for "
+               "bar problems — the system computes the correct answer and options "
+               "FROM the bar, so the key can never disagree with the picture. Keep the "
+               "same KIND of representation sensible for each problem.\n"
                if model == "bar_model" else "")
             + ("KINDERGARTEN RULE — ABSOLUTE: stay inside the NUMBER RANGE above "
                + (f"(0-{number_max}) " if number_max else "(the numbers this test "
