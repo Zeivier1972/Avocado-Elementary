@@ -2658,7 +2658,10 @@ async def import_assessment(
         if len(tb) <= _MAX_DOC_BYTES:
             stems = parse_test_questions(tb).get("questions", {})
 
-    # Replace any existing form with the same Test Id (or name) for this tenant.
+    # Re-uploading a test with the same Test Id (or name) REFRESHES it in place —
+    # we keep the same form row and swap its items — instead of deleting the form.
+    # Deleting would fail once students' results (topic_results) reference it, and
+    # keeping the row preserves that link.
     q = db.query(AssessmentForm).filter(AssessmentForm.tenant_id == user.tenant_id)
     existing = None
     if res["test_id"]:
@@ -2668,17 +2671,25 @@ async def import_assessment(
     if existing:
         db.query(AssessmentItem).filter(
             AssessmentItem.form_id == existing.id).delete()
-        db.delete(existing)
+        form = existing
+        form.test_name = res["test_name"]
+        form.test_id = res["test_id"]
+        form.grade = res["grade"]
+        form.topic_code = res["topic_code"]
+        form.subject = res["subject"]
+        form.item_count = res["item_count"]
+        form.total_points = res["total_points"]
+        form.standards = res["standards"]
         db.flush()
-
-    form = AssessmentForm(
-        tenant_id=user.tenant_id, test_name=res["test_name"],
-        test_id=res["test_id"], grade=res["grade"], topic_code=res["topic_code"],
-        subject=res["subject"], item_count=res["item_count"],
-        total_points=res["total_points"], standards=res["standards"],
-        created_by=user.id)
-    db.add(form)
-    db.flush()
+    else:
+        form = AssessmentForm(
+            tenant_id=user.tenant_id, test_name=res["test_name"],
+            test_id=res["test_id"], grade=res["grade"], topic_code=res["topic_code"],
+            subject=res["subject"], item_count=res["item_count"],
+            total_points=res["total_points"], standards=res["standards"],
+            created_by=user.id)
+        db.add(form)
+        db.flush()
     for it in res["items"]:
         db.add(AssessmentItem(
             tenant_id=user.tenant_id, form_id=form.id, position=it["position"],
