@@ -629,11 +629,37 @@ def fast_analysis(
                and (iready_level.get(sid, (0, 0))[1] or 0) >= 3)
     iready_prof = sum(1 for sid in sids if (iready_level.get(sid, (0, 0))[1] or 0) >= 3)
 
+    # Scale-score targets: where a student needs to be for the NEXT level, and how
+    # many points away each student is (uses the grade's FAST cut scores).
+    from app.goal_rubric import level_cutscores
+    cuts = level_cutscores(grade)
+    scale_targets = [{"level": lv, "scale_at_or_above": cuts[lv]}
+                     for lv in sorted(cuts) if lv >= 2]
+    for ps in per_student:
+        lvl, sc = ps.get("level"), ps.get("scale_score")
+        nxt = (int(lvl) + 1) if (lvl is not None and int(lvl) < 5) else None
+        ps["next_level"] = nxt
+        ps["next_level_scale"] = cuts.get(nxt) if nxt else None
+        ps["points_to_next"] = (
+            round(cuts[nxt] - sc) if (nxt in cuts and sc is not None) else None)
+
+    # A ready PM2 plan: per level, the 3 weakest standards to master before PM2.
+    pm2_plan = []
+    for lv, info in sorted(by_level.items()):
+        nl = info.get("next_level")
+        if nl:
+            pm2_plan.append({
+                "level": int(lv), "next_level": nl,
+                "n_students": info.get("n_students", 0),
+                "focus": info.get("focus_to_advance", [])[:3],
+            })
+
     return {
         "grade": grade, "subject": subject, "period": period, "has_data": True,
         "overall": {
             "students": len(students),
             "students_tested": len(levels),
+            "standards_assessed": len(by_benchmark),
             "overall_pct_correct": round(100 * tot_e / tot_p, 1),
             "level_distribution": dist,
             "pct_level_3_plus": round(100 * l3 / len(levels)) if levels else 0,
@@ -643,10 +669,13 @@ def fast_analysis(
                                      if a.scale_score) / max(1, len(summ))),
             "goal": "Level 3+ in BOTH FAST and i-Ready",
         },
+        "scale_targets": scale_targets,
         "by_domain": by_domain,
         "by_benchmark": by_benchmark,
         "focus_standards": by_benchmark[:8],
+        "most_tested": sorted(by_benchmark, key=lambda x: -x["n"])[:8],
         "by_level": by_level,
+        "pm2_plan": pm2_plan,
         "per_student": per_student,
         "target_students": {
             "bubble_level2": bubble[:15],

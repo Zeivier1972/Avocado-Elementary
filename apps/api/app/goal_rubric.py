@@ -114,6 +114,22 @@ def project(grade: str, levels_by_period: dict, topic_avg_pct: float | None) -> 
             "projected_level_3_plus": proj, "rationale": why}
 
 
+def level_cutscores(grade: str) -> dict:
+    """Per grade: the FAST scale score where EACH achievement level begins
+    ({1: lo1, 2: lo2, 3: lo3, 4: lo4, 5: lo5}). The target to reach Level N is
+    that level's lower bound — so a student's 'points to the next level' is
+    (cut[next_level] - their scale score)."""
+    bands = _rubric()["grades"].get(str(grade))
+    if not bands:
+        return {}
+    out = {}
+    for b in bands:
+        lo = (b.get("fast") or [None])[0]
+        if lo is not None:
+            out[int(b["level"])] = lo
+    return out
+
+
 def level3_thresholds() -> dict:
     """Per grade: the FAST scale score where on-grade (Level 3) begins and its
     topic-assessment goal — the key crosswalk line for the school goal."""

@@ -665,10 +665,39 @@ function FastAnalysis({ fast }: { fast: any }) {
             {o.overall_pct_correct}%
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            Avg scale {o.avg_scale_score}
+            {o.standards_assessed} standards assessed · avg scale {o.avg_scale_score}
           </div>
         </div>
       </div>
+
+      {/* Scale-score targets — where students need to be */}
+      {fast.scale_targets && fast.scale_targets.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="text-sm font-semibold text-gray-700 mb-2">
+            📐 Scale-score targets (Grade {fast.grade}) — where each student needs to be
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {fast.scale_targets.map((t: any) => (
+              <div
+                key={t.level}
+                className={`rounded-lg px-3 py-2 text-sm border ${
+                  t.level >= 3
+                    ? "bg-green-50 border-green-200 text-green-800"
+                    : "bg-amber-50 border-amber-200 text-amber-800"
+                }`}
+              >
+                <b>Level {t.level}</b> starts at a scale score of{" "}
+                <b>{t.scale_at_or_above}</b>
+                {t.level === 3 && " (on grade — the school goal)"}
+              </div>
+            ))}
+          </div>
+          <div className="text-xs text-gray-400 mt-2">
+            A student&apos;s &quot;points to the next level&quot; = the next level&apos;s
+            cut score minus their current scale score (shown in the target lists below).
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* By domain */}
@@ -710,6 +739,34 @@ function FastAnalysis({ fast }: { fast: any }) {
           </div>
         </Card>
       </div>
+
+      {/* Most heavily tested standards (by item weight) */}
+      {fast.most_tested && fast.most_tested.length > 0 && (
+        <Card title="Most heavily tested standards (by number of points on the test)">
+          <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
+            {fast.most_tested.map((b: any) => (
+              <div key={b.benchmark} className="flex items-start gap-2 text-sm">
+                <span className="font-semibold text-gray-700 w-12 whitespace-nowrap">
+                  {b.n} pts
+                </span>
+                <div>
+                  <span className="font-medium">{b.benchmark}</span>
+                  <span
+                    className={`ml-1 text-xs font-semibold ${
+                      b.pct >= 60 ? "text-green-700" : b.pct >= 40 ? "text-amber-700" : "text-red-600"
+                    }`}
+                  >
+                    {b.pct}%
+                  </span>
+                  {b.description && (
+                    <span className="text-gray-500 text-xs"> — {b.description}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Standards by achievement level — path to the next level */}
       {fast.by_level && Object.keys(fast.by_level).length > 0 && (
@@ -771,6 +828,13 @@ function TargetList({ rows, showScale }: { rows: any[]; showScale?: boolean }) {
             {showScale && (
               <td className="py-1 text-right text-gray-400 text-xs">
                 {s.scale_score}
+              </td>
+            )}
+            {s.points_to_next != null && s.next_level != null && (
+              <td className="py-1 text-right text-xs font-semibold text-avocado-dark whitespace-nowrap">
+                {s.points_to_next > 0
+                  ? `+${s.points_to_next} → L${s.next_level}`
+                  : `at L${s.next_level}+`}
               </td>
             )}
           </tr>

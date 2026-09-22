@@ -3,5 +3,5 @@
 # Bump BUILD whenever behavior changes so the running deploy is identifiable
 # from the UI (Coach header) and /health. This lets us confirm at a glance
 # whether the latest code is actually live before regenerating guides.
-__version__ = "0.72.0"
-__build__ = "2026-09-17-dont-truncate-chapter-lessons"
+__version__ = "0.73.0"
+__build__ = "2026-09-22-fast-scale-targets-and-analysis"
