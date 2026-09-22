@@ -434,22 +434,22 @@ export default function CoachPage() {
       const lines = (p.groups || [])
         .filter((g: any) => g.remove?.length)
         .slice(0, 12)
-        .map((g: any) => `• ${g.name} (Gr ${g.grade}) — keep the one with ${g.keep.scores} score(s); remove ${g.remove.length} empty copy`)
+        .map((g: any) => `• ${g.name} (Gr ${g.grade}) — combine ${g.remove.length + 1} records into the one with ${g.keep.scores} score(s)`)
         .join("\n");
       const reviewNote = p.needs_review
         ? `\n\n${p.needs_review} same-name record(s) BOTH have scores — left alone (could be different kids). Review those manually.`
         : "";
       if (
         !confirm(
-          `Found ${p.removable_total} empty duplicate(s) to remove across ${p.duplicate_groups} name(s):\n\n${lines}${
+          `Found ${p.removable_total} duplicate copy(ies) to merge across ${p.duplicate_groups} name(s):\n\n${lines}${
             p.removable_total > 12 ? "\n…and more" : ""
-          }${reviewNote}\n\nRemove the empty duplicates? Their spot moves to the record that has the scores. This can't be undone.`
+          }${reviewNote}\n\nMerge each set into one record? The survivor keeps the scores AND gains the other copy's roster info (district ID, grade, homeroom). This can't be undone.`
         )
       )
         return;
       const r = await api.dedupeStudents(true);
       setRosterMsg(
-        `Removed ${r.removed} duplicate student record(s).` +
+        `Merged ${r.removed} duplicate copy(ies) into their matching record.` +
           (r.needs_review ? ` ${r.needs_review} same-name pair(s) left for manual review.` : "")
       );
       loadSummary();
@@ -571,7 +571,7 @@ export default function CoachPage() {
               disabled={busy}
               className="text-xs text-gray-600 hover:text-avocado-dark underline disabled:opacity-50"
             >
-              Remove duplicate names
+              Merge duplicate names
             </button>
           </div>
           {rosterReconcile && (

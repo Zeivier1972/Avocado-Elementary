@@ -730,8 +730,24 @@ def _score_count(db, sid: str) -> int:
 
 
 def _merge_student(db, keeper: Student, loser: Student) -> None:
-    """Move every row pointing at `loser` onto `keeper`, then delete `loser`.
+    """Merge `loser` INTO `keeper`: move every row pointing at loser onto keeper,
+    backfill any identity field keeper is missing from loser, then delete loser.
+    So the survivor has BOTH the scores and the roster identity (district id,
+    grade, homeroom), no matter which copy originally held what.
     Enrollments and DI memberships dedupe (skip when keeper already has one)."""
+    # Backfill scalar identity fields keeper lacks (loser never overwrites good
+    # data on keeper — keeper wins every conflict).
+    if not (keeper.district_student_id or "").strip() and (loser.district_student_id or "").strip():
+        keeper.district_student_id = loser.district_student_id
+    if not (keeper.grade_level or "").strip() and (loser.grade_level or "").strip():
+        keeper.grade_level = loser.grade_level
+    if not (keeper.first_name or "").strip() and (loser.first_name or "").strip():
+        keeper.first_name = loser.first_name
+    if not (keeper.last_name or "").strip() and (loser.last_name or "").strip():
+        keeper.last_name = loser.last_name
+    # Union flags (ELL/ESE/FAST baseline/section…), keeper values winning.
+    keeper.flags = {**(loser.flags or {}), **(keeper.flags or {})}
+
     for e in db.query(Enrollment).filter(Enrollment.student_id == loser.id).all():
         if db.query(Enrollment).filter(Enrollment.class_id == e.class_id,
                                        Enrollment.student_id == keeper.id).first():
