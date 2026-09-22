@@ -29,6 +29,10 @@ _ADDED_COLUMNS = {
     "di_packets": {
         "teacher": "VARCHAR DEFAULT ''",  # "" = grade-wide; else the class
     },
+    "students": {
+        # "active" | "withdrawn" (full-roster sync soft-removes departed kids).
+        "status": "VARCHAR DEFAULT 'active'",
+    },
 }
 # student_assessments is a new table (create_all builds it) — no ALTERs needed.
 

@@ -14,6 +14,7 @@ from app.models import (
     Enrollment,
     Standard,
     Student,
+    active_students,
     StudentAssessment,
     StudentBenchmarkResult,
     User,
@@ -121,7 +122,8 @@ def school_goal(
 ):
     """School-wide progress toward the goal: Level 3+ in BOTH FAST Math and
     i-Ready Math, by grade and school-wide, across PM1->PM3 and AP1->AP3."""
-    students = db.query(Student).filter(Student.tenant_id == user.tenant_id).all()
+    students = active_students(
+        db.query(Student).filter(Student.tenant_id == user.tenant_id)).all()
     grade_of = {s.id: s.grade_level for s in students}
     all_rows = db.query(StudentAssessment).filter(
         StudentAssessment.tenant_id == user.tenant_id).all()
@@ -167,7 +169,8 @@ def overview(
     user: User = Depends(get_current_user),
 ):
     """School-wide FAST Math/ELA proficiency by grade (latest period available)."""
-    students = db.query(Student).filter(Student.tenant_id == user.tenant_id).all()
+    students = active_students(
+        db.query(Student).filter(Student.tenant_id == user.tenant_id)).all()
     sid_grade = {s.id: s.grade_level for s in students}
     rows = db.query(StudentAssessment).filter(
         StudentAssessment.tenant_id == user.tenant_id).all()
@@ -195,7 +198,8 @@ def _students_for_teacher(db, tenant_id, teacher_id):
         return []
     sids = {r[0] for r in db.query(Enrollment.student_id).filter(
         Enrollment.class_id.in_(class_ids)).all()}
-    return db.query(Student).filter(Student.id.in_(sids)).all() if sids else []
+    return active_students(
+        db.query(Student).filter(Student.id.in_(sids))).all() if sids else []
 
 
 @router.get("/teachers")
@@ -352,8 +356,8 @@ def roster_audit(
         })
     teachers.sort(key=lambda x: (x["coverage_pct"], x["name"]))
     # School-wide grade counts, so an unexpected grade is obvious.
-    all_students = db.query(Student).filter(
-        Student.tenant_id == user.tenant_id).all()
+    all_students = active_students(db.query(Student).filter(
+        Student.tenant_id == user.tenant_id)).all()
     grade_counts: dict = {}
     for s in all_students:
         g = s.grade_level or "(blank)"
@@ -369,8 +373,8 @@ def roster_audit(
 def _l25_ids(db, tenant_id, grade):
     """Lowest-25% student ids in a grade, by latest FAST Math scale (fallback
     level). Computed automatically instead of relying on a manual flag column."""
-    students = db.query(Student).filter(
-        Student.tenant_id == tenant_id, Student.grade_level == grade).all()
+    students = active_students(db.query(Student).filter(
+        Student.tenant_id == tenant_id, Student.grade_level == grade)).all()
     sids = {s.id for s in students}
     best = {}
     for a in db.query(StudentAssessment).filter(
@@ -510,8 +514,8 @@ def fast_analysis(
     (focus standards), by student, plus target students for growth to Level 3+.
     """
     subject, period = subject.upper(), period.upper()
-    students = db.query(Student).filter(
-        Student.tenant_id == user.tenant_id, Student.grade_level == grade).all()
+    students = active_students(db.query(Student).filter(
+        Student.tenant_id == user.tenant_id, Student.grade_level == grade)).all()
     sids = {s.id for s in students}
     name = {s.id: f"{s.first_name.title()} {s.last_name.title()}" for s in students}
 
@@ -691,9 +695,9 @@ def grade_report(
     user: User = Depends(get_current_user),
 ):
     """Detailed performance report for one grade."""
-    students = db.query(Student).filter(
+    students = active_students(db.query(Student).filter(
         Student.tenant_id == user.tenant_id,
-        Student.grade_level == grade).all()
+        Student.grade_level == grade)).all()
     sids = {s.id for s in students}
     rows = [a for a in db.query(StudentAssessment).filter(
         StudentAssessment.tenant_id == user.tenant_id).all()
@@ -767,8 +771,8 @@ def _goal_analysis_data(db, tenant_id, grade):
     user = _U()
     user.tenant_id = tenant_id
 
-    students = db.query(Student).filter(
-        Student.tenant_id == user.tenant_id, Student.grade_level == grade).all()
+    students = active_students(db.query(Student).filter(
+        Student.tenant_id == user.tenant_id, Student.grade_level == grade)).all()
     sids = {s.id for s in students}
     name = {s.id: f"{s.first_name.title()} {s.last_name.title()}" for s in students}
     rows = [a for a in db.query(StudentAssessment).filter(

@@ -10,6 +10,7 @@ from app.models import (
     Standard,
     StandardMastery,
     Student,
+    active_students,
     User,
 )
 
@@ -41,7 +42,7 @@ def list_students(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    q = db.query(Student).filter(Student.tenant_id == user.tenant_id)
+    q = active_students(db.query(Student).filter(Student.tenant_id == user.tenant_id))
     if user.school_id:
         q = q.filter(Student.school_id == user.school_id)
     visible = _visible_student_ids(db, user)

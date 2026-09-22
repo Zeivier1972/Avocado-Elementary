@@ -11,6 +11,7 @@ from app.models import (
     DiGroupMember,
     Standard,
     Student,
+    active_students,
     User,
 )
 
@@ -67,12 +68,11 @@ def generate_plan(
     if not g:
         raise HTTPException(404, "Group not found")
     std = db.get(Standard, g.standard_id)
-    members = (
+    members = active_students(
         db.query(Student)
         .join(DiGroupMember, DiGroupMember.student_id == Student.id)
         .filter(DiGroupMember.di_group_id == g.id)
-        .all()
-    )
+    ).all()
     audit(db, actor=user, action="generate", entity_type="di_plan",
           entity_id=g.id, purpose="di_plan_generation")
 

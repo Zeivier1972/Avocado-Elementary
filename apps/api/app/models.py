@@ -91,8 +91,20 @@ class Student(Base, TimestampMixin):
     first_name: Mapped[str] = mapped_column(String)
     last_name: Mapped[str] = mapped_column(String)
     grade_level: Mapped[str] = mapped_column(String)
+    # "active" | "withdrawn". Withdrawn students are kept for their score
+    # history but excluded from every active roster/report so all pages agree.
+    status: Mapped[str] = mapped_column(String, default="active")
     # program flags: {"ell": "L3", "ese": true, "504": false, "mtss_tier": 2}
     flags: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+def active_students(q):
+    """Constrain a Student query to active (non-withdrawn) students.
+
+    Every page that counts or lists the roster runs its Student query through
+    this, so a full-roster sync that withdraws departed students drops them
+    from ALL pages consistently — never from some counts but not others."""
+    return q.filter(Student.status == "active")
 
 
 class ClassRoom(Base, TimestampMixin):

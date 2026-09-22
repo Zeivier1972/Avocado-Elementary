@@ -25,6 +25,7 @@ from app.models import (
     School,
     StandardMastery,
     Student,
+    active_students,
     StudentAssessment,
     StudentBenchmarkResult,
     User,
@@ -676,8 +677,7 @@ def school_summary(
     all_students = db.query(Student).filter(Student.tenant_id == district.id).all()
     # Withdrawn students (soft-removed by a full-roster sync) are kept for their
     # score history but excluded from the active headcount.
-    students = [s for s in all_students
-                if (s.flags or {}).get("status") != "withdrawn"]
+    students = [s for s in all_students if s.status == "active"]
     withdrawn = len(all_students) - len(students)
     by_grade: dict[str, int] = {}
     ell = ese = fast_baseline = 0

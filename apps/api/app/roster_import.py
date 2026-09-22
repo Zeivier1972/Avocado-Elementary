@@ -166,10 +166,9 @@ def import_district_roster(db, data: bytes, tenant_id, school_id, user,
             if grade:
                 stu.grade_level = grade
             merged = {**(stu.flags or {}), **flags}
-            # Present in the file => active again: clear any prior withdrawal.
-            merged.pop("status", None)
-            merged.pop("withdrawn_at", None)
+            merged.pop("withdrawn_at", None)  # legacy JSON marker, if any
             stu.flags = merged
+            stu.status = "active"  # present in the file => active again
             s_upd += 1
         else:
             stu = Student(
@@ -267,10 +266,10 @@ def import_district_roster(db, data: bytes, tenant_id, school_id, user,
                 Student.school_id == school_id).all():
             if stu.district_student_id in seen_ids:
                 continue
-            if (stu.flags or {}).get("status") == "withdrawn":
+            if stu.status == "withdrawn":
                 continue  # already withdrawn — leave as-is
-            stu.flags = {**(stu.flags or {}), "status": "withdrawn",
-                         "withdrawn_at": now_iso}
+            stu.status = "withdrawn"
+            stu.flags = {**(stu.flags or {}), "withdrawn_at": now_iso}
             # Drop them off teacher homeroom rosters (history/scores untouched).
             enr = db.query(Enrollment).filter(
                 Enrollment.student_id == stu.id,

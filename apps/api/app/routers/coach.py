@@ -52,6 +52,7 @@ from app.models import (
     StaffMember,
     Standard,
     Student,
+    active_students,
     StudentAssessment,
     TopicResult,
     User,
@@ -361,7 +362,8 @@ def _school_context(db: Session, user: User) -> dict:
 
     tenant_id = user.tenant_id
     school = db.query(School).filter(School.tenant_id == tenant_id).first()
-    students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    students = active_students(
+        db.query(Student).filter(Student.tenant_id == tenant_id)).all()
     by_grade: dict[str, int] = {}
     for s in students:
         by_grade[s.grade_level] = by_grade.get(s.grade_level, 0) + 1
@@ -1300,8 +1302,8 @@ def coach_home(
         "results_focus": _home_results_focus(db, user.tenant_id),
         "counts": {
             "teachers": tr.get("diagnostics", {}).get("teachers_with_students", 0),
-            "students": db.query(Student).filter(
-                Student.tenant_id == user.tenant_id).count(),
+            "students": active_students(db.query(Student).filter(
+                Student.tenant_id == user.tenant_id)).count(),
             "classes": tr.get("diagnostics", {}).get("total_classes", 0),
         },
     }
@@ -2923,7 +2925,8 @@ def _fill_teacher_from_roster(db, tenant_id, rows) -> int:
     teachers were filled."""
     if not rows or all((r.get("teacher_name") or "").strip() for r in rows):
         return 0
-    students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    students = active_students(
+        db.query(Student).filter(Student.tenant_id == tenant_id)).all()
     by_did = {_id_key(s.district_student_id): s
               for s in students if s.district_student_id}
     by_name = {}
@@ -2953,7 +2956,8 @@ def _link_topic_results_to_students(db, tenant_id, f: AssessmentForm, rows) -> i
     topic test's percents appear in Reports and Goal Analysis. Match by district
     student id, then by full name. Percent is stored as a 0-1 fraction (the shape
     Reports expects). Returns how many were linked."""
-    students = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    students = active_students(
+        db.query(Student).filter(Student.tenant_id == tenant_id)).all()
     by_did = {_id_key(s.district_student_id): s for s in students if s.district_student_id}
     by_name = {}
     for s in students:

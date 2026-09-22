@@ -22,6 +22,7 @@ from app.models import (
     Standard,
     StandardMastery,
     Student,
+    active_students,
     User,
 )
 
@@ -57,7 +58,8 @@ async def import_assessment(
     # Index lookups.
     students = {
         s.district_student_id: s
-        for s in db.query(Student).filter(Student.tenant_id == user.tenant_id).all()
+        for s in active_students(
+            db.query(Student).filter(Student.tenant_id == user.tenant_id)).all()
     }
     standards = {s.code: s for s in db.query(Standard).all()}
 
