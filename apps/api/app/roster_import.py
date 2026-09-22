@@ -14,6 +14,7 @@ file gives us for future reference:
 Detection is by header signature so it routes automatically on upload.
 """
 from collections import OrderedDict
+from datetime import datetime, timezone
 import csv
 import io
 
@@ -72,7 +73,19 @@ def _int(v):
     return int(v) if v.isdigit() else None
 
 
-def import_district_roster(db, data: bytes, tenant_id, school_id, user) -> dict:
+def import_district_roster(db, data: bytes, tenant_id, school_id, user,
+                           reconcile: bool = False) -> dict:
+    """Upsert the district roster.
+
+    reconcile=False (default): grow & refresh only — add new students, update
+    returning ones, never remove anyone. Safe for partial / single-grade files.
+
+    reconcile=True: treat this file as the FULL active roster. Any student in
+    this tenant+school whose ID is NOT in the file is soft-withdrawn (flagged,
+    history/scores preserved) and dropped from teacher rosters, and stale
+    homeroom enrollments (from a mid-year teacher change) are cleared. Only use
+    when the upload is the whole school, or it will withdraw everyone missing.
+    """
     text = data.decode("utf-8-sig", errors="replace")
     rows = list(csv.DictReader(io.StringIO(text)))
 
@@ -99,6 +112,7 @@ def import_district_roster(db, data: bytes, tenant_id, school_id, user) -> dict:
     s_new = s_upd = t_new = c_new = e_new = fast_n = 0
     unassigned = 0
     by_grade: dict = {}
+    home_class_by_student: dict = {}  # student.id -> current homeroom class.id
 
     for sid, rs in groups.items():
         base = rs[0]
@@ -151,7 +165,11 @@ def import_district_roster(db, data: bytes, tenant_id, school_id, user) -> dict:
                 stu.last_name = ln
             if grade:
                 stu.grade_level = grade
-            stu.flags = {**(stu.flags or {}), **flags}
+            merged = {**(stu.flags or {}), **flags}
+            # Present in the file => active again: clear any prior withdrawal.
+            merged.pop("status", None)
+            merged.pop("withdrawn_at", None)
+            stu.flags = merged
             s_upd += 1
         else:
             stu = Student(
@@ -207,6 +225,7 @@ def import_district_roster(db, data: bytes, tenant_id, school_id, user) -> dict:
                     Enrollment.student_id == stu.id).first():
                 db.add(Enrollment(class_id=cls.id, student_id=stu.id))
                 e_new += 1
+            home_class_by_student[stu.id] = cls.id
         else:
             unassigned += 1
 
@@ -228,12 +247,57 @@ def import_district_roster(db, data: bytes, tenant_id, school_id, user) -> dict:
             sa.level = _int(al)
             sa.scale_score = _int(ss)
 
+    withdrawn = enrollments_cleared = stale_home_cleared = 0
+    if reconcile:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        seen_ids = set(groups.keys())
+
+        # Homeroom class ids for THIS school (so we only clear/count homeroom
+        # enrollments, never a student's ELA/MATH class enrollments).
+        home_class_ids = {
+            c.id for c in db.query(ClassRoom.id).filter(
+                ClassRoom.tenant_id == tenant_id,
+                ClassRoom.school_id == school_id,
+                ClassRoom.subject == "HOMEROOM").all()
+        }
+
+        # 1) Soft-withdraw anyone in this school NOT in the uploaded file.
+        for stu in db.query(Student).filter(
+                Student.tenant_id == tenant_id,
+                Student.school_id == school_id).all():
+            if stu.district_student_id in seen_ids:
+                continue
+            if (stu.flags or {}).get("status") == "withdrawn":
+                continue  # already withdrawn — leave as-is
+            stu.flags = {**(stu.flags or {}), "status": "withdrawn",
+                         "withdrawn_at": now_iso}
+            # Drop them off teacher homeroom rosters (history/scores untouched).
+            enr = db.query(Enrollment).filter(
+                Enrollment.student_id == stu.id,
+                Enrollment.class_id.in_(home_class_ids)).all() if home_class_ids else []
+            for e in enr:
+                db.delete(e)
+                enrollments_cleared += 1
+            withdrawn += 1
+
+        # 2) Clear stale homeroom enrollments for students who changed teachers:
+        #    any homeroom enrollment that isn't their current homeroom class.
+        for stu_id, cur_cls in home_class_by_student.items():
+            for e in db.query(Enrollment).filter(
+                    Enrollment.student_id == stu_id,
+                    Enrollment.class_id.in_(home_class_ids),
+                    Enrollment.class_id != cur_cls).all() if home_class_ids else []:
+                db.delete(e)
+                stale_home_cleared += 1
+
     db.commit()
     audit(db, actor=user, action="import", entity_type="roster",
           purpose="district_population_import")
 
     return {
-        "format": "M-DCPS district roster (HR dedup)",
+        "format": "M-DCPS district roster (HR dedup)"
+                  + (" — reconciled" if reconcile else ""),
+        "reconcile": reconcile,
         "students_created": s_new,
         "students_updated": s_upd,
         "unique_students": len(groups),
@@ -242,5 +306,8 @@ def import_district_roster(db, data: bytes, tenant_id, school_id, user) -> dict:
         "enrollments_created": e_new,
         "students_unassigned": unassigned,
         "fast_math_baselines": fast_n,
+        "students_withdrawn": withdrawn,
+        "withdrawn_enrollments_cleared": enrollments_cleared,
+        "stale_homeroom_enrollments_cleared": stale_home_cleared,
         "by_grade": dict(sorted(by_grade.items())),
     }

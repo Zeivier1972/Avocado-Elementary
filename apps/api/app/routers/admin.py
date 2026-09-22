@@ -153,6 +153,7 @@ def _require_admin(user: User = Depends(get_current_user)) -> User:
 @router.post("/roster/import")
 async def import_roster(
     file: UploadFile = File(...),
+    reconcile: bool = Form(False),
     db: Session = Depends(get_db),
     user: User = Depends(_require_admin),
 ):
@@ -165,9 +166,11 @@ async def import_roster(
     tenant_id, school_id = district.id, school.id
 
     # M-DCPS whole-school export (one row per student per period; homeroom teacher
-    # on the HR row) gets the dedicated dedup importer.
+    # on the HR row) gets the dedicated dedup importer. reconcile=True treats the
+    # file as the full active roster (withdraws anyone missing) — see importer.
     if detect_district_roster(reader.fieldnames or []):
-        return import_district_roster(db, data, tenant_id, school_id, user)
+        return import_district_roster(db, data, tenant_id, school_id, user,
+                                      reconcile=reconcile)
 
     fmap = _build_map(reader.fieldnames or [])
     missing = [f for f in ("student_id", "first_name", "last_name", "grade")
@@ -312,6 +315,7 @@ async def import_roster(
 @router.post("/import/excel")
 async def import_excel(
     file: UploadFile = File(...),
+    reconcile: bool = Form(False),
     db: Session = Depends(get_db),
     user: User = Depends(_require_admin),
 ):
@@ -330,7 +334,8 @@ async def import_excel(
         text = data.decode("utf-8-sig", errors="replace")
         headers = next(_csv.reader(_io.StringIO(text)), [])
         if detect_district_roster(headers):
-            return import_district_roster(db, data, tenant_id, school_id, user)
+            return import_district_roster(db, data, tenant_id, school_id, user,
+                                          reconcile=reconcile)
         if detect_iready(headers):
             return _import_iready(db, data, tenant_id, school_id, user)
         raise HTTPException(
@@ -668,7 +673,12 @@ def school_summary(
     district = db.query(District).first()
     if not district:
         return {"students": 0, "teachers": 0, "classes": 0, "by_grade": {}}
-    students = db.query(Student).filter(Student.tenant_id == district.id).all()
+    all_students = db.query(Student).filter(Student.tenant_id == district.id).all()
+    # Withdrawn students (soft-removed by a full-roster sync) are kept for their
+    # score history but excluded from the active headcount.
+    students = [s for s in all_students
+                if (s.flags or {}).get("status") != "withdrawn"]
+    withdrawn = len(all_students) - len(students)
     by_grade: dict[str, int] = {}
     ell = ese = fast_baseline = 0
     for s in students:
@@ -689,6 +699,7 @@ def school_summary(
         "students": len(students), "teachers": teachers, "classes": classes,
         "by_grade": dict(sorted(by_grade.items())),
         "ell": ell, "ese": ese, "fast_math_baseline": fast_baseline,
+        "withdrawn": withdrawn,
     }
 
 

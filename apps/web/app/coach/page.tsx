@@ -43,6 +43,7 @@ export default function CoachPage() {
   const [grade, setGrade] = useState("3");
   const [summary, setSummary] = useState<any>(null);
   const [rosterMsg, setRosterMsg] = useState("");
+  const [rosterReconcile, setRosterReconcile] = useState(false);
   const [docs, setDocs] = useState<any>({});
   const [docBusy, setDocBusy] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -382,15 +383,34 @@ export default function CoachPage() {
   async function onRoster(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (
+      rosterReconcile &&
+      !confirm(
+        "Full-roster sync is ON.\n\nAnyone NOT in this file will be withdrawn " +
+          "(removed from teacher rosters; their scores/history are kept). Only " +
+          "do this when THIS file is the whole school's active roster — a " +
+          "partial or single-grade file will withdraw everyone else.\n\nContinue?"
+      )
+    ) {
+      e.target.value = "";
+      return;
+    }
     setBusy(true);
     setRosterMsg("");
     try {
       const form = new FormData();
       form.append("file", file);
+      if (rosterReconcile) form.append("reconcile", "true");
       const r = await api.importRoster(form);
       setRosterMsg(
         `Loaded ${r.students_created} new / ${r.students_updated} updated students · ` +
           `${r.teachers_created} teachers · ${r.classes_created} classes` +
+          (r.students_withdrawn
+            ? ` · ${r.students_withdrawn} withdrawn`
+            : "") +
+          (r.stale_homeroom_enrollments_cleared
+            ? ` · ${r.stale_homeroom_enrollments_cleared} moved`
+            : "") +
           (r.error_count ? ` · ${r.error_count} row error(s)` : "")
       );
       loadSummary();
@@ -493,10 +513,30 @@ export default function CoachPage() {
               <div className="text-xs text-gray-400">No roster loaded yet.</div>
             )}
           </div>
-          <label className="inline-block bg-gray-800 hover:bg-black text-white text-sm font-semibold rounded-lg px-3 py-2 cursor-pointer">
-            {busy ? "Working…" : "Upload Population CSV ⬆"}
-            <input type="file" accept=".csv" onChange={onRoster} className="hidden" disabled={busy} />
-          </label>
+          <div className="flex flex-col items-end gap-1">
+            <label className="inline-block bg-gray-800 hover:bg-black text-white text-sm font-semibold rounded-lg px-3 py-2 cursor-pointer">
+              {busy ? "Working…" : "Upload Population CSV ⬆"}
+              <input type="file" accept=".csv" onChange={onRoster} className="hidden" disabled={busy} />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rosterReconcile}
+                onChange={(e) => setRosterReconcile(e.target.checked)}
+                disabled={busy}
+                className="rounded border-gray-300"
+              />
+              Full-roster sync (withdraw students not in this file)
+            </label>
+          </div>
+          {rosterReconcile && (
+            <div className="w-full text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              ⚠ Sync mode: this file must be the <b>whole school</b>. Students
+              missing from it will be withdrawn (removed from teacher rosters;
+              their scores &amp; history are preserved). Leave unchecked to only
+              add &amp; update.
+            </div>
+          )}
           {rosterMsg && (
             <div className="w-full text-xs text-gray-600">{rosterMsg}</div>
           )}
