@@ -78,13 +78,20 @@ def parse_fast_export(data: bytes) -> dict:
 
     subject = "MATH" if "math" in " ".join(hl) else ("ELA" if "reading" in " ".join(hl) or "ela" in " ".join(hl) else "MATH")
 
+    # The repeating item block is [Category, Benchmark, Points Earned, Points
+    # Possible] per test item. The export prefixes each with an item number
+    # ("1. Category", "2. Category", …), so match on the bare word after that
+    # prefix — otherwise no items are found and every standard is missed.
+    def _bare(h: str) -> str:
+        return re.sub(r"^\s*\d+\.\s*", "", h).strip()
+
     # domain performance columns (contain "performance", before the item block)
-    first_cat = next((j for j, h in enumerate(hl) if h == "category"), None)
+    first_cat = next((j for j, h in enumerate(hl) if _bare(h) == "category"), None)
     domain_cols = [j for j, h in enumerate(hl)
                    if "performance" in h and (first_cat is None or j < first_cat)]
 
     # item blocks: every "category" column starts a [cat, bench, earned, poss] group
-    cat_cols = [j for j, h in enumerate(hl) if h == "category"]
+    cat_cols = [j for j, h in enumerate(hl) if _bare(h) == "category"]
 
     students = []
     period = ""
