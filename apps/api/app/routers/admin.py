@@ -703,6 +703,131 @@ def school_summary(
     }
 
 
+# --- Duplicate-student cleanup -----------------------------------------------
+# Different imports (roster vs. a name-only results upload) can create two rows
+# for the same child — usually one with scores/enrollment and one hollow shell.
+# This merges a hollow duplicate INTO the record that has the data, so the name
+# stops appearing twice. It is conservative: it only ever removes a duplicate
+# that has ZERO scores, and it never touches two same-name records that BOTH
+# have scores (those could be two different children and are flagged instead).
+
+def _name_key(name: str) -> str:
+    """Order/punctuation-insensitive name key: 'ABSALON, MILANI' and
+    'Milani Absalon' collapse to the same value; drops 1-letter initials."""
+    toks = [t for t in re.sub(r"[^a-z ]", " ", (name or "").lower()).split()
+            if len(t) > 1]
+    return " ".join(sorted(toks))
+
+
+def _score_count(db, sid: str) -> int:
+    """How much real data a student row carries (any of these => 'has a score')."""
+    return (db.query(StudentAssessment).filter(
+                StudentAssessment.student_id == sid).count()
+            + db.query(StudentBenchmarkResult).filter(
+                StudentBenchmarkResult.student_id == sid).count()
+            + db.query(AssessmentResult).filter(
+                AssessmentResult.student_id == sid).count())
+
+
+def _merge_student(db, keeper: Student, loser: Student) -> None:
+    """Move every row pointing at `loser` onto `keeper`, then delete `loser`.
+    Enrollments and DI memberships dedupe (skip when keeper already has one)."""
+    for e in db.query(Enrollment).filter(Enrollment.student_id == loser.id).all():
+        if db.query(Enrollment).filter(Enrollment.class_id == e.class_id,
+                                       Enrollment.student_id == keeper.id).first():
+            db.delete(e)
+        else:
+            e.student_id = keeper.id
+    for m in db.query(DiGroupMember).filter(
+            DiGroupMember.student_id == loser.id).all():
+        if db.query(DiGroupMember).filter(
+                DiGroupMember.di_group_id == m.di_group_id,
+                DiGroupMember.student_id == keeper.id).first():
+            db.delete(m)
+        else:
+            m.student_id = keeper.id
+    # Score/mastery rows reassign wholesale (a hollow loser has none anyway).
+    for Model in (StudentAssessment, StudentBenchmarkResult,
+                  AssessmentResult, StandardMastery):
+        for row in db.query(Model).filter(Model.student_id == loser.id).all():
+            row.student_id = keeper.id
+    db.delete(loser)
+
+
+@router.post("/roster/dedupe")
+def dedupe_students(
+    apply: bool = Form(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Find (apply=False) or remove (apply=True) duplicate students. Groups the
+    active roster by name+grade; in each group with a scored record it removes
+    the hollow (zero-score) duplicates and keeps the one with the data. Same-name
+    records that all have scores are reported under `needs_review`, never deleted."""
+    district = db.query(District).first()
+    if not district:
+        return {"applied": apply, "duplicate_groups": 0, "removed": 0,
+                "removable_total": 0, "needs_review": 0, "groups": []}
+    students = active_students(
+        db.query(Student).filter(Student.tenant_id == district.id)).all()
+
+    groups: dict = {}
+    for s in students:
+        key = (_name_key(f"{s.first_name} {s.last_name}"), s.grade_level or "")
+        groups.setdefault(key, []).append(s)
+
+    def label(s):
+        return {"id": s.id, "district_id": s.district_student_id,
+                "scores": scores[s.id], "enroll": enroll[s.id]}
+
+    preview, removed = [], 0
+    for (nk, grade), grp in groups.items():
+        if not nk or len(grp) < 2:
+            continue
+        scores = {s.id: _score_count(db, s.id) for s in grp}
+        enroll = {s.id: db.query(Enrollment).filter(
+            Enrollment.student_id == s.id).count() for s in grp}
+        scored = [s for s in grp if scores[s.id] > 0]
+        if scored:
+            keeper = max(scored, key=lambda s: (scores[s.id], enroll[s.id], s.created_at))
+            removable = [s for s in grp if s is not keeper and scores[s.id] == 0]
+            review = [s for s in scored if s is not keeper]
+        else:
+            # No one has scores: keep the most-established shell, drop the rest.
+            keeper = max(grp, key=lambda s: (enroll[s.id],
+                                             1 if s.district_student_id else 0,
+                                             s.created_at))
+            removable = [s for s in grp if s is not keeper]
+            review = []
+        if not removable and not review:
+            continue
+        preview.append({
+            "name": f"{keeper.first_name.title()} {keeper.last_name.title()}",
+            "grade": grade or "(blank)",
+            "keep": label(keeper),
+            "remove": [label(s) for s in removable],
+            "needs_review": [label(s) for s in review],
+        })
+        if apply:
+            for s in removable:
+                _merge_student(db, keeper, s)
+                removed += 1
+
+    if apply:
+        db.commit()
+        audit(db, actor=user, action="dedupe", entity_type="roster",
+              purpose="duplicate_student_cleanup")
+
+    return {
+        "applied": apply,
+        "duplicate_groups": len(preview),
+        "removed": removed,
+        "removable_total": sum(len(p["remove"]) for p in preview),
+        "needs_review": sum(len(p["needs_review"]) for p in preview),
+        "groups": preview,
+    }
+
+
 # --- Add students to a class (by ID) -----------------------------------------
 # Enroll students under an EXISTING teacher from a simple id+name list (e.g. a
 # Performance Matters "Student Results" export). Matches existing students by id

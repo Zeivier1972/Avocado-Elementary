@@ -422,6 +422,44 @@ export default function CoachPage() {
     }
   }
 
+  async function onDedupe() {
+    setBusy(true);
+    setRosterMsg("");
+    try {
+      const p = await api.dedupeStudents(false); // preview first
+      if (!p.removable_total && !p.needs_review) {
+        setRosterMsg("No duplicate student names found. ✓");
+        return;
+      }
+      const lines = (p.groups || [])
+        .filter((g: any) => g.remove?.length)
+        .slice(0, 12)
+        .map((g: any) => `• ${g.name} (Gr ${g.grade}) — keep the one with ${g.keep.scores} score(s); remove ${g.remove.length} empty copy`)
+        .join("\n");
+      const reviewNote = p.needs_review
+        ? `\n\n${p.needs_review} same-name record(s) BOTH have scores — left alone (could be different kids). Review those manually.`
+        : "";
+      if (
+        !confirm(
+          `Found ${p.removable_total} empty duplicate(s) to remove across ${p.duplicate_groups} name(s):\n\n${lines}${
+            p.removable_total > 12 ? "\n…and more" : ""
+          }${reviewNote}\n\nRemove the empty duplicates? Their spot moves to the record that has the scores. This can't be undone.`
+        )
+      )
+        return;
+      const r = await api.dedupeStudents(true);
+      setRosterMsg(
+        `Removed ${r.removed} duplicate student record(s).` +
+          (r.needs_review ? ` ${r.needs_review} same-name pair(s) left for manual review.` : "")
+      );
+      loadSummary();
+    } catch (err) {
+      setRosterMsg("Dedupe failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openWeek(id: string) {
     setGuide(null);
     setTopic(null);
@@ -528,6 +566,13 @@ export default function CoachPage() {
               />
               Full-roster sync (withdraw students not in this file)
             </label>
+            <button
+              onClick={onDedupe}
+              disabled={busy}
+              className="text-xs text-gray-600 hover:text-avocado-dark underline disabled:opacity-50"
+            >
+              Remove duplicate names
+            </button>
           </div>
           {rosterReconcile && (
             <div className="w-full text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">

@@ -91,6 +91,11 @@ export const api = {
   schoolSummary: () => req("/admin/school/summary"),
   importRoster: (form: FormData) =>
     req("/admin/roster/import", { method: "POST", body: form }),
+  dedupeStudents: (apply: boolean) => {
+    const form = new FormData();
+    form.append("apply", apply ? "true" : "false");
+    return req("/admin/roster/dedupe", { method: "POST", body: form });
+  },
   importExcel: (form: FormData) =>
     req("/admin/import/excel", { method: "POST", body: form }),
   reportsOverview: () => req("/reports/overview"),
