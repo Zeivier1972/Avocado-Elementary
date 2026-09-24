@@ -857,19 +857,28 @@ _CSS = """
 .ckeybox h2{margin:0 0 8px;font-size:18px;color:var(--ink);}
 .ckeybox .krow{font-size:13px;margin:3px 0;color:var(--ink);}
 .ckeybox .krow b{color:var(--brand-deep);}
-@media print{body{background:#fff;font-size:12pt;}.wrap{max-width:none;padding:0;}
-.tier,.phase-body,.opm{break-inside:auto;}.prob,.example{break-inside:avoid;}
-.phase,.day{break-after:avoid;}.band{border-radius:0;}
+@media print{body{background:#fff;font-size:11pt;}.wrap{max-width:none;padding:0;}
+.tier,.opm{break-inside:auto;}
+/* Keep each teaching phase, problem and model whole — never split across pages. */
+.phaseblock,.prob,.example,.citem,.modelsteps,.routine,.finish,.exitprob{break-inside:avoid;}
+.phase,.day,.mslabel,.practicelabel{break-after:avoid;}.day{break-inside:avoid;}.band{border-radius:0;}
 .pbreak{break-before:page;page-break-before:always;}
-.tier{margin-top:0;padding:16px 16px 0;}.day{margin:0 0 6px;}.phase{margin:10px 0 6px;}
-.wrap{padding-bottom:0;}@page{margin:1.1cm;}}
+/* Cap model art so one diagram can't push a page over. */
+.example svg,.prob svg,.modelsteps svg,.cobjs svg,.drawbox svg{max-height:2.3in;width:auto;}
+.tier{margin-top:0;padding:12px 14px 0;}.day{margin:0 0 6px;}.phase{margin:8px 0 5px;}
+.phase-body{padding-left:14px;}.example,.prob{padding:8px 12px;}.modelsteps{padding:8px 12px;}
+.grid{gap:9px;}.drawbox{min-height:56px;}
+.wrap{padding-bottom:0;}@page{margin:1cm;}}
 """
 # For PDF rendering (WeasyPrint) the same rules apply without @media print.
 _CSS_PDF_EXTRA = """
-.tier,.phase-body,.opm{break-inside:auto;}.prob,.example{break-inside:avoid;}
-.phase,.day{break-after:avoid;}
+body{font-size:11pt;}
+.tier,.opm{break-inside:auto;}
+.phaseblock,.prob,.example,.citem,.modelsteps,.routine,.finish,.exitprob{break-inside:avoid;}
+.phase,.day,.mslabel,.practicelabel{break-after:avoid;}.day{break-inside:avoid;}
 .pbreak{break-before:page;page-break-before:always;}
-@page{size:Letter;margin:1.1cm;}
+.example svg,.prob svg,.modelsteps svg,.cobjs svg,.drawbox svg{max-height:2.3in;width:auto;}
+@page{size:Letter;margin:1cm;}
 body{background:#fff;}
 """
 
@@ -1015,7 +1024,10 @@ def _render_count_match(out: list, packet: dict) -> None:
                 items = sect.get(key) or []
                 if not items:
                     continue
-                out.append(f'<div class="phase"><span class="pn" style="background:{hexc}">'
+                # Wrap the compact sections so they stay whole on a page; let the
+                # you_do grid flow (its items already avoid splitting individually).
+                wrap_open = "" if key == "you_do" else '<div class="phaseblock">'
+                out.append(f'{wrap_open}<div class="phase"><span class="pn" style="background:{hexc}">'
                            f'{"✎" if key in ("you_do","exit") else "▶"}</span>'
                            f'<h3>{_esc(label)}</h3></div>')
                 out.append(f'<div class="phase-body"><p class="cnote">{_esc(note)}</p>')
@@ -1025,7 +1037,7 @@ def _render_count_match(out: list, packet: dict) -> None:
                     out.append(f'<div class="grid">{cards}</div>')
                 else:
                     out.append("".join(_count_item_html(it) for it in items))
-                out.append("</div>")
+                out.append("</div>" if key == "you_do" else "</div></div>")
                 day_key.append(f'{_CM_KEY_LABEL[key]} '
                                + ", ".join(it.get("answer", "?") for it in items))
             key_lines.append(f'{red_yellow_green} Day {day.get("day")}: '
@@ -1169,23 +1181,23 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                 steps_block = (f'<div class="modelsteps"><div class="mslabel">How we did it — '
                                f'follow these steps:</div><div class="steps">{wsteps}</div></div>'
                                if wsteps else "")
-                out.append('<div class="phase"><span class="pn" style="background:%s">1</span><h3>Watch it</h3><span class="gr">I do</span></div>' % hexc)
+                out.append('<div class="phaseblock"><div class="phase"><span class="pn" style="background:%s">1</span><h3>Watch it</h3><span class="gr">I do</span></div>' % hexc)
                 out.append('<div class="phase-body"><div class="example"><div class="tag">Study this one</div>'
                            + wvis
                            + f'<div class="st">{_esc(w.get("statement"))}</div></div>'
-                           + steps_block + '</div>')
+                           + steps_block + '</div></div>')
             # Try it — guided. For young/ASD we DRAW the model with the unknown
             # blanked (a scaffold to fill in), instead of only an empty box.
             tr = day.get("try_it") or {}
             if tr:
-                out.append('<div class="phase"><span class="pn" style="background:%s">2</span><h3>Try it</h3><span class="gr">We do</span></div>' % hexc)
+                out.append('<div class="phaseblock"><div class="phase"><span class="pn" style="background:%s">2</span><h3>Try it</h3><span class="gr">We do</span></div>' % hexc)
                 steps = _steps_html(tr.get("steps"), asd)
                 trvis = (svg_model(dmodel, tr, reveal=False)
                          if scaffold and _has_model_fields(tr, dmodel) else "")
                 out.append(f'<div class="phase-body"><div class="prob"><p class="q">{_esc(tr.get("problem"))}</p>'
                            + trvis
                            + (f'<div class="steps">{steps}</div>' if steps else "")
-                           + '<div class="drawbox">Fill in the model, then solve.</div></div></div>')
+                           + '<div class="drawbox">Fill in the model, then solve.</div></div></div></div>')
             # On your own — independent practice. Young/ASD get the model drawn
             # (unknown blanked) on each problem so the scaffold stays consistent.
             oyo = day.get("on_your_own") or []
@@ -1207,11 +1219,11 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
                          if scaffold and _has_model_fields(ex, dmodel) else "")
                 exch = _choices_html(ex.get("choices"))
                 exans = exch or ('<div class="drawbox">Solve here.</div>')
-                out.append('<div class="phase"><span class="pn" style="background:%s">🎟</span>'
+                out.append('<div class="phaseblock"><div class="phase"><span class="pn" style="background:%s">🎟</span>'
                            '<h3>Exit Slip</h3><span class="gr">Show what you learned</span></div>' % hexc)
                 out.append(f'<div class="phase-body"><div class="prob exitprob">'
                            f'<p class="q">{_esc(ex.get("problem") or ex.get("text"))}</p>'
-                           f'{exvis}{exans}</div></div>')
+                           f'{exvis}{exans}</div></div></div>')
         # OPM
         opm = t.get("opm") or []
         if opm:
