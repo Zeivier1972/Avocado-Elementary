@@ -192,13 +192,15 @@ def _activities_text(L: dict) -> str:
 
 
 def _day_slots(lessons: list[dict]) -> list[dict]:
-    """Five lesson slots for the week — a DATE blank, not a weekday, since the
-    coach doesn't know which lesson lands on which day. Each slot is pre-labeled
-    with its lesson (code / title / goal) and carries a filled example for each
-    gradual-release phase (used by the example version). Extra lessons roll to a
-    next-week print."""
+    """One slot per lesson for the WHOLE chapter — a DATE blank, not a weekday,
+    since the coach doesn't know which lesson lands on which day. Each slot is
+    pre-labeled with its lesson (code / title / goal) and carries a filled
+    example for each gradual-release phase (used by the example version). The
+    renderer chunks these into weeks of 5, so a chapter with more than 5 lessons
+    prints every lesson (Week 1, Week 2, …) instead of stopping at lesson 5. A
+    blank template (no lessons) still shows a full 5-slot week to plan into."""
     slots = []
-    for i in range(5):
+    for i in range(max(5, len(lessons))):
         L = lessons[i] if i < len(lessons) else None
         slots.append({
             "slot": i + 1,

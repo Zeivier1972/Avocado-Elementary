@@ -506,64 +506,76 @@ def template_to_docx(t: dict, filled: bool = False) -> bytes:
 
     doc.add_paragraph().add_run("").font.size = Pt(2)
 
-    # The weekly grid: rows = section labels, cols = the 5 days.
-    days = t.get("days", [])
+    # The weekly grid: rows = section labels, cols = the lessons.
     phases = t.get("phases", [])
-    ncols = 1 + len(days)
     # Row plan: header, learning goal, one row per phase, exit check.
     row_defs = [("Learning goal / focus", "goal")]
     for ph in phases:
         row_defs.append((f"{ph['gradual_release']} ({ph['aces']})", ph["key"]))
     row_defs.append(("Activities (in-lesson)", "activities"))
     row_defs.append(("Exit check (CFU)", "exit"))
-
-    table = doc.add_table(rows=len(row_defs) + 1, cols=ncols)
-    table.style = "Table Grid"
-
-    # Header row: blank corner + each lesson slot with a DATE blank (no weekday).
-    _cell(table.rows[0].cells[0], "Date →", 8, bold=True)
-    for j, d in enumerate(days):
-        lesson = f"{d.get('lesson_code','')} {d.get('title','')}".strip()
-        head = (f"Lesson {lesson}" if lesson else f"Lesson {d.get('slot','')}")
-        head += "\nDate: ____________"
-        _cell(table.rows[0].cells[j + 1], head, 8, bold=True,
-              color=(0x38, 0x60, 0x1F))
-
-    # Body rows.
     phase_by_key = {ph["key"]: ph for ph in phases}
-    for i, (label, key) in enumerate(row_defs):
-        r = table.rows[i + 1]
-        # Row label cell (with the "what to plan" reminder for phases).
-        lc = r.cells[0]
-        lc.text = ""
-        p = lc.paragraphs[0]
-        run = p.add_run(label)
-        run.bold = True
-        run.font.size = Pt(8)
-        if key in phase_by_key:
-            sub = p.add_run("\nwhat you do · questions · what students do")
-            sub.italic = True
-            sub.font.size = Pt(6.5)
-            sub.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
-        # Day cells.
-        for j, d in enumerate(days):
-            cell = r.cells[j + 1]
-            if key == "goal":
-                _cell(cell, d.get("learning_goal", "") or "", 7.5)
-            elif key == "exit":
-                _cell(cell, d.get("exit", "") or "", 7.5)
-            elif key == "activities":
-                # Always show the lesson's activities (they're a menu to pick from).
-                _cell(cell, d.get("activities", "") or "", 7)
-            elif filled:
-                _grid_cell(cell, (d.get("phase_example", {}) or {}).get(key, ""), 7)
-            else:
-                _cell(cell, "", 8)  # blank for the teacher to plan
 
-    # Column widths: label column narrow, day columns share the rest.
-    table.columns[0].width = Inches(1.5)
-    for j in range(1, ncols):
-        table.columns[j].width = Inches(8.5 / max(1, len(days)))
+    # A chapter can run longer than one week; render 5 lessons per week so EVERY
+    # lesson prints (Week 1, Week 2, …) instead of stopping at lesson 5. Each week
+    # is its own table on its own page.
+    all_days = t.get("days", [])
+    weeks = [all_days[k:k + 5] for k in range(0, len(all_days), 5)] or [[]]
+    for wi, days in enumerate(weeks):
+        if wi > 0:
+            doc.add_page_break()
+        if len(weeks) > 1:
+            wp = doc.add_paragraph()
+            wpr = wp.add_run(f"Week {wi + 1} — Lessons "
+                             + ", ".join(d.get("lesson_code", "") or str(d.get("slot", ""))
+                                         for d in days))
+            wpr.bold = True
+            wpr.font.size = Pt(11)
+            wpr.font.color.rgb = RGBColor(0x38, 0x60, 0x1F)
+        ncols = 1 + len(days)
+        table = doc.add_table(rows=len(row_defs) + 1, cols=ncols)
+        table.style = "Table Grid"
+
+        # Header row: blank corner + each lesson slot with a DATE blank.
+        _cell(table.rows[0].cells[0], "Date →", 8, bold=True)
+        for j, d in enumerate(days):
+            lesson = f"{d.get('lesson_code','')} {d.get('title','')}".strip()
+            head = (f"Lesson {lesson}" if lesson else f"Lesson {d.get('slot','')}")
+            head += "\nDate: ____________"
+            _cell(table.rows[0].cells[j + 1], head, 8, bold=True,
+                  color=(0x38, 0x60, 0x1F))
+
+        # Body rows.
+        for i, (label, key) in enumerate(row_defs):
+            r = table.rows[i + 1]
+            lc = r.cells[0]
+            lc.text = ""
+            p = lc.paragraphs[0]
+            run = p.add_run(label)
+            run.bold = True
+            run.font.size = Pt(8)
+            if key in phase_by_key:
+                sub = p.add_run("\nwhat you do · questions · what students do")
+                sub.italic = True
+                sub.font.size = Pt(6.5)
+                sub.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+            for j, d in enumerate(days):
+                cell = r.cells[j + 1]
+                if key == "goal":
+                    _cell(cell, d.get("learning_goal", "") or "", 7.5)
+                elif key == "exit":
+                    _cell(cell, d.get("exit", "") or "", 7.5)
+                elif key == "activities":
+                    _cell(cell, d.get("activities", "") or "", 7)
+                elif filled:
+                    _grid_cell(cell, (d.get("phase_example", {}) or {}).get(key, ""), 7)
+                else:
+                    _cell(cell, "", 8)  # blank for the teacher to plan
+
+        # Column widths: label column narrow, lesson columns share the rest.
+        table.columns[0].width = Inches(1.5)
+        for j in range(1, ncols):
+            table.columns[j].width = Inches(8.5 / max(1, len(days)))
 
     # Compact footer: sentence frames + a misconception to plan for.
     if t.get("sentence_frames"):
