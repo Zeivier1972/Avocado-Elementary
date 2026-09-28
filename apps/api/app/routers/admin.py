@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.deps import audit, get_current_user
+from app.fast_concordance import to_fast_level
 from app.fast_import import detect as detect_fast
 from app.fast_import import parse_fast_export
 from app.import_excel import parse_workbook
@@ -605,7 +606,12 @@ def _import_iready(db, data, tenant_id, school_id, user):
                 subject=subject, period=period)
             db.add(rec)
         rec.scale_score = sd["scale_score"]
-        rec.level = sd["level"]  # 1/2/3 from placement (3 = on grade+, the goal)
+        # Prefer the district i-Ready→FAST concordance (a true 1-5 FAST level
+        # from the scale score) over the coarse 1/2/3 placement, so i-Ready sits
+        # on the same scale as FAST. Falls back to placement where no chart
+        # applies (e.g. i-Ready only maps grades 3-5, or ELA).
+        conc = to_fast_level("IREADY", stu.grade_level, subject, sd["scale_score"])
+        rec.level = conc if conc is not None else sd["level"]
         pct = f" | pct {int(sd['percentile'])}" if sd.get("percentile") else ""
         rec.label = (sd.get("placement", "") + pct)[:255]
         asmt += 1
