@@ -345,6 +345,11 @@ async def import_excel(
             "This CSV isn't an i-Ready diagnostic export. For the school "
             "population roster, use the roster upload on the Coach page.")
 
+    # FAST K-2 Mathematics (Star-based) export: level + scale straight from file.
+    from app.fast_k2_import import detect as detect_fast_k2
+    if detect_fast_k2(data):
+        return _import_fast_k2(db, data, tenant_id, school_id, user)
+
     # FLDOE FAST item-level export gets its own richer path (benchmark results).
     if detect_fast(data):
         return _import_fast_export(db, data, tenant_id, school_id, user)
@@ -562,6 +567,90 @@ def _import_fast_export(db, data, tenant_id, school_id, user):
         "format": "FAST item export", "subject": subject, "period": period,
         "students": len(parsed["students"]), "students_created": students_new,
         "benchmark_results_created": items_new,
+    }
+
+
+def _namekey(first: str, last: str) -> str:
+    toks = [t for t in re.sub(r"[^a-z ]", " ", f"{first} {last}".lower()).split()
+            if len(t) > 1]
+    return " ".join(sorted(toks))
+
+
+def _import_fast_k2(db, data, tenant_id, school_id, user):
+    """Store a FAST K-2 Mathematics (Star-based) export: the FAST Achievement
+    Level and FAST-equivalent scale score come straight from the file. Students
+    are matched to the roster by FLEID (Local/District IDs are 'N/A' in this
+    export), then by name; unmatched students are created."""
+    from app.fast_k2_import import parse_fast_k2
+    parsed = parse_fast_k2(data)
+    subject, period = parsed["subject"], parsed["period"]
+
+    # Roster lookups: by FLEID (stored in flags by the roster import) and by name.
+    roster = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    by_fleid, by_name = {}, {}
+    for s in roster:
+        fl = (s.flags or {}).get("fleid")
+        if fl:
+            by_fleid[str(fl).strip()] = s
+        by_name.setdefault(_namekey(s.first_name, s.last_name), s)
+
+    created = matched_fleid = matched_name = asmt = 0
+    for sd in parsed["students"]:
+        stu = by_fleid.get(sd["fleid"])
+        if stu:
+            matched_fleid += 1
+        else:
+            stu = by_name.get(_namekey(sd["first_name"], sd["last_name"]))
+            if stu:
+                matched_name += 1
+        if not stu:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id,
+                district_student_id=sd["fleid"],
+                first_name=sd["first_name"], last_name=sd["last_name"],
+                grade_level=sd["grade"],
+                flags={"fleid": sd["fleid"], **(sd.get("flags") or {})})
+            db.add(stu)
+            db.flush()
+            by_fleid[sd["fleid"]] = stu
+            created += 1
+        else:
+            # Backfill FLEID/grade so future files match, without clobbering data.
+            merged = {**(stu.flags or {})}
+            merged.setdefault("fleid", sd["fleid"])
+            merged.update(sd.get("flags") or {})
+            stu.flags = merged
+            if sd["grade"] and not (stu.grade_level or "").strip():
+                stu.grade_level = sd["grade"]
+
+        rec = (db.query(StudentAssessment).filter(
+            StudentAssessment.student_id == stu.id,
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == subject,
+            StudentAssessment.period == period).first())
+        if not rec:
+            rec = StudentAssessment(
+                tenant_id=tenant_id, student_id=stu.id, source="FAST",
+                subject=subject, period=period)
+            db.add(rec)
+        rec.level = sd["level"]
+        rec.scale_score = sd["scale_score"]  # FAST-equivalent (0-369 K-2 scale)
+        bits = []
+        if sd.get("unified") is not None:
+            bits.append(f"Unified {int(sd['unified'])}")
+        if sd.get("percentile") is not None:
+            bits.append(f"pct {int(sd['percentile'])}")
+        rec.label = (" | ".join(bits))[:255]
+        asmt += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="fast_k2_export",
+          purpose="assessment_import")
+    return {
+        "format": "FAST K-2 (Star) export", "subject": subject, "period": period,
+        "students": len(parsed["students"]),
+        "matched_by_fleid": matched_fleid, "matched_by_name": matched_name,
+        "students_created": created, "assessments_upserted": asmt,
     }
 
 
