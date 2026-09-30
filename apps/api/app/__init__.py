@@ -3,5 +3,5 @@
 # Bump BUILD whenever behavior changes so the running deploy is identifiable
 # from the UI (Coach header) and /health. This lets us confirm at a glance
 # whether the latest code is actually live before regenerating guides.
-__version__ = "0.79.0"
-__build__ = "2026-09-30-fast-k2-star-math-importer"
+__version__ = "0.80.0"
+__build__ = "2026-09-30-classlist-authoritative-zeropad-match"

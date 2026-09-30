@@ -374,23 +374,23 @@ async def import_excel(
         m["assessments"].extend(rec["assessments"])
         m.setdefault("sections", set()).add(rec.get("section", ""))
 
-    # Preload existing students + their assessments for the touched ids.
-    ids = list(merged.keys())
-    existing_students = {
-        s.district_student_id: s
-        for s in db.query(Student).filter(
-            Student.tenant_id == tenant_id,
-            Student.district_student_id.in_(ids)).all()
-    }
+    # Preload existing students keyed by a LEADING-ZERO-TOLERANT id, because the
+    # roster stores 7-digit zero-padded ids ("0722524") while this class list
+    # drops the zero ("722524"). Exact matching would create a duplicate student
+    # for every zero-padded id — so match on the normalized key instead.
+    existing_students = {}
+    for s in db.query(Student).filter(Student.tenant_id == tenant_id).all():
+        existing_students.setdefault(_idkey(s.district_student_id), s)
     students_new = students_upd = asmt_new = asmt_upd = 0
     by_grade: dict[str, int] = {}
     by_type: dict[str, int] = {}
     teacher_cache: dict[str, User] = {}
     class_cache: dict[str, ClassRoom] = {}
+    home_class_by_student: dict[str, str] = {}  # student.id -> this file's class.id
 
     for sid, m in merged.items():
         sd = m["student"]
-        stu = existing_students.get(sid)
+        stu = existing_students.get(_idkey(sid))
         if stu:
             if sd.get("first_name"):
                 stu.first_name = sd["first_name"]
@@ -407,7 +407,7 @@ async def import_excel(
                 grade_level=sd.get("grade", ""), flags=sd.get("flags", {}))
             db.add(stu)
             db.flush()
-            existing_students[sid] = stu
+            existing_students[_idkey(sid)] = stu
             students_new += 1
         by_grade[stu.grade_level] = by_grade.get(stu.grade_level, 0) + 1
 
@@ -453,6 +453,7 @@ async def import_excel(
                     Enrollment.class_id == cls.id,
                     Enrollment.student_id == stu.id).first():
                 db.add(Enrollment(class_id=cls.id, student_id=stu.id))
+            home_class_by_student[stu.id] = cls.id
 
         # Existing assessments for this student, keyed for idempotent upsert.
         prior = {
@@ -485,6 +486,26 @@ async def import_excel(
                     percent=a.get("percent"), label=a.get("label", "")))
                 asmt_new += 1
 
+    # Authoritative class assignment: this class-list file wins, so a student it
+    # places in a room is REMOVED from any other homeroom class (their roster HR
+    # class, or a prior class-list room). Only students in THIS file are touched,
+    # and only their homeroom enrollments — never their data, and never students
+    # missing from the file.
+    stale_cleared = 0
+    if home_class_by_student:
+        home_ids = {c.id for c in db.query(ClassRoom).filter(
+            ClassRoom.tenant_id == tenant_id, ClassRoom.school_id == school_id,
+            ClassRoom.subject == "HOMEROOM").all()}
+        for stu_id, keep_cls in home_class_by_student.items():
+            if not home_ids:
+                break
+            for e in db.query(Enrollment).filter(
+                    Enrollment.student_id == stu_id,
+                    Enrollment.class_id.in_(home_ids),
+                    Enrollment.class_id != keep_cls).all():
+                db.delete(e)
+                stale_cleared += 1
+
     db.commit()
     audit(db, actor=user, action="import", entity_type="assessments_excel",
           purpose="assessment_import")
@@ -493,6 +514,7 @@ async def import_excel(
         "assessments_created": asmt_new, "assessments_updated": asmt_upd,
         "students_by_grade": dict(sorted(by_grade.items())),
         "assessment_counts": dict(sorted(by_type.items())),
+        "reassigned_off_old_class": stale_cleared,
         "warnings": _grade_warnings(by_grade),
     }
 
@@ -502,17 +524,14 @@ def _import_fast_export(db, data, tenant_id, school_id, user):
     item results (for domain/benchmark analysis)."""
     parsed = parse_fast_export(data)
     subject, period = parsed["subject"], parsed["period"]
-    ids = [s["district_student_id"] for s in parsed["students"]]
-    existing = {
-        s.district_student_id: s
-        for s in db.query(Student).filter(
-            Student.tenant_id == tenant_id,
-            Student.district_student_id.in_(ids)).all()
-    }
+    # Leading-zero-tolerant match (roster ids are zero-padded, exports often aren't).
+    existing = {}
+    for s in db.query(Student).filter(Student.tenant_id == tenant_id).all():
+        existing.setdefault(_idkey(s.district_student_id), s)
     students_new = items_new = 0
     for sd in parsed["students"]:
         sid = sd["district_student_id"]
-        stu = existing.get(sid)
+        stu = existing.get(_idkey(sid))
         flags = {}
         if sd.get("ell") and sd["ell"].lower() not in ("no", "n", ""):
             flags["ell"] = sd["ell"]
@@ -659,17 +678,14 @@ def _import_iready(db, data, tenant_id, school_id, user):
     placement/percentile, per subject and window (AP1/2/3)."""
     parsed = parse_iready(data)
     subject, period = parsed["subject"], parsed["period"]
-    ids = [s["district_student_id"] for s in parsed["students"]]
-    existing = {
-        s.district_student_id: s
-        for s in db.query(Student).filter(
-            Student.tenant_id == tenant_id,
-            Student.district_student_id.in_(ids)).all()
-    }
+    # Leading-zero-tolerant match (roster ids are zero-padded, exports often aren't).
+    existing = {}
+    for s in db.query(Student).filter(Student.tenant_id == tenant_id).all():
+        existing.setdefault(_idkey(s.district_student_id), s)
     students_new = asmt = 0
     for sd in parsed["students"]:
         sid = sd["district_student_id"]
-        stu = existing.get(sid)
+        stu = existing.get(_idkey(sid))
         if not stu:
             stu = Student(
                 tenant_id=tenant_id, school_id=school_id, district_student_id=sid,
@@ -677,7 +693,7 @@ def _import_iready(db, data, tenant_id, school_id, user):
                 grade_level=sd["grade"], flags=sd["flags"])
             db.add(stu)
             db.flush()
-            existing[sid] = stu
+            existing[_idkey(sid)] = stu
             students_new += 1
         else:
             if sd.get("grade"):

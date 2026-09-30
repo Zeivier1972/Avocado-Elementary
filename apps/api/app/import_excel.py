@@ -146,41 +146,55 @@ def parse_workbook(data: bytes) -> list[dict]:
             if is_tracker:
                 assessments = _tracker_assessments(norm_hdr, r)
             else:
-                assessments = _classlist_assessments(norm_hdr, group_row, r)
+                assessments = _classlist_assessments(norm_hdr, group_row, r, grade)
             out.append({"student": student, "assessments": assessments,
                         "section": sheet})
     wb.close()
     return out
 
 
-def _classlist_assessments(hdr, group_row, r):
-    """FAST ELA/Math PM1/2/3 and iReady AP1/2 with group context."""
+def _classlist_assessments(hdr, group_row, r, grade=""):
+    """FAST ELA/Math PM1/2/3 and iReady AP1/2 with group context.
+
+    IMPORTANT (K-2 data safety): on the district's K-2 class-list sheets the FAST
+    "LVL" column is a PERCENTILE (0-99) and "DSS" is the Star Unified score — NOT
+    the FAST 1-5 level / FAST scale. Importing those as levels would clobber the
+    real K-2 FAST levels (which come from the official FAST K-2 export). So FAST
+    is only read from grade 3+ sheets. i-Ready is skipped entirely here because
+    the official i-Ready export is the source of truth (and carries the
+    concordance-derived grade-3 level, which this coarser column would downgrade).
+    """
+    g = str(grade or "").strip().upper()
+    fast_ok = g in ("3", "4", "5")   # K/1/2/PK FAST columns are percentiles here
     res = []
     current = ""
     for j, field in enumerate(hdr):
-        g = group_row[j] if j < len(group_row) else ""
-        if "fast ela" in g:
+        grp = group_row[j] if j < len(group_row) else ""
+        if "fast ela" in grp:
             current = "FAST_ELA"
-        elif "fast math" in g:
+        elif "fast math" in grp:
             current = "FAST_MATH"
-        elif "iready" in g or "i-ready" in g:
+        elif "iready" in grp or "i-ready" in grp:
             current = "IREADY"
         if j >= len(r):
             continue
+        if current == "IREADY":
+            continue  # official i-Ready export is authoritative
+        if current.startswith("FAST") and not fast_ok:
+            continue  # K-2 "LVL" is a percentile, not a FAST level — skip
         val = _num(r[j])
         if val is None:
             continue
-        # subject from field text overrides group when explicit
         subj = "ELA" if "ela" in field else "MATH" if "math" in field else (
             "ELA" if current == "FAST_ELA" else "MATH" if current == "FAST_MATH"
             else None)
         period, kind = _period_kind(field)
         if period is None:
             continue
+        if period == "PM3":
+            continue  # in these class lists PM3 is LAST YEAR's data (prior grade)
         if current.startswith("FAST"):
             source, subject = "FAST", subj or ("ELA" if "ELA" in current else "MATH")
-        elif current == "IREADY":
-            source, subject = "IREADY", subj
         else:
             continue
         if subject is None:
