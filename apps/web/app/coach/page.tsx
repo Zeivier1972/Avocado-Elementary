@@ -460,6 +460,51 @@ export default function CoachPage() {
     }
   }
 
+  async function onDedupeTeachers() {
+    setBusy(true);
+    setRosterMsg("");
+    try {
+      const p = await api.dedupeTeachers(false); // preview
+      if (!p.mergeable_total && !p.needs_review) {
+        setRosterMsg("No duplicate teachers found. ✓");
+        return;
+      }
+      const lines = (p.groups || [])
+        .filter((g: any) => g.merge?.length)
+        .slice(0, 15)
+        .map(
+          (g: any) =>
+            `• Keep ${g.keep.name} (${g.keep.students} students) · merge ${g.merge
+              .map((m: any) => `${m.name} (${m.students})`)
+              .join(", ")}`
+        )
+        .join("\n");
+      const reviewNote = p.needs_review
+        ? `\n\n${p.needs_review} same-last-name teacher(s) with students in a different grade were left alone (likely different people).`
+        : "";
+      if (
+        !confirm(
+          `Found ${p.mergeable_total} duplicate teacher account(s) across ${p.duplicate_groups} name(s):\n\n${lines}${
+            p.mergeable_total > 15 ? "\n…and more" : ""
+          }${reviewNote}\n\nMerge each into one teacher (their class + students combined)? This can't be undone.`
+        )
+      )
+        return;
+      const r = await api.dedupeTeachers(true);
+      setRosterMsg(
+        `Merged ${r.merged_teachers} duplicate teacher(s)` +
+          (r.classes_collapsed ? ` · ${r.classes_collapsed} empty class(es) removed` : "") +
+          (r.needs_review ? ` · ${r.needs_review} left for review` : "") +
+          "."
+      );
+      loadSummary();
+    } catch (err) {
+      setRosterMsg("Teacher merge failed: " + (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openWeek(id: string) {
     setGuide(null);
     setTopic(null);
@@ -572,6 +617,13 @@ export default function CoachPage() {
               className="text-xs text-gray-600 hover:text-avocado-dark underline disabled:opacity-50"
             >
               Merge duplicate names
+            </button>
+            <button
+              onClick={onDedupeTeachers}
+              disabled={busy}
+              className="text-xs text-gray-600 hover:text-avocado-dark underline disabled:opacity-50"
+            >
+              Merge duplicate teachers
             </button>
           </div>
           {rosterReconcile && (

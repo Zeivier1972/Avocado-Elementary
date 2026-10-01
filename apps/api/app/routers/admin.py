@@ -18,11 +18,14 @@ from app.iready_import import detect_iready, parse_iready
 from app.roster_import import detect_district_roster, import_district_roster
 from app.models import (
     AssessmentResult,
+    ChatMessage,
     ClassRoom,
+    CoachNote,
     DiGroup,
     DiGroupMember,
     District,
     Enrollment,
+    PlcAgenda,
     School,
     StandardMastery,
     Student,
@@ -950,6 +953,152 @@ def dedupe_students(
         "duplicate_groups": len(preview),
         "removed": removed,
         "removable_total": sum(len(p["remove"]) for p in preview),
+        "needs_review": sum(len(p["needs_review"]) for p in preview),
+        "groups": preview,
+    }
+
+
+# --- Duplicate-teacher cleanup -----------------------------------------------
+# Uploading both the district roster and the AP's class lists creates the SAME
+# teacher twice: the roster stores "Last First" (e.g. "Ulloa Luz") while a class
+# list stores just the last name ("Ulloa"), so they become two User accounts
+# with two homeroom classes. This merges them into one teacher with one class.
+
+def _teacher_lastkey(name: str) -> str:
+    """Group a teacher's duplicate accounts by LAST NAME: the roster stores
+    'Last First' and class lists store just 'Last', so key on the first token
+    (comma-stripped) — 'Ulloa Luz' and 'Ulloa' both key to 'ulloa'."""
+    toks = re.sub(r"[^a-z ]", " ", (name or "").lower().replace(",", " ")).split()
+    return toks[0] if toks else ""
+
+
+def _enroll_count(db, class_id) -> int:
+    return db.query(Enrollment).filter(Enrollment.class_id == class_id).count()
+
+
+def _collapse_homeroom_classes(db, teacher) -> int:
+    """After a merge the keeper may hold two homeroom classes for one grade (the
+    roster's and the class list's). Keep the fullest per grade, move the others'
+    enrollments/DI groups into it, delete the empties. Returns classes deleted."""
+    deleted = 0
+    kc = db.query(ClassRoom).filter(
+        ClassRoom.teacher_id == teacher.id,
+        ClassRoom.subject == "HOMEROOM").all()
+    by_grade: dict = {}
+    for c in kc:
+        by_grade.setdefault(c.grade_level or "", []).append(c)
+    for _g, cs in by_grade.items():
+        if len(cs) < 2:
+            continue
+        primary = max(cs, key=lambda c: _enroll_count(db, c.id))
+        for c in cs:
+            if c.id == primary.id:
+                continue
+            for e in db.query(Enrollment).filter(Enrollment.class_id == c.id).all():
+                if db.query(Enrollment).filter(
+                        Enrollment.class_id == primary.id,
+                        Enrollment.student_id == e.student_id).first():
+                    db.delete(e)
+                else:
+                    e.class_id = primary.id
+            for dg in db.query(DiGroup).filter(DiGroup.class_id == c.id).all():
+                dg.class_id = primary.id
+            db.delete(c)
+            deleted += 1
+    return deleted
+
+
+@router.post("/teachers/dedupe")
+def dedupe_teachers(
+    apply: bool = Form(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Find (apply=False) or merge (apply=True) duplicate teacher accounts. Groups
+    teachers by last name; the account with the most enrolled students is kept and
+    the others are merged into it (their classes, notes and references reassigned,
+    then duplicate homeroom classes collapsed). A same-last-name teacher who has
+    students in a DIFFERENT grade is treated as a different person (needs_review)."""
+    district = db.query(District).first()
+    if not district:
+        return {"applied": apply, "duplicate_groups": 0, "merged_teachers": 0,
+                "classes_collapsed": 0, "needs_review": 0, "groups": []}
+    teachers = db.query(User).filter(
+        User.tenant_id == district.id, User.role == "teacher").all()
+
+    info = {}
+    for t in teachers:
+        classes = db.query(ClassRoom).filter(ClassRoom.teacher_id == t.id).all()
+        info[t.id] = {
+            "classes": classes,
+            "enroll": sum(_enroll_count(db, c.id) for c in classes),
+            "grades": {c.grade_level for c in classes if c.grade_level},
+        }
+
+    groups: dict = {}
+    for t in teachers:
+        groups.setdefault(_teacher_lastkey(t.name), []).append(t)
+
+    preview, merged, collapsed = [], 0, 0
+    for key, grp in groups.items():
+        if not key or len(grp) < 2:
+            continue
+        keeper = max(grp, key=lambda t: (info[t.id]["enroll"],
+                                         len(info[t.id]["classes"]), t.created_at))
+        kg = info[keeper.id]["grades"]
+        losers, review = [], []
+        for t in grp:
+            if t.id == keeper.id:
+                continue
+            # Safe to merge: empty duplicate, or shares a grade with the keeper.
+            if info[t.id]["enroll"] == 0 or not kg or (info[t.id]["grades"] & kg):
+                losers.append(t)
+            else:
+                review.append(t)
+        if not losers and not review:
+            continue
+        preview.append({
+            "keep": {"id": keeper.id, "name": keeper.name,
+                     "students": info[keeper.id]["enroll"],
+                     "classes": len(info[keeper.id]["classes"])},
+            "merge": [{"id": t.id, "name": t.name, "students": info[t.id]["enroll"]}
+                      for t in losers],
+            "needs_review": [{"id": t.id, "name": t.name,
+                              "students": info[t.id]["enroll"]} for t in review],
+        })
+        if apply:
+            for lo in losers:
+                for c in db.query(ClassRoom).filter(
+                        ClassRoom.teacher_id == lo.id).all():
+                    c.teacher_id = keeper.id
+                for n in db.query(CoachNote).filter(
+                        CoachNote.teacher_id == lo.id).all():
+                    n.teacher_id = keeper.id
+                for n in db.query(CoachNote).filter(
+                        CoachNote.author_id == lo.id).all():
+                    n.author_id = keeper.id
+                for p in db.query(PlcAgenda).filter(
+                        PlcAgenda.created_by == lo.id).all():
+                    p.created_by = keeper.id
+                for cm in db.query(ChatMessage).filter(
+                        ChatMessage.user_id == lo.id).all():
+                    cm.user_id = keeper.id
+                db.delete(lo)
+                merged += 1
+            db.flush()  # make reassigned classes visible to the collapse query
+            collapsed += _collapse_homeroom_classes(db, keeper)
+
+    if apply:
+        db.commit()
+        audit(db, actor=user, action="dedupe", entity_type="teachers",
+              purpose="duplicate_teacher_cleanup")
+
+    return {
+        "applied": apply,
+        "duplicate_groups": len(preview),
+        "merged_teachers": merged,
+        "classes_collapsed": collapsed,
+        "mergeable_total": sum(len(p["merge"]) for p in preview),
         "needs_review": sum(len(p["needs_review"]) for p in preview),
         "groups": preview,
     }

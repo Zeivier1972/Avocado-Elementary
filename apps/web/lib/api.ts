@@ -96,6 +96,11 @@ export const api = {
     form.append("apply", apply ? "true" : "false");
     return req("/admin/roster/dedupe", { method: "POST", body: form });
   },
+  dedupeTeachers: (apply: boolean) => {
+    const form = new FormData();
+    form.append("apply", apply ? "true" : "false");
+    return req("/admin/teachers/dedupe", { method: "POST", body: form });
+  },
   importExcel: (form: FormData) =>
     req("/admin/import/excel", { method: "POST", body: form }),
   reportsOverview: () => req("/reports/overview"),
