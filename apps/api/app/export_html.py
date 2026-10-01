@@ -802,6 +802,8 @@ _CSS = """
 .tier-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .pill{font-family:"Baloo 2";font-weight:800;font-size:15px;color:#fff;padding:4px 14px;border-radius:999px;}
 .tier-head h2{margin:0;font-size:22px;}
+.tapproach{margin-top:10px;background:#F4F8EE;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink);display:grid;gap:4px;}
+.tapproach b{color:var(--brand-deep);}
 .day{display:flex;align-items:center;gap:10px;margin:18px 0 6px;padding:7px 14px;border-radius:12px;font-family:"Baloo 2";font-weight:800;font-size:17px;color:#fff;}
 .day .small{font-family:"Atkinson Hyperlegible";font-weight:400;font-size:13px;opacity:.9;margin-left:auto;}
 .phase{display:flex;align-items:center;gap:10px;margin:14px 0 6px;}
@@ -860,7 +862,7 @@ _CSS = """
 @media print{body{background:#fff;font-size:11pt;}.wrap{max-width:none;padding:0;}
 .tier,.opm{break-inside:auto;}
 /* Keep each teaching phase, problem and model whole — never split across pages. */
-.phaseblock,.prob,.example,.citem,.modelsteps,.routine,.finish,.exitprob{break-inside:avoid;}
+.phaseblock,.prob,.example,.citem,.modelsteps,.routine,.finish,.exitprob,.tapproach{break-inside:avoid;}
 .phase,.day,.mslabel,.practicelabel{break-after:avoid;}.day{break-inside:avoid;}.band{border-radius:0;}
 .pbreak{break-before:page;page-break-before:always;}
 /* Cap model art so one diagram can't push a page over. */
@@ -874,7 +876,7 @@ _CSS = """
 _CSS_PDF_EXTRA = """
 body{font-size:11pt;}
 .tier,.opm{break-inside:auto;}
-.phaseblock,.prob,.example,.citem,.modelsteps,.routine,.finish,.exitprob{break-inside:avoid;}
+.phaseblock,.prob,.example,.citem,.modelsteps,.routine,.finish,.exitprob,.tapproach{break-inside:avoid;}
 .phase,.day,.mslabel,.practicelabel{break-after:avoid;}.day{break-inside:avoid;}
 .pbreak{break-before:page;page-break-before:always;}
 .example svg,.prob svg,.modelsteps svg,.cobjs svg,.drawbox svg{max-height:2.3in;width:auto;}
@@ -1161,6 +1163,15 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
         out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">{stars} {_esc(t.get("tier"))}</span>'
                    f'<h2>{_esc(t.get("band"))}</h2></div>')
+        appr = _esc(t.get("approach"))
+        misc = _esc(t.get("misconception"))
+        if appr or misc:
+            inner = ""
+            if misc:
+                inner += f'<div><b>Fixing this miss:</b> {misc}</div>'
+            if appr:
+                inner += f'<div><b>How this group is different:</b> {appr}</div>'
+            out.append(f'<div class="tapproach" style="border-left-color:{hexc}">{inner}</div>')
         for di, day in enumerate(t.get("days", [])):
             # Each Day after the first also breaks to its own page, so Day 1 and
             # Day 2 print as separate handouts.

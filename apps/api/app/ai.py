@@ -1352,6 +1352,8 @@ def suggest_di_model(code: str, description: str, grade: str = "") -> str:
 
 _DI_PACKET_SCHEMA = (
     '[{"tier":"Intensive|Cusp|Strategic",'
+    '"misconception":"the SPECIFIC error/misconception behind the missed items this tier fixes (from the missed questions)",'
+    '"approach":"1-2 sentences naming the DIFFERENT reteach strategy/representation this tier uses (different from core instruction) and the level of scaffold vs rigor — Intensive=full reteach from the foundation, concrete & heavily scaffolded; Cusp=targeted fix of the error, scaffold that fades; Strategic=light scaffold, extend with rigor & reasoning",'
     '"days":[{"day":1,"title":"kid-friendly focus for the day","model":"array",'
     '"pacing":"Model 5 min · Try it 10 min · On your own 15 min",'
     '"watch_it":{"rows":2,"cols":3,'
@@ -1426,12 +1428,34 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             +
             f"CRITICAL: EVERY problem, in EVERY tier and EVERY section (watch_it, "
             f"try_it, on_your_own, OPM), MUST assess THIS EXACT benchmark ({code}). "
-            f"Differentiate ONLY by number size and scaffolding (Intensive = smaller "
-            f"numbers + more support; Strategic = harder) — it is ALWAYS the same "
-            f"skill. NEVER substitute an easier or different standard: e.g. if the "
-            f"benchmark is repeated addition / arrays, do NOT drift to even/odd, "
-            f"counting, or plain addition. For a very low student, scaffold the SAME "
-            f"skill with tiny numbers — do not change the skill.\n\n"
+            f"NEVER substitute an easier or different standard: e.g. if the benchmark "
+            f"is repeated addition / arrays, do NOT drift to even/odd, counting, or "
+            f"plain addition — keep the SAME skill at every tier.\n\n"
+            f"THIS IS DIFFERENTIATED INSTRUCTION, NOT MORE OF THE SAME. Core teaching "
+            f"already failed these students, so DI must RETEACH THE SKILL A DIFFERENT "
+            f"WAY — a different representation, entry point or strategy than typical "
+            f"core instruction (e.g. go concrete-first with a visual model/manipulative "
+            f"instead of the algorithm). The three tiers must look and feel DIFFERENT "
+            f"from each other — different scaffold, different rigor, not just bigger "
+            f"numbers. First READ the most-missed questions and name the SPECIFIC "
+            f"error/misconception behind them; set each tier's \"misconception\" and "
+            f"\"approach\", then build that tier to fix it:\n"
+            f"  • INTENSIVE (Red) — these students missed it badly. RETEACH FROM THE "
+            f"FOUNDATION up: start concrete (draw/build the model on EVERY problem), "
+            f"maximum scaffolding, ONE step at a time, smallest numbers, sentence "
+            f"frames, heavy teacher modeling (I-do most). Rebuild the underlying "
+            f"concept with a NEW representation — do not re-run the lesson that failed.\n"
+            f"  • CUSP (Yellow) — nearly proficient with a SPECIFIC error. Target that "
+            f"exact error head-on. Moderate scaffold that FADES across the day (I do -> "
+            f"we do -> you do with the model removed by the exit ticket), near "
+            f"grade-level numbers, pictorial -> abstract. Lots of 'we do' and "
+            f"check-for-understanding on the misstep itself.\n"
+            f"  • STRATEGIC (Green) — mostly have it. LIGHT scaffold, grade-level AND "
+            f"ABOVE rigor: multi-step problems, represent it two ways, EXPLAIN/JUSTIFY "
+            f"and 'prove your thinking', and apply the skill in a NEW context. Stretch "
+            f"them to defend their reasoning, not just get the answer.\n"
+            f"Every tier still targets the SAME missed question types from the test — "
+            f"just reworked at that tier's scaffold/rigor level.\n\n"
             f"BENCHMARK (B1G-M — ground every problem here so it hits the target):\n{std_ctx}\n\n"
             f"MOST-MISSED TEST QUESTIONS (mirror THESE — same idea, format and number "
             f"range):\n{missed_txt}\n\n"
@@ -1523,10 +1547,11 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             + "If the test is multiple choice, "
             "give each on_your_own problem a 'choices' array of 3-4 SHORT options "
             "(exactly one correct) so it looks like the test; otherwise omit "
-            "'choices'. Tier intent: Intensive = "
-            "foundational, smallest numbers, the Watch-it model is fully worked; Cusp "
-            "= targeted practice to reach proficiency; Strategic = practice + "
-            "higher-order enrichment. Day 2 (Intensive/Cusp) uses larger numbers. "
+            "'choices'. Keep the tier differentiation above (Intensive = reteach from "
+            "the foundation, concrete & fully scaffolded, smallest numbers, Watch-it "
+            "model fully worked; Cusp = target the specific error, scaffold fades to "
+            "independence; Strategic = light scaffold, extend with multi-step rigor and "
+            "explain/justify). Day 2 (Intensive/Cusp) advances the numbers/complexity. "
             "Include 3 OPM questions per tier.\n\n"
             + (
                 "AUTISM (ASD) SUPPORTS — this class is students with autism, so adapt "
@@ -1563,6 +1588,8 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
             gen = by_name.get(t["name"].lower(), {})
             out_tiers.append({"tier": t["name"], "stars": t["stars"],
                               "band": t["band"], "tlc_sessions": t["tlc_sessions"],
+                              "approach": gen.get("approach", ""),
+                              "misconception": gen.get("misconception", ""),
                               "days": gen.get("days", []), "opm": gen.get("opm", [])})
         base.update({"tiers": out_tiers, "ai_generated": True,
                      "generated_by": settings.ai_model})
