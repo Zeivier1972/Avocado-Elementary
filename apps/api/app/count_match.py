@@ -156,12 +156,50 @@ def _day(rng: random.Random, day_no: int, ceiling: int,
             "sections": sections}
 
 
+def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
+    """Differentiate the tier by RANGE + RIGOR + strategy (not just new objects):
+    Red reteaches the most concrete type with the smallest numbers; Yellow moves
+    to the more abstract type at the full range; Green adds the hardest applicable
+    type / largest range and asks students to reason. Returns
+    (tier_ceiling, tier_primary, tier_pool, approach, misconception)."""
+    has_order = "number_order" in pool
+    easiest = "count_counters" if "count_counters" in pool else pool[0]
+    harder = "count_numeral" if "count_numeral" in pool else pool[-1]
+    low = max(3, min(ceiling, 5))
+    if tier_name == "Intensive":          # Red — reteach the foundation, concrete
+        if has_order:
+            return (low, "number_order", ["number_order"],
+                    "Rebuild the sequence with the number path shown every time — point to and say each number, one at a time.",
+                    "Loses track while counting, so numbers come out of order.")
+        return (low, easiest, [easiest],
+                "Count-and-MATCH with the five-frame shown on every item: touch each object, say the number, then find the counters that show the same amount.",
+                "Skips or double-counts objects, so the total is off by one.")
+    if tier_name == "Cusp":               # Yellow — target the error, fade support
+        if has_order:
+            return (ceiling, "number_order", ["number_order", easiest],
+                    "Order the numbers, then PROVE it by counting the set; the number path fades away by the exit ticket.",
+                    "Starts correctly but reverses direction or swaps two numbers.")
+        return (ceiling, harder, [harder, easiest],
+                "Count the set and name the NUMERAL (no counters to match) — move from matching a picture to identifying the number itself.",
+                "Counts aloud correctly but picks the wrong written numeral for the amount.")
+    # Strategic — Green: light scaffold, bigger range, reason/justify
+    if has_order:
+        return (ceiling, "number_order", pool,
+                "Order forward AND backward with larger sets, find the missing number, and explain how you know.",
+                "Mostly accurate — needs to reason about order and extend the pattern.")
+    return (ceiling, harder, [harder, easiest],
+            "Bigger sets and 'count on from' — name the numeral and explain how you counted so you can justify your answer.",
+            "Accurate on small sets but slips on larger quantities.")
+
+
 def build_count_match_packet(standard: dict, grade: str, tiers: list,
                              number_max: int | None = None) -> dict:
     """Build the full three-tier Kinder number-sense packet deterministically.
 
     tiers is _DI_ROTATION (Intensive/Cusp/Strategic with tlc_sessions). ceiling is
-    the biggest number to use (default 5 for Kinder Topic 1)."""
+    the biggest number to use (default 5 for Kinder Topic 1). Each tier is
+    differentiated by number range, question rigor and reteach strategy — Red is
+    the most concrete/scaffolded, Green the most rigorous."""
     code = standard.get("code", "")
     desc = standard.get("description", "")
     ceiling = number_max if (number_max and number_max > 0) else 5
@@ -170,16 +208,20 @@ def build_count_match_packet(standard: dict, grade: str, tiers: list,
 
     out_tiers = []
     for t in tiers:
+        tc, tprimary, tpool, approach, misconception = _tier_plan(
+            t["name"], primary, pool, ceiling)
         # Seed per tier+standard so a regenerate is reproducible, yet each tier and
         # day still gets its own fresh objects and amounts.
-        rng = random.Random(f"{code}|{t['name']}|{ceiling}")
-        days = [_day(rng, d + 1, ceiling, primary, pool)
+        rng = random.Random(f"{code}|{t['name']}|{tc}")
+        days = [_day(rng, d + 1, tc, tprimary, tpool)
                 for d in range(t.get("tlc_sessions", 1))]
-        opm = ([_item(rng, ceiling, pool[i % len(pool)]) for i in range(10)]
+        opm = ([_item(rng, tc, tpool[i % len(tpool)]) for i in range(10)]
                if t["name"] in ("Intensive", "Cusp") else [])
         out_tiers.append({
             "tier": t["name"], "stars": t["stars"], "band": t["band"],
             "tlc_sessions": t["tlc_sessions"], "days": days, "opm": opm,
+            "approach": approach, "misconception": misconception,
+            "number_max": tc,
         })
 
     return {

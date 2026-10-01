@@ -1015,6 +1015,15 @@ def _render_count_match(out: list, packet: dict) -> None:
         out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
         out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">'
                    f'{stars} {_esc(red_yellow_green)}</span><h2>{_esc(t.get("band"))}</h2></div>')
+        appr = _esc(t.get("approach"))
+        misc = _esc(t.get("misconception"))
+        if appr or misc:
+            inner = ""
+            if misc:
+                inner += f'<div><b>Fixing this miss:</b> {misc}</div>'
+            if appr:
+                inner += f'<div><b>How this group is different:</b> {appr}</div>'
+            out.append(f'<div class="tapproach" style="border-left-color:{hexc}">{inner}</div>')
         for di, day in enumerate(t.get("days", [])):
             dpb = "" if di == 0 else " pbreak"
             out.append(f'<div class="day{dpb}" style="background:{hexc}">'
