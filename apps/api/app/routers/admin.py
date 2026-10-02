@@ -1,0 +1,1257 @@
+"""School population (roster) import and summary — the foundation for tracking
+teacher and student performance toward the school goal."""
+import csv
+import io
+import re
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy.orm import Session
+
+from app.core.security import hash_password
+from app.db.session import get_db
+from app.deps import audit, get_current_user
+from app.fast_concordance import to_fast_level
+from app.fast_import import detect as detect_fast
+from app.fast_import import parse_fast_export
+from app.import_excel import parse_workbook
+from app.iready_import import detect_iready, parse_iready
+from app.roster_import import detect_district_roster, import_district_roster
+from app.models import (
+    AssessmentResult,
+    ChatMessage,
+    ClassRoom,
+    CoachNote,
+    DiGroup,
+    DiGroupMember,
+    District,
+    Enrollment,
+    PlcAgenda,
+    School,
+    StandardMastery,
+    Student,
+    active_students,
+    StudentAssessment,
+    StudentBenchmarkResult,
+    User,
+)
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+ADMIN_ROLES = {"principal", "ap", "district_admin", "instructional_coach",
+               "math_coach", "reading_coach", "support_staff"}
+
+# Flexible header matching: canonical field -> accepted header spellings.
+FIELD_ALIASES = {
+    "student_id": ["student_district_id", "district_student_id", "student_id",
+                   "studentid", "student number", "student id", "local id",
+                   "id", "id number"],
+    "first_name": ["first_name", "firstname", "first", "student first name"],
+    "last_name": ["last_name", "lastname", "last", "student last name"],
+    "grade": ["grade", "grade_level", "gradelevel", "grd", "grade level"],
+    "teacher_email": ["teacher_email", "teacheremail", "teacher e-mail"],
+    "teacher_name": ["teacher", "teacher_name", "teachername", "teacher name",
+                     "homeroom teacher", "teacher last name"],
+    "class_name": ["class", "homeroom", "classroom", "section", "room",
+                   "class name", "class section number"],
+    "course": ["course title", "course", "course name"],
+    "subject": ["subject", "content"],
+    "ell": ["ell", "esol", "lep", "ell level", "esol level"],
+    "ese": ["ese", "exceptionality", "swd", "sped", "ese exceptionality"],
+    "plan504": ["504", "plan_504", "504 plan"],
+    "mtss": ["mtss", "tier", "mtss_tier", "mtss tier"],
+    "fast_math_scale": ["fast math scale score", "math scale score",
+                        "fast math scale"],
+    "fast_math_level": ["fast math achievement level", "math achievement level",
+                        "fast math level"],
+}
+
+
+COURSE_SUBJECT = [
+    ("math", "MATH"), ("reading", "ELA"), ("language arts", "ELA"),
+    ("writing", "ELA"), ("ela", "ELA"), ("science", "SCIENCE"),
+    ("social", "SOCIAL_STUDIES"), ("homeroom", "HOMEROOM"),
+]
+
+
+def _split_section(section: str):
+    """A Class List sheet is '<class code> - <Teacher>' (e.g. 'K01 - Mathis',
+    '301 – Porco', 'T11 VPK — Guerrero'). Return (class_code, teacher) when the
+    label matches that pattern, else None. Tolerant of hyphen / en-dash / em-dash
+    and missing spaces. Requires the left side to look like a short class code so
+    hyphenated teacher names (e.g. a tracker sheet 'Smith-Jones') don't split."""
+    s = re.sub(r"\s+", " ", (section or "").strip())
+    if not s:
+        return None
+    # Normalise dash variants to a plain hyphen, then split on the first one.
+    norm = s.replace("–", "-").replace("—", "-")
+    m = re.match(r"^([A-Za-z0-9]{1,6}(?:\s+[A-Za-z0-9]{1,4})?)\s*-\s*(.+)$", norm)
+    if not m:
+        return None
+    code, teacher = m.group(1).strip(), m.group(2).strip()
+    # Left side must contain a digit (class codes like K01, 301, T11) so a plain
+    # hyphenated surname isn't misread as "<code> - <name>".
+    if not any(ch.isdigit() for ch in code):
+        return None
+    return code, teacher
+
+
+def _teacher_from_section(section: str) -> str:
+    """Derive a teacher name from a sheet/section label.
+    'K01 - Mathis' -> 'Mathis'; 'T11 VPK - Guerrero' -> 'Guerrero';
+    'Porco  St. Aubin' -> 'Porco St. Aubin' (tracker sheets are teacher names)."""
+    parsed = _split_section(section)
+    if parsed:
+        return parsed[1]
+    return re.sub(r"\s+", " ", (section or "").strip())
+
+
+def _subject_from_course(course: str, fallback: str) -> str:
+    c = (course or "").lower()
+    for key, subj in COURSE_SUBJECT:
+        if key in c:
+            return subj
+    return fallback
+
+
+def _norm(s: str) -> str:
+    return (s or "").strip().lower().replace("_", " ")
+
+
+def _build_map(headers: list[str]) -> dict:
+    norm = {_norm(h): h for h in headers}
+    field_map = {}
+    for field, aliases in FIELD_ALIASES.items():
+        for a in aliases:
+            if _norm(a) in norm:
+                field_map[field] = norm[_norm(a)]
+                break
+    return field_map
+
+
+# Grades the school actually has: Pre-K through 3rd.
+EXPECTED_GRADES = {"PK", "K", "1", "2", "3"}
+
+
+def _grade_warnings(counts: dict) -> list:
+    """Warn when students were imported on a grade the school does not have
+    (expected PK-3) or with a blank grade, so a bad grade column in the roster
+    file is caught at upload time instead of silently creating a Grade 4."""
+    out = []
+    for g, n in sorted(counts.items()):
+        gg = (g or "").upper()
+        if not gg:
+            out.append(f"{n} student(s) imported with a blank grade — set a grade "
+                       f"(PK, K, 1, 2, or 3) in the roster file.")
+        elif gg not in EXPECTED_GRADES:
+            out.append(f"{n} student(s) imported on grade '{g}' — the school only "
+                       f"has PK-3. Fix the grade column and re-import (see "
+                       f"Roster health on the Teachers page).")
+    return out
+
+
+def _require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role not in ADMIN_ROLES:
+        raise HTTPException(403, "Leadership/coach role required")
+    return user
+
+
+@router.post("/roster/import")
+async def import_roster(
+    file: UploadFile = File(...),
+    reconcile: bool = Form(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    data = await file.read()
+    raw = data.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(raw))
+
+    district = db.query(District).first()
+    school = db.query(School).filter(School.tenant_id == district.id).first()
+    tenant_id, school_id = district.id, school.id
+
+    # M-DCPS whole-school export (one row per student per period; homeroom teacher
+    # on the HR row) gets the dedicated dedup importer. reconcile=True treats the
+    # file as the full active roster (withdraws anyone missing) — see importer.
+    if detect_district_roster(reader.fieldnames or []):
+        return import_district_roster(db, data, tenant_id, school_id, user,
+                                      reconcile=reconcile)
+
+    fmap = _build_map(reader.fieldnames or [])
+    missing = [f for f in ("student_id", "first_name", "last_name", "grade")
+               if f not in fmap]
+    if missing:
+        raise HTTPException(
+            400,
+            f"CSV is missing required column(s): {', '.join(missing)}. "
+            f"Detected headers: {reader.fieldnames}",
+        )
+
+    students_new = students_upd = teachers_new = classes_new = enroll_new = 0
+    errors: list[str] = []
+    grade_counts: dict[str, int] = {}
+    teacher_cache: dict[str, User] = {}
+    class_cache: dict[tuple, ClassRoom] = {}
+    student_cache: dict[str, Student] = {}
+
+    def get(row, field):
+        col = fmap.get(field)
+        return (row.get(col, "") or "").strip() if col else ""
+
+    for i, row in enumerate(reader, start=2):
+        sid = get(row, "student_id")
+        fn, ln = get(row, "first_name"), get(row, "last_name")
+        grade = get(row, "grade").upper().replace("GRADE", "").strip() or ""
+        if grade in ("K", "KG", "KINDER", "KINDERGARTEN", "0", "00"):
+            grade = "K"
+        elif grade in ("PK", "PRE-K", "PREK"):
+            grade = "PK"
+        if not sid or not fn:
+            errors.append(f"row {i}: missing student id or name")
+            continue
+
+        flags = {}
+        ell = get(row, "ell")
+        if ell and ell not in ("0", "z", "zz"):
+            flags["ell"] = ell
+        ese = get(row, "ese")
+        if ese and ese.lower() not in ("n", "no", "none", "0"):
+            flags["ese"] = True
+            flags["ese_code"] = ese
+        if get(row, "plan504").lower() in ("y", "yes", "true", "1"):
+            flags["504"] = True
+        if get(row, "mtss"):
+            flags["mtss_tier"] = get(row, "mtss")
+        fast_scale = get(row, "fast_math_scale")
+        fast_level = get(row, "fast_math_level")
+        if fast_scale and fast_scale.isdigit():
+            flags["fast_math_scale"] = int(fast_scale)
+        if fast_level:
+            flags["fast_math_level"] = fast_level
+
+        student = student_cache.get(sid) or (
+            db.query(Student)
+            .filter(Student.tenant_id == tenant_id,
+                    Student.district_student_id == sid)
+            .first()
+        )
+        if student:
+            student.first_name, student.last_name = fn, ln
+            student.grade_level = grade
+            # merge flags across the student's multiple course rows
+            student.flags = {**(student.flags or {}), **flags}
+            if sid not in student_cache:
+                students_upd += 1
+        else:
+            student = Student(
+                tenant_id=tenant_id, school_id=school_id,
+                district_student_id=sid, first_name=fn, last_name=ln,
+                grade_level=grade, flags=flags)
+            db.add(student)
+            db.flush()
+            students_new += 1
+        student_cache[sid] = student
+        grade_counts[grade] = grade_counts.get(grade, 0) + 1
+
+        # Teacher (optional) -> upsert a User(role=teacher).
+        temail = get(row, "teacher_email").lower()
+        tname = get(row, "teacher_name")
+        teacher = None
+        key = temail or tname.lower()
+        if key:
+            if key in teacher_cache:
+                teacher = teacher_cache[key]
+            else:
+                if not temail:
+                    temail = (tname.lower().replace(" ", ".") + "@avocado.edu")
+                teacher = db.query(User).filter(User.email == temail).first()
+                if not teacher:
+                    teacher = User(
+                        tenant_id=tenant_id, school_id=school_id,
+                        name=tname or temail, email=temail,
+                        password_hash=hash_password("demo1234"),
+                        role="teacher", scope={})
+                    db.add(teacher)
+                    db.flush()
+                    teachers_new += 1
+                teacher_cache[key] = teacher
+
+        # Class + enrollment (only if we have a teacher).
+        if teacher:
+            course = get(row, "course")
+            subject = _subject_from_course(
+                course, (get(row, "subject") or "HOMEROOM").upper())
+            cname = course or get(row, "class_name") or f"Grade {grade} {subject.title()}"
+            ckey = (teacher.id, cname, subject, grade)
+            cls = class_cache.get(ckey)
+            if not cls:
+                cls = (db.query(ClassRoom)
+                       .filter(ClassRoom.teacher_id == teacher.id,
+                               ClassRoom.name == cname).first())
+                if not cls:
+                    cls = ClassRoom(
+                        tenant_id=tenant_id, school_id=school_id,
+                        teacher_id=teacher.id, name=cname, subject=subject,
+                        grade_level=grade)
+                    db.add(cls)
+                    db.flush()
+                    classes_new += 1
+                class_cache[ckey] = cls
+            exists = (db.query(Enrollment)
+                      .filter(Enrollment.class_id == cls.id,
+                              Enrollment.student_id == student.id).first())
+            if not exists:
+                db.add(Enrollment(class_id=cls.id, student_id=student.id))
+                enroll_new += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="roster",
+          purpose="school_population_import")
+    return {
+        "students_created": students_new, "students_updated": students_upd,
+        "teachers_created": teachers_new, "classes_created": classes_new,
+        "enrollments_created": enroll_new,
+        "errors": errors[:50], "error_count": len(errors),
+        "warnings": _grade_warnings(grade_counts),
+        "column_mapping": fmap,
+    }
+
+
+@router.post("/import/excel")
+async def import_excel(
+    file: UploadFile = File(...),
+    reconcile: bool = Form(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Import a district Excel workbook (Class Lists or Topic Assessment Tracker).
+    Upserts students and their longitudinal assessments (FAST / iReady / Topic).
+    Import Class Lists first so grades are established, then the Tracker."""
+    data = await file.read()
+    district = db.query(District).first()
+    school = db.query(School).filter(School.tenant_id == district.id).first()
+    tenant_id, school_id = district.id, school.id
+
+    # CSV files (i-Ready diagnostic export) — not a zip/xlsx.
+    if data[:2] != b"PK":
+        import csv as _csv
+        import io as _io
+        text = data.decode("utf-8-sig", errors="replace")
+        headers = next(_csv.reader(_io.StringIO(text)), [])
+        if detect_district_roster(headers):
+            return import_district_roster(db, data, tenant_id, school_id, user,
+                                          reconcile=reconcile)
+        if detect_iready(headers):
+            return _import_iready(db, data, tenant_id, school_id, user)
+        raise HTTPException(
+            400,
+            "This CSV isn't an i-Ready diagnostic export. For the school "
+            "population roster, use the roster upload on the Coach page.")
+
+    # FAST K-2 Mathematics (Star-based) export: level + scale straight from file.
+    from app.fast_k2_import import detect as detect_fast_k2
+    if detect_fast_k2(data):
+        return _import_fast_k2(db, data, tenant_id, school_id, user)
+
+    # FLDOE FAST item-level export gets its own richer path (benchmark results).
+    if detect_fast(data):
+        return _import_fast_export(db, data, tenant_id, school_id, user)
+
+    try:
+        records = parse_workbook(data)
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse workbook: {e}")
+    if not records:
+        raise HTTPException(400, "No student rows found. Check the file format.")
+
+    # Merge parsed rows by student id (a student may appear on multiple sheets).
+    merged: dict[str, dict] = {}
+    for rec in records:
+        sid = rec["student"]["id"]
+        m = merged.setdefault(sid, {"student": rec["student"], "assessments": []})
+        # keep a non-empty grade if a later row provides one
+        if not m["student"].get("grade") and rec["student"].get("grade"):
+            m["student"]["grade"] = rec["student"]["grade"]
+        m["student"]["flags"] = {**m["student"].get("flags", {}),
+                                 **rec["student"].get("flags", {})}
+        m["assessments"].extend(rec["assessments"])
+        m.setdefault("sections", set()).add(rec.get("section", ""))
+
+    # Preload existing students keyed by a LEADING-ZERO-TOLERANT id, because the
+    # roster stores 7-digit zero-padded ids ("0722524") while this class list
+    # drops the zero ("722524"). Exact matching would create a duplicate student
+    # for every zero-padded id — so match on the normalized key instead.
+    existing_students = {}
+    for s in db.query(Student).filter(Student.tenant_id == tenant_id).all():
+        existing_students.setdefault(_idkey(s.district_student_id), s)
+    students_new = students_upd = asmt_new = asmt_upd = 0
+    by_grade: dict[str, int] = {}
+    by_type: dict[str, int] = {}
+    teacher_cache: dict[str, User] = {}
+    class_cache: dict[str, ClassRoom] = {}
+    home_class_by_student: dict[str, str] = {}  # student.id -> this file's class.id
+
+    for sid, m in merged.items():
+        sd = m["student"]
+        stu = existing_students.get(_idkey(sid))
+        if stu:
+            if sd.get("first_name"):
+                stu.first_name = sd["first_name"]
+            if sd.get("last_name"):
+                stu.last_name = sd["last_name"]
+            if sd.get("grade"):
+                stu.grade_level = sd["grade"]
+            stu.flags = {**(stu.flags or {}), **sd.get("flags", {})}
+            students_upd += 1
+        else:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id, district_student_id=sid,
+                first_name=sd.get("first_name", ""), last_name=sd.get("last_name", ""),
+                grade_level=sd.get("grade", ""), flags=sd.get("flags", {}))
+            db.add(stu)
+            db.flush()
+            existing_students[_idkey(sid)] = stu
+            students_new += 1
+        by_grade[stu.grade_level] = by_grade.get(stu.grade_level, 0) + 1
+
+        # Link the student to their teacher's class (from the sheet name), so
+        # per-teacher reports work. e.g. "301 - Porco" -> teacher Porco.
+        # Only Class List sheets ("<class code> - <Teacher>") define the class,
+        # so we keep ONE teacher per class. Other sheets (e.g. the Topic Tracker,
+        # whose combined names mean co-taught classes) only add assessment data.
+        for section in m.get("sections", set()):
+            parsed = _split_section(section)
+            if not parsed:
+                continue
+            tname = parsed[1]
+            if not tname:
+                continue
+            teacher = teacher_cache.get(tname.lower())
+            if not teacher:
+                temail = tname.lower().replace(" ", ".") + "@avocado.edu"
+                teacher = db.query(User).filter(User.email == temail).first()
+                if not teacher:
+                    teacher = User(
+                        tenant_id=tenant_id, school_id=school_id, name=tname,
+                        email=temail, password_hash=hash_password("demo1234"),
+                        role="teacher", scope={})
+                    db.add(teacher)
+                    db.flush()
+                teacher_cache[tname.lower()] = teacher
+            cname = section or f"Grade {stu.grade_level} - {tname}"
+            cls = class_cache.get(cname)
+            if not cls:
+                cls = db.query(ClassRoom).filter(
+                    ClassRoom.tenant_id == tenant_id,
+                    ClassRoom.name == cname).first()
+                if not cls:
+                    cls = ClassRoom(
+                        tenant_id=tenant_id, school_id=school_id,
+                        teacher_id=teacher.id, name=cname, subject="HOMEROOM",
+                        grade_level=stu.grade_level)
+                    db.add(cls)
+                    db.flush()
+                class_cache[cname] = cls
+            if not db.query(Enrollment).filter(
+                    Enrollment.class_id == cls.id,
+                    Enrollment.student_id == stu.id).first():
+                db.add(Enrollment(class_id=cls.id, student_id=stu.id))
+            home_class_by_student[stu.id] = cls.id
+
+        # Existing assessments for this student, keyed for idempotent upsert.
+        prior = {
+            (a.source, a.subject, a.period): a
+            for a in db.query(StudentAssessment).filter(
+                StudentAssessment.student_id == stu.id).all()
+        }
+        seen = set()
+        for a in m["assessments"]:
+            key = (a["source"], a["subject"], a["period"])
+            if key in seen:
+                continue
+            seen.add(key)
+            by_type[f"{a['source']}/{a['subject']}"] = \
+                by_type.get(f"{a['source']}/{a['subject']}", 0) + 1
+            rec = prior.get(key)
+            if rec:
+                if a.get("level") is not None:
+                    rec.level = a["level"]
+                if a.get("scale_score") is not None:
+                    rec.scale_score = a["scale_score"]
+                if a.get("percent") is not None:
+                    rec.percent = a["percent"]
+                asmt_upd += 1
+            else:
+                db.add(StudentAssessment(
+                    tenant_id=tenant_id, student_id=stu.id,
+                    source=a["source"], subject=a["subject"], period=a["period"],
+                    level=a.get("level"), scale_score=a.get("scale_score"),
+                    percent=a.get("percent"), label=a.get("label", "")))
+                asmt_new += 1
+
+    # Authoritative class assignment: this class-list file wins, so a student it
+    # places in a room is REMOVED from any other homeroom class (their roster HR
+    # class, or a prior class-list room). Only students in THIS file are touched,
+    # and only their homeroom enrollments — never their data, and never students
+    # missing from the file.
+    stale_cleared = 0
+    if home_class_by_student:
+        home_ids = {c.id for c in db.query(ClassRoom).filter(
+            ClassRoom.tenant_id == tenant_id, ClassRoom.school_id == school_id,
+            ClassRoom.subject == "HOMEROOM").all()}
+        for stu_id, keep_cls in home_class_by_student.items():
+            if not home_ids:
+                break
+            for e in db.query(Enrollment).filter(
+                    Enrollment.student_id == stu_id,
+                    Enrollment.class_id.in_(home_ids),
+                    Enrollment.class_id != keep_cls).all():
+                db.delete(e)
+                stale_cleared += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="assessments_excel",
+          purpose="assessment_import")
+    return {
+        "students_created": students_new, "students_updated": students_upd,
+        "assessments_created": asmt_new, "assessments_updated": asmt_upd,
+        "students_by_grade": dict(sorted(by_grade.items())),
+        "assessment_counts": dict(sorted(by_type.items())),
+        "reassigned_off_old_class": stale_cleared,
+        "warnings": _grade_warnings(by_grade),
+    }
+
+
+def _import_fast_export(db, data, tenant_id, school_id, user):
+    """Store a FLDOE FAST item export: FAST scale/level summary + per-benchmark
+    item results (for domain/benchmark analysis)."""
+    parsed = parse_fast_export(data)
+    subject, period = parsed["subject"], parsed["period"]
+    # Leading-zero-tolerant match (roster ids are zero-padded, exports often aren't).
+    existing = {}
+    for s in db.query(Student).filter(Student.tenant_id == tenant_id).all():
+        existing.setdefault(_idkey(s.district_student_id), s)
+    students_new = items_new = 0
+    for sd in parsed["students"]:
+        sid = sd["district_student_id"]
+        stu = existing.get(_idkey(sid))
+        flags = {}
+        if sd.get("ell") and sd["ell"].lower() not in ("no", "n", ""):
+            flags["ell"] = sd["ell"]
+        if sd.get("ese") and sd["ese"][:1] not in ("N", "n", ""):
+            flags["ese"] = True
+        if not stu:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id, district_student_id=sid,
+                first_name=sd.get("first_name", ""), last_name=sd.get("last_name", ""),
+                grade_level=(sd.get("grade") or "").strip(), flags=flags)
+            db.add(stu)
+            db.flush()
+            existing[sid] = stu
+            students_new += 1
+        else:
+            if sd.get("grade"):
+                stu.grade_level = sd["grade"].strip()
+            stu.flags = {**(stu.flags or {}), **flags}
+
+        # FAST summary assessment (level + scale), idempotent per period.
+        summ = (db.query(StudentAssessment).filter(
+            StudentAssessment.student_id == stu.id,
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == subject,
+            StudentAssessment.period == period).first())
+        if not summ:
+            summ = StudentAssessment(
+                tenant_id=tenant_id, student_id=stu.id, source="FAST",
+                subject=subject, period=period)
+            db.add(summ)
+        summ.level = sd.get("level")
+        summ.scale_score = sd.get("scale_score")
+
+        # Replace prior benchmark results for this student/subject/period.
+        db.query(StudentBenchmarkResult).filter(
+            StudentBenchmarkResult.student_id == stu.id,
+            StudentBenchmarkResult.subject == subject,
+            StudentBenchmarkResult.period == period).delete()
+        for idx, it in enumerate(sd["items"]):
+            db.add(StudentBenchmarkResult(
+                tenant_id=tenant_id, student_id=stu.id, source="FAST",
+                subject=subject, period=period, category=it["category"],
+                benchmark_code=it["benchmark_code"],
+                points_earned=it["earned"], points_possible=it["possible"],
+                item_index=idx))
+            items_new += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="fast_export",
+          purpose="assessment_import")
+    return {
+        "format": "FAST item export", "subject": subject, "period": period,
+        "students": len(parsed["students"]), "students_created": students_new,
+        "benchmark_results_created": items_new,
+    }
+
+
+def _namekey(first: str, last: str) -> str:
+    toks = [t for t in re.sub(r"[^a-z ]", " ", f"{first} {last}".lower()).split()
+            if len(t) > 1]
+    return " ".join(sorted(toks))
+
+
+def _import_fast_k2(db, data, tenant_id, school_id, user):
+    """Store a FAST K-2 Mathematics (Star-based) export: the FAST Achievement
+    Level and FAST-equivalent scale score come straight from the file. Students
+    are matched to the roster by FLEID (Local/District IDs are 'N/A' in this
+    export), then by name; unmatched students are created."""
+    from app.fast_k2_import import parse_fast_k2
+    parsed = parse_fast_k2(data)
+    subject, period = parsed["subject"], parsed["period"]
+
+    # Roster lookups: by FLEID (stored in flags by the roster import) and by name.
+    roster = db.query(Student).filter(Student.tenant_id == tenant_id).all()
+    by_fleid, by_name = {}, {}
+    for s in roster:
+        fl = (s.flags or {}).get("fleid")
+        if fl:
+            by_fleid[str(fl).strip()] = s
+        by_name.setdefault(_namekey(s.first_name, s.last_name), s)
+
+    created = matched_fleid = matched_name = asmt = 0
+    for sd in parsed["students"]:
+        stu = by_fleid.get(sd["fleid"])
+        if stu:
+            matched_fleid += 1
+        else:
+            stu = by_name.get(_namekey(sd["first_name"], sd["last_name"]))
+            if stu:
+                matched_name += 1
+        if not stu:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id,
+                district_student_id=sd["fleid"],
+                first_name=sd["first_name"], last_name=sd["last_name"],
+                grade_level=sd["grade"],
+                flags={"fleid": sd["fleid"], **(sd.get("flags") or {})})
+            db.add(stu)
+            db.flush()
+            by_fleid[sd["fleid"]] = stu
+            created += 1
+        else:
+            # Backfill FLEID/grade so future files match, without clobbering data.
+            merged = {**(stu.flags or {})}
+            merged.setdefault("fleid", sd["fleid"])
+            merged.update(sd.get("flags") or {})
+            stu.flags = merged
+            if sd["grade"] and not (stu.grade_level or "").strip():
+                stu.grade_level = sd["grade"]
+
+        rec = (db.query(StudentAssessment).filter(
+            StudentAssessment.student_id == stu.id,
+            StudentAssessment.source == "FAST",
+            StudentAssessment.subject == subject,
+            StudentAssessment.period == period).first())
+        if not rec:
+            rec = StudentAssessment(
+                tenant_id=tenant_id, student_id=stu.id, source="FAST",
+                subject=subject, period=period)
+            db.add(rec)
+        rec.level = sd["level"]
+        rec.scale_score = sd["scale_score"]  # FAST-equivalent (0-369 K-2 scale)
+        bits = []
+        if sd.get("unified") is not None:
+            bits.append(f"Unified {int(sd['unified'])}")
+        if sd.get("percentile") is not None:
+            bits.append(f"pct {int(sd['percentile'])}")
+        rec.label = (" | ".join(bits))[:255]
+        asmt += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="fast_k2_export",
+          purpose="assessment_import")
+    return {
+        "format": "FAST K-2 (Star) export", "subject": subject, "period": period,
+        "students": len(parsed["students"]),
+        "matched_by_fleid": matched_fleid, "matched_by_name": matched_name,
+        "students_created": created, "assessments_upserted": asmt,
+    }
+
+
+def _import_iready(db, data, tenant_id, school_id, user):
+    """Store native i-Ready Diagnostic results: overall scale + grouping level +
+    placement/percentile, per subject and window (AP1/2/3)."""
+    parsed = parse_iready(data)
+    subject, period = parsed["subject"], parsed["period"]
+    # Leading-zero-tolerant match (roster ids are zero-padded, exports often aren't).
+    existing = {}
+    for s in db.query(Student).filter(Student.tenant_id == tenant_id).all():
+        existing.setdefault(_idkey(s.district_student_id), s)
+    students_new = asmt = 0
+    for sd in parsed["students"]:
+        sid = sd["district_student_id"]
+        stu = existing.get(_idkey(sid))
+        if not stu:
+            stu = Student(
+                tenant_id=tenant_id, school_id=school_id, district_student_id=sid,
+                first_name=sd["first_name"], last_name=sd["last_name"],
+                grade_level=sd["grade"], flags=sd["flags"])
+            db.add(stu)
+            db.flush()
+            existing[_idkey(sid)] = stu
+            students_new += 1
+        else:
+            if sd.get("grade"):
+                stu.grade_level = sd["grade"]
+            stu.flags = {**(stu.flags or {}), **sd["flags"]}
+
+        rec = (db.query(StudentAssessment).filter(
+            StudentAssessment.student_id == stu.id,
+            StudentAssessment.source == "IREADY",
+            StudentAssessment.subject == subject,
+            StudentAssessment.period == period).first())
+        if not rec:
+            rec = StudentAssessment(
+                tenant_id=tenant_id, student_id=stu.id, source="IREADY",
+                subject=subject, period=period)
+            db.add(rec)
+        rec.scale_score = sd["scale_score"]
+        # Prefer the district i-Ready→FAST concordance (a true 1-5 FAST level
+        # from the scale score) over the coarse 1/2/3 placement, so i-Ready sits
+        # on the same scale as FAST. Falls back to placement where no chart
+        # applies (e.g. i-Ready only maps grades 3-5, or ELA).
+        conc = to_fast_level("IREADY", stu.grade_level, subject, sd["scale_score"])
+        rec.level = conc if conc is not None else sd["level"]
+        pct = f" | pct {int(sd['percentile'])}" if sd.get("percentile") else ""
+        rec.label = (sd.get("placement", "") + pct)[:255]
+        asmt += 1
+
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="iready_diagnostic",
+          purpose="assessment_import")
+    return {
+        "format": "i-Ready Diagnostic", "subject": subject, "period": period,
+        "students": len(parsed["students"]), "students_created": students_new,
+        "assessments_upserted": asmt,
+    }
+
+
+@router.post("/roster/reset")
+def reset_roster(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Clear all imported students, teachers, classes, and assessment data so a
+    fresh, clean roster can be re-imported. Keeps staff/coach accounts,
+    standards, and pacing."""
+    district = db.query(District).first()
+    tid = district.id
+    counts = {}
+    d = lambda q: q.delete(synchronize_session=False)
+
+    # Delete children before parents so Postgres FK constraints are satisfied
+    # (local SQLite doesn't enforce these, which is why this passed in dev).
+    group_ids = [g.id for g in db.query(DiGroup).filter(
+        DiGroup.tenant_id == tid).all()]
+    if group_ids:
+        counts["di_group_members"] = d(db.query(DiGroupMember).filter(
+            DiGroupMember.di_group_id.in_(group_ids)))
+    counts["di_groups"] = d(db.query(DiGroup).filter(DiGroup.tenant_id == tid))
+    counts["standard_mastery"] = d(db.query(StandardMastery).filter(
+        StandardMastery.tenant_id == tid))
+    counts["assessment_results"] = d(db.query(AssessmentResult).filter(
+        AssessmentResult.tenant_id == tid))
+    counts["benchmark_results"] = d(db.query(StudentBenchmarkResult).filter(
+        StudentBenchmarkResult.tenant_id == tid))
+    counts["assessments"] = d(db.query(StudentAssessment).filter(
+        StudentAssessment.tenant_id == tid))
+    class_ids = [c.id for c in db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == tid).all()]
+    if class_ids:
+        counts["enrollments"] = d(db.query(Enrollment).filter(
+            Enrollment.class_id.in_(class_ids)))
+    counts["classes"] = d(db.query(ClassRoom).filter(ClassRoom.tenant_id == tid))
+    counts["students"] = d(db.query(Student).filter(Student.tenant_id == tid))
+    _keep = ["teacher@avocado.edu", "principal@avocado.edu", "coach@avocado.edu"]
+    counts["teachers"] = d(db.query(User).filter(
+        User.tenant_id == tid, User.role == "teacher",
+        User.email.notin_(_keep)))
+    db.commit()
+    audit(db, actor=user, action="reset", entity_type="roster",
+          purpose="roster_reset")
+    return {"reset": True, "deleted": counts}
+
+
+@router.get("/school/summary")
+def school_summary(
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    district = db.query(District).first()
+    if not district:
+        return {"students": 0, "teachers": 0, "classes": 0, "by_grade": {}}
+    all_students = db.query(Student).filter(Student.tenant_id == district.id).all()
+    # Withdrawn students (soft-removed by a full-roster sync) are kept for their
+    # score history but excluded from the active headcount.
+    students = [s for s in all_students if s.status == "active"]
+    withdrawn = len(all_students) - len(students)
+    by_grade: dict[str, int] = {}
+    ell = ese = fast_baseline = 0
+    for s in students:
+        by_grade[s.grade_level] = by_grade.get(s.grade_level, 0) + 1
+        f = s.flags or {}
+        if f.get("ell"):
+            ell += 1
+        if f.get("ese"):
+            ese += 1
+        if f.get("fast_math_baseline"):
+            fast_baseline += 1
+    teachers = (db.query(User)
+                .filter(User.tenant_id == district.id, User.role == "teacher")
+                .count())
+    classes = db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == district.id).count()
+    return {
+        "students": len(students), "teachers": teachers, "classes": classes,
+        "by_grade": dict(sorted(by_grade.items())),
+        "ell": ell, "ese": ese, "fast_math_baseline": fast_baseline,
+        "withdrawn": withdrawn,
+    }
+
+
+# --- Duplicate-student cleanup -----------------------------------------------
+# Different imports (roster vs. a name-only results upload) can create two rows
+# for the same child — usually one with scores/enrollment and one hollow shell.
+# This merges a hollow duplicate INTO the record that has the data, so the name
+# stops appearing twice. It is conservative: it only ever removes a duplicate
+# that has ZERO scores, and it never touches two same-name records that BOTH
+# have scores (those could be two different children and are flagged instead).
+
+def _name_key(name: str) -> str:
+    """Order/punctuation-insensitive name key: 'ABSALON, MILANI' and
+    'Milani Absalon' collapse to the same value; drops 1-letter initials."""
+    toks = [t for t in re.sub(r"[^a-z ]", " ", (name or "").lower()).split()
+            if len(t) > 1]
+    return " ".join(sorted(toks))
+
+
+def _score_count(db, sid: str) -> int:
+    """How much real data a student row carries (any of these => 'has a score')."""
+    return (db.query(StudentAssessment).filter(
+                StudentAssessment.student_id == sid).count()
+            + db.query(StudentBenchmarkResult).filter(
+                StudentBenchmarkResult.student_id == sid).count()
+            + db.query(AssessmentResult).filter(
+                AssessmentResult.student_id == sid).count())
+
+
+def _merge_student(db, keeper: Student, loser: Student) -> None:
+    """Merge `loser` INTO `keeper`: move every row pointing at loser onto keeper,
+    backfill any identity field keeper is missing from loser, then delete loser.
+    So the survivor has BOTH the scores and the roster identity (district id,
+    grade, homeroom), no matter which copy originally held what.
+    Enrollments and DI memberships dedupe (skip when keeper already has one)."""
+    # Backfill scalar identity fields keeper lacks (loser never overwrites good
+    # data on keeper — keeper wins every conflict).
+    if not (keeper.district_student_id or "").strip() and (loser.district_student_id or "").strip():
+        keeper.district_student_id = loser.district_student_id
+    if not (keeper.grade_level or "").strip() and (loser.grade_level or "").strip():
+        keeper.grade_level = loser.grade_level
+    if not (keeper.first_name or "").strip() and (loser.first_name or "").strip():
+        keeper.first_name = loser.first_name
+    if not (keeper.last_name or "").strip() and (loser.last_name or "").strip():
+        keeper.last_name = loser.last_name
+    # Union flags (ELL/ESE/FAST baseline/section…), keeper values winning.
+    keeper.flags = {**(loser.flags or {}), **(keeper.flags or {})}
+
+    for e in db.query(Enrollment).filter(Enrollment.student_id == loser.id).all():
+        if db.query(Enrollment).filter(Enrollment.class_id == e.class_id,
+                                       Enrollment.student_id == keeper.id).first():
+            db.delete(e)
+        else:
+            e.student_id = keeper.id
+    for m in db.query(DiGroupMember).filter(
+            DiGroupMember.student_id == loser.id).all():
+        if db.query(DiGroupMember).filter(
+                DiGroupMember.di_group_id == m.di_group_id,
+                DiGroupMember.student_id == keeper.id).first():
+            db.delete(m)
+        else:
+            m.student_id = keeper.id
+    # Score/mastery rows reassign wholesale (a hollow loser has none anyway).
+    for Model in (StudentAssessment, StudentBenchmarkResult,
+                  AssessmentResult, StandardMastery):
+        for row in db.query(Model).filter(Model.student_id == loser.id).all():
+            row.student_id = keeper.id
+    db.delete(loser)
+
+
+@router.post("/roster/dedupe")
+def dedupe_students(
+    apply: bool = Form(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Find (apply=False) or remove (apply=True) duplicate students. Groups the
+    active roster by name+grade; in each group with a scored record it removes
+    the hollow (zero-score) duplicates and keeps the one with the data. Same-name
+    records that all have scores are reported under `needs_review`, never deleted."""
+    district = db.query(District).first()
+    if not district:
+        return {"applied": apply, "duplicate_groups": 0, "removed": 0,
+                "removable_total": 0, "needs_review": 0, "groups": []}
+    students = active_students(
+        db.query(Student).filter(Student.tenant_id == district.id)).all()
+
+    groups: dict = {}
+    for s in students:
+        key = (_name_key(f"{s.first_name} {s.last_name}"), s.grade_level or "")
+        groups.setdefault(key, []).append(s)
+
+    def label(s):
+        return {"id": s.id, "district_id": s.district_student_id,
+                "scores": scores[s.id], "enroll": enroll[s.id]}
+
+    preview, removed = [], 0
+    for (nk, grade), grp in groups.items():
+        if not nk or len(grp) < 2:
+            continue
+        scores = {s.id: _score_count(db, s.id) for s in grp}
+        enroll = {s.id: db.query(Enrollment).filter(
+            Enrollment.student_id == s.id).count() for s in grp}
+        scored = [s for s in grp if scores[s.id] > 0]
+        if scored:
+            keeper = max(scored, key=lambda s: (scores[s.id], enroll[s.id], s.created_at))
+            removable = [s for s in grp if s is not keeper and scores[s.id] == 0]
+            review = [s for s in scored if s is not keeper]
+        else:
+            # No one has scores: keep the most-established shell, drop the rest.
+            keeper = max(grp, key=lambda s: (enroll[s.id],
+                                             1 if s.district_student_id else 0,
+                                             s.created_at))
+            removable = [s for s in grp if s is not keeper]
+            review = []
+        if not removable and not review:
+            continue
+        preview.append({
+            "name": f"{keeper.first_name.title()} {keeper.last_name.title()}",
+            "grade": grade or "(blank)",
+            "keep": label(keeper),
+            "remove": [label(s) for s in removable],
+            "needs_review": [label(s) for s in review],
+        })
+        if apply:
+            for s in removable:
+                _merge_student(db, keeper, s)
+                removed += 1
+
+    if apply:
+        db.commit()
+        audit(db, actor=user, action="dedupe", entity_type="roster",
+              purpose="duplicate_student_cleanup")
+
+    return {
+        "applied": apply,
+        "duplicate_groups": len(preview),
+        "removed": removed,
+        "removable_total": sum(len(p["remove"]) for p in preview),
+        "needs_review": sum(len(p["needs_review"]) for p in preview),
+        "groups": preview,
+    }
+
+
+# --- Duplicate-teacher cleanup -----------------------------------------------
+# Uploading both the district roster and the AP's class lists creates the SAME
+# teacher twice: the roster stores "Last First" (e.g. "Ulloa Luz") while a class
+# list stores just the last name ("Ulloa"), so they become two User accounts
+# with two homeroom classes. This merges them into one teacher with one class.
+
+def _teacher_lastkey(name: str) -> str:
+    """Group a teacher's duplicate accounts by LAST NAME: the roster stores
+    'Last First' and class lists store just 'Last', so key on the first token
+    (comma-stripped) — 'Ulloa Luz' and 'Ulloa' both key to 'ulloa'."""
+    toks = re.sub(r"[^a-z ]", " ", (name or "").lower().replace(",", " ")).split()
+    return toks[0] if toks else ""
+
+
+def _enroll_count(db, class_id) -> int:
+    return db.query(Enrollment).filter(Enrollment.class_id == class_id).count()
+
+
+def _collapse_homeroom_classes(db, teacher) -> int:
+    """After a merge the keeper may hold two homeroom classes for one grade (the
+    roster's and the class list's). Keep the fullest per grade, move the others'
+    enrollments/DI groups into it, delete the empties. Returns classes deleted."""
+    deleted = 0
+    kc = db.query(ClassRoom).filter(
+        ClassRoom.teacher_id == teacher.id,
+        ClassRoom.subject == "HOMEROOM").all()
+    by_grade: dict = {}
+    for c in kc:
+        by_grade.setdefault(c.grade_level or "", []).append(c)
+    for _g, cs in by_grade.items():
+        if len(cs) < 2:
+            continue
+        primary = max(cs, key=lambda c: _enroll_count(db, c.id))
+        for c in cs:
+            if c.id == primary.id:
+                continue
+            for e in db.query(Enrollment).filter(Enrollment.class_id == c.id).all():
+                if db.query(Enrollment).filter(
+                        Enrollment.class_id == primary.id,
+                        Enrollment.student_id == e.student_id).first():
+                    db.delete(e)
+                else:
+                    e.class_id = primary.id
+            for dg in db.query(DiGroup).filter(DiGroup.class_id == c.id).all():
+                dg.class_id = primary.id
+            db.delete(c)
+            deleted += 1
+    return deleted
+
+
+@router.post("/teachers/dedupe")
+def dedupe_teachers(
+    apply: bool = Form(False),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Find (apply=False) or merge (apply=True) duplicate teacher accounts. Groups
+    teachers by last name; the account with the most enrolled students is kept and
+    the others are merged into it (their classes, notes and references reassigned,
+    then duplicate homeroom classes collapsed). A same-last-name teacher who has
+    students in a DIFFERENT grade is treated as a different person (needs_review)."""
+    district = db.query(District).first()
+    if not district:
+        return {"applied": apply, "duplicate_groups": 0, "merged_teachers": 0,
+                "classes_collapsed": 0, "needs_review": 0, "groups": []}
+    teachers = db.query(User).filter(
+        User.tenant_id == district.id, User.role == "teacher").all()
+
+    info = {}
+    for t in teachers:
+        classes = db.query(ClassRoom).filter(ClassRoom.teacher_id == t.id).all()
+        info[t.id] = {
+            "classes": classes,
+            "enroll": sum(_enroll_count(db, c.id) for c in classes),
+            "grades": {c.grade_level for c in classes if c.grade_level},
+        }
+
+    groups: dict = {}
+    for t in teachers:
+        groups.setdefault(_teacher_lastkey(t.name), []).append(t)
+
+    preview, merged, collapsed = [], 0, 0
+    for key, grp in groups.items():
+        if not key or len(grp) < 2:
+            continue
+        keeper = max(grp, key=lambda t: (info[t.id]["enroll"],
+                                         len(info[t.id]["classes"]), t.created_at))
+        kg = info[keeper.id]["grades"]
+        losers, review = [], []
+        for t in grp:
+            if t.id == keeper.id:
+                continue
+            # Safe to merge: empty duplicate, or shares a grade with the keeper.
+            if info[t.id]["enroll"] == 0 or not kg or (info[t.id]["grades"] & kg):
+                losers.append(t)
+            else:
+                review.append(t)
+        if not losers and not review:
+            continue
+        preview.append({
+            "keep": {"id": keeper.id, "name": keeper.name,
+                     "students": info[keeper.id]["enroll"],
+                     "classes": len(info[keeper.id]["classes"])},
+            "merge": [{"id": t.id, "name": t.name, "students": info[t.id]["enroll"]}
+                      for t in losers],
+            "needs_review": [{"id": t.id, "name": t.name,
+                              "students": info[t.id]["enroll"]} for t in review],
+        })
+        if apply:
+            for lo in losers:
+                for c in db.query(ClassRoom).filter(
+                        ClassRoom.teacher_id == lo.id).all():
+                    c.teacher_id = keeper.id
+                for n in db.query(CoachNote).filter(
+                        CoachNote.teacher_id == lo.id).all():
+                    n.teacher_id = keeper.id
+                for n in db.query(CoachNote).filter(
+                        CoachNote.author_id == lo.id).all():
+                    n.author_id = keeper.id
+                for p in db.query(PlcAgenda).filter(
+                        PlcAgenda.created_by == lo.id).all():
+                    p.created_by = keeper.id
+                for cm in db.query(ChatMessage).filter(
+                        ChatMessage.user_id == lo.id).all():
+                    cm.user_id = keeper.id
+                db.delete(lo)
+                merged += 1
+            db.flush()  # make reassigned classes visible to the collapse query
+            collapsed += _collapse_homeroom_classes(db, keeper)
+
+    if apply:
+        db.commit()
+        audit(db, actor=user, action="dedupe", entity_type="teachers",
+              purpose="duplicate_teacher_cleanup")
+
+    return {
+        "applied": apply,
+        "duplicate_groups": len(preview),
+        "merged_teachers": merged,
+        "classes_collapsed": collapsed,
+        "mergeable_total": sum(len(p["merge"]) for p in preview),
+        "needs_review": sum(len(p["needs_review"]) for p in preview),
+        "groups": preview,
+    }
+
+
+# --- Add students to a class (by ID) -----------------------------------------
+# Enroll students under an EXISTING teacher from a simple id+name list (e.g. a
+# Performance Matters "Student Results" export). Matches existing students by id
+# (leading-zero tolerant) so no duplicates, and never overwrites a good name.
+
+def _idkey(s: str) -> str:
+    """Compare student ids ignoring leading zeros ('0893267' == '893267')."""
+    s = (s or "").strip()
+    return s.lstrip("0") or s
+
+
+def _split_name(name: str) -> tuple:
+    """'ABONCEVILLALOB, YEFRIN' -> ('Yefrin', 'Aboncevillalob'). Falls back to
+    splitting on the last space when there is no comma."""
+    name = (name or "").strip()
+    if "," in name:
+        last, first = name.split(",", 1)
+    elif " " in name:
+        first, last = name.rsplit(" ", 1)
+    else:
+        first, last = name, ""
+    def t(x):
+        return " ".join("-".join(p.capitalize() for p in w.split("-"))
+                        for w in x.split())
+    return t(first), t(last)
+
+
+def _parse_id_name_rows(data: bytes) -> list:
+    """Pull (student_id, first, last) from an uploaded xlsx/csv that has a student
+    id column and either a combined name column or first/last columns."""
+    if data[:2] == b"PK":  # xlsx
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        ws = wb[wb.sheetnames[0]]
+        rows = [[("" if c is None else str(c)).strip() for c in r]
+                for r in ws.iter_rows(values_only=True)]
+    else:
+        text = data.decode("utf-8-sig", errors="replace")
+        rows = [[(c or "").strip() for c in r] for r in csv.reader(io.StringIO(text))]
+    if not rows:
+        return []
+    # find the header row (first row that has an id-ish and a name-ish column)
+    id_keys = ("student id", "student_id", "studentid", "id number", "local id",
+               "student number", "id")
+    name_keys = ("student name", "name")
+    hdr_i, cols = None, {}
+    for i, r in enumerate(rows[:10]):
+        low = [c.lower() for c in r]
+        idc = next((j for j, c in enumerate(low) if c in id_keys), None)
+        namec = next((j for j, c in enumerate(low) if c in name_keys), None)
+        firstc = next((j for j, c in enumerate(low) if c in ("first name", "first_name", "first")), None)
+        lastc = next((j for j, c in enumerate(low) if c in ("last name", "last_name", "last")), None)
+        if idc is not None and (namec is not None or (firstc is not None and lastc is not None)):
+            hdr_i = i
+            cols = {"id": idc, "name": namec, "first": firstc, "last": lastc}
+            break
+    if hdr_i is None:
+        return []
+    out = []
+    for r in rows[hdr_i + 1:]:
+        if cols["id"] >= len(r):
+            continue
+        sid = r[cols["id"]].strip()
+        if not sid:
+            continue
+        if cols["first"] is not None and cols["last"] is not None:
+            first = r[cols["first"]] if cols["first"] < len(r) else ""
+            last = r[cols["last"]] if cols["last"] < len(r) else ""
+        else:
+            nm = r[cols["name"]] if (cols["name"] is not None and cols["name"] < len(r)) else ""
+            first, last = _split_name(nm)
+        out.append((sid, first, last))
+    return out
+
+
+@router.post("/roster/add-students")
+async def add_students_to_class(
+    file: UploadFile = File(...),
+    teacher_id: str = Form(...),
+    grade: str = Form(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(_require_admin),
+):
+    """Enroll the students in an id+name file under an EXISTING teacher's class.
+    Matches by id ignoring leading zeros (so kids already on the roster are found,
+    not duplicated) and creates only the ones that are truly missing."""
+    district = db.query(District).first()
+    tenant_id = district.id
+    school = db.query(School).filter(School.tenant_id == tenant_id).first()
+    teacher = db.get(User, teacher_id)
+    if not teacher or teacher.tenant_id != tenant_id or teacher.role != "teacher":
+        raise HTTPException(404, "Teacher not found")
+
+    rows = _parse_id_name_rows(await file.read())
+    if not rows:
+        raise HTTPException(
+            400, "Couldn't find a Student Id + Student Name column in this file.")
+
+    g = (grade or "").strip().upper().replace("GRADE", "").strip()
+    if g in ("PK", "PRE-K", "PREK", "VPK"):
+        g = "PK"
+    elif g in ("K", "KG", "0", "00"):
+        g = "K"
+    g = g.lstrip("0") or g
+
+    existing = {_idkey(s.district_student_id): s
+                for s in db.query(Student).filter(Student.tenant_id == tenant_id).all()}
+    cname = f"{g} - {teacher.name}" if g else teacher.name
+    cls = (db.query(ClassRoom)
+           .filter(ClassRoom.tenant_id == tenant_id,
+                   ClassRoom.teacher_id == teacher.id,
+                   ClassRoom.name == cname).first())
+    if not cls:
+        cls = ClassRoom(tenant_id=tenant_id, school_id=school.id,
+                        teacher_id=teacher.id, name=cname, subject="HOMEROOM")
+        db.add(cls)
+        db.flush()
+
+    created = matched = enrolled = 0
+    result = []
+    for sid, first, last in rows:
+        stu = existing.get(_idkey(sid))
+        if stu:
+            matched += 1
+            if g and not stu.grade_level:
+                stu.grade_level = g
+            state = "already on roster"
+        else:
+            stu = Student(tenant_id=tenant_id, school_id=school.id,
+                          district_student_id=sid, first_name=first,
+                          last_name=last, grade_level=g, flags={})
+            db.add(stu)
+            db.flush()
+            existing[_idkey(sid)] = stu
+            created += 1
+            state = "added"
+        ex = (db.query(Enrollment)
+              .filter(Enrollment.class_id == cls.id,
+                      Enrollment.student_id == stu.id).first())
+        if not ex:
+            db.add(Enrollment(class_id=cls.id, student_id=stu.id))
+            enrolled += 1
+        result.append({"id": sid,
+                       "name": f"{stu.first_name} {stu.last_name}".strip(),
+                       "state": state})
+    db.commit()
+    audit(db, actor=user, action="import", entity_type="roster",
+          purpose="add_students_to_class")
+    return {"teacher": teacher.name, "grade": g, "count": len(rows),
+            "created": created, "matched": matched, "enrolled": enrolled,
+            "students": result}
