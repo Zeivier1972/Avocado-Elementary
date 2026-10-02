@@ -843,7 +843,7 @@ _CSS = """
 .cq .qn{color:var(--brand-deep);}
 .cobjs{display:flex;justify-content:center;padding:6px 0 12px;}
 .cobjs svg{max-width:100%;height:auto;}
-.cchoices{display:grid;gap:7px;}
+.cchoices{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .cchoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:5px 10px;}
 .cchoice .clet{font-family:"Baloo 2";font-weight:800;font-size:16px;color:var(--ink);width:20px;flex:none;}
 .nchoices{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;}
@@ -870,6 +870,11 @@ _CSS = """
 .tier{margin-top:0;padding:12px 14px 0;}.day{margin:0 0 6px;}.phase{margin:8px 0 5px;}
 .phase-body{padding-left:14px;}.example,.prob{padding:8px 12px;}.modelsteps{padding:8px 12px;}
 .grid{gap:9px;}.drawbox{min-height:56px;}
+/* Kinder count-match: compact the objects + choice frames so a whole section fits one page. */
+.cobjs{padding:3px 0 6px;}.cobjs svg{max-height:0.85in;}
+.cchoice{padding:3px 8px;gap:8px;}.cchoice svg{height:32px;width:auto;}
+.citem{padding:8px 10px;}.cq{font-size:13px;margin:0 0 5px;}.cnote{margin:2px 0 6px;}
+.nchoices .ncard{padding:4px 12px;min-width:48px;}
 .wrap{padding-bottom:0;}@page{margin:1cm;}}
 """
 # For PDF rendering (WeasyPrint) the same rules apply without @media print.
@@ -880,6 +885,10 @@ body{font-size:11pt;}
 .phase,.day,.mslabel,.practicelabel{break-after:avoid;}.day{break-inside:avoid;}
 .pbreak{break-before:page;page-break-before:always;}
 .example svg,.prob svg,.modelsteps svg,.cobjs svg,.drawbox svg{max-height:2.3in;width:auto;}
+.cobjs{padding:3px 0 6px;}.cobjs svg{max-height:0.85in;}
+.cchoice{padding:3px 8px;gap:8px;}.cchoice svg{height:32px;width:auto;}
+.citem{padding:8px 10px;}.cq{font-size:13px;margin:0 0 5px;}.cnote{margin:2px 0 6px;}
+.nchoices .ncard{padding:4px 12px;min-width:48px;}
 @page{size:Letter;margin:1cm;}
 body{background:#fff;}
 """
