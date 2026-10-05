@@ -18,14 +18,35 @@ except Exception:  # pragma: no cover
     PdfReader = None
 
 
-def _pdf_text(data: bytes) -> str:
-    if PdfReader is None:
-        return ""
+def _pymupdf_text(data: bytes) -> str:
+    """pymupdf (fitz) reads fonts/encodings that pypdf returns empty for."""
     try:
-        r = PdfReader(io.BytesIO(data))
-        return "\n".join((p.extract_text() or "") for p in r.pages)
+        import pymupdf as _mu  # pymupdf >= 1.24
+    except Exception:
+        try:
+            import fitz as _mu   # older import name
+        except Exception:
+            return ""
+    try:
+        doc = _mu.open(stream=data, filetype="pdf")
+        return "\n".join(p.get_text() for p in doc)
     except Exception:
         return ""
+
+
+def _pdf_text(data: bytes) -> str:
+    text = ""
+    if PdfReader is not None:
+        try:
+            r = PdfReader(io.BytesIO(data))
+            text = "\n".join((p.extract_text() or "") for p in r.pages)
+        except Exception:
+            text = ""
+    # Some test PDFs extract as empty under pypdf (font/encoding it can't decode);
+    # fall back to pymupdf, which reads them. Already a project dependency.
+    if not text.strip():
+        text = _pymupdf_text(data)
+    return text
 
 
 def normalize_standard(raw: str) -> str:
@@ -141,7 +162,12 @@ def parse_test_questions(data: bytes) -> dict:
     text = _DASHES.sub("\n", text)
     text = _HEADER_LINE.sub("", text)
     text = "\n" + text
-    pat = re.compile(r"\n\s*(\d{1,2})[.)]?\s+(?=[A-Z][a-z])")
+    # A question starts at a 1-2 digit number (with optional . or )) then a
+    # CAPITAL letter — the start of the stem. Using [A-Z] (not [A-Z][a-z]) so a
+    # stem that opens with a one-letter word ("A package…", "I have…") is still
+    # detected; a digit after the number (answer rows like "1 2 3 4", page refs)
+    # still fails the lookahead, so those don't split.
+    pat = re.compile(r"\n\s*(\d{1,2})[.)]?\s+(?=[A-Z])")
     matches = list(pat.finditer(text))
     questions: dict = {}
     for idx, mt in enumerate(matches):
@@ -153,9 +179,14 @@ def parse_test_questions(data: bytes) -> dict:
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
         body = re.sub(r"\s+", " ", text[start:end]).strip()
         body = body.split("You have reached the end")[0].strip()
+        # Strip the running test-name / Test ID header and stray page numbers that
+        # land inside a stem when a question spans a page break.
+        body = re.sub(r"20\d\d-\S*-PBT", " ", body)
+        body = re.sub(r"Test ID:\s*\d+", " ", body, flags=re.I)
         # Drop a leading 'Name ___ Date ___' and any leading punctuation/underscores.
         body = re.sub(r"^\s*Name\b.*?Date\b\S*\s*", "", body, flags=re.I)
         body = re.sub(r"^[\W_]+", "", body).strip()
+        body = re.sub(r"\s{2,}", " ", body).strip()
         if body and len(body) > 8 and (num not in questions or
                                        len(body) > len(questions[num])):
             questions[num] = body[:1200]
