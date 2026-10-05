@@ -123,7 +123,7 @@ def parse_pacing_schedule(pacing_text: str, year_start: int):
     except ImportError:
         return None, "anthropic SDK not installed"
     try:
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         prompt = (
             "You are reading a school PACING GUIDE (it may be laid out as a TABLE "
             "with a Dates column next to a Lesson/Standard column). Extract the "
@@ -322,7 +322,7 @@ def coach_one_pager_narrative(summary: dict) -> dict:
         return _one_pager_fallback(summary)
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
     except Exception:
         return _one_pager_fallback(summary)
     strat = "; ".join(f"{s['name']}: {s['what']}" for s in summary.get("strategies", []))
@@ -407,7 +407,7 @@ def classify_vocabulary(words: list[str], standards: list[dict],
         return _classify_vocabulary_fallback(words)
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
     except Exception:
         return _classify_vocabulary_fallback(words)
     codes = [f"{s.get('code','')}: {s.get('description','')}" for s in standards][:6]
@@ -477,7 +477,7 @@ def generate_framework_application(component: dict, grade: str, topic_name: str,
         return _framework_app_fallback(component, grade, topic_name, week_focus)
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
     except Exception:
         return _framework_app_fallback(component, grade, topic_name, week_focus)
     codes = [f"{s.get('code','')}: {s.get('description','')}" for s in standards][:8]
@@ -757,7 +757,7 @@ def _llm_chat(system: str, history: list[dict], message: str):
     except ImportError:
         return None, "anthropic SDK not installed"
     try:
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         msgs = []
         for h in (history or [])[-10:]:
             role = "assistant" if h.get("role") == "assistant" else "user"
@@ -793,7 +793,7 @@ def ai_diagnostics() -> dict:
         out["test_call"] = "skipped (provider/key not configured)"
         return out
     try:
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         msg = client.messages.create(
             model=settings.ai_model, max_tokens=16,
             messages=[{"role": "user", "content": "Reply with the word OK."}],
@@ -1392,7 +1392,7 @@ def generate_di_packets(standard: dict, most_missed: list, grade: str,
         return base
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         std_ctx = _std_context([standard])
         missed_txt = "\n".join(
             f"- Q{m.get('position')}: {(m.get('stem') or '').strip()[:220]} "
@@ -1633,7 +1633,7 @@ def generate_enrichment_packet(standards: list, grade: str,
         return base
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         std_ctx = _std_context(standards)
         model_hint = "; ".join(
             f"{s.get('code','')} -> {suggest_di_model(s.get('code',''), s.get('description',''), grade)}"
@@ -1731,7 +1731,7 @@ def generate_target_the_misses(standard: dict, most_missed: list, grade: str,
         return []
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         std_ctx = _std_context([standard])
         have_text = any((m.get("stem") or "").strip() for m in most_missed)
         items_txt = "\n".join(
@@ -1879,7 +1879,7 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
     except ImportError:
         return None, "anthropic SDK not installed"
     try:
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         std_ctx = _std_context(standards)
         std_by_code = {s["code"]: s for s in standards}
 
@@ -2040,7 +2040,7 @@ def simplify_guide_text(guide: dict):
         return new_guide, 0, "AI is off — set the AI key in Railway to simplify language."
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
     except Exception as e:  # pragma: no cover
         return new_guide, 0, f"AI unavailable: {e}"
 
@@ -2132,7 +2132,7 @@ def _llm_agenda(topic: dict, standards: list[dict]) -> dict | None:
     except ImportError:
         return None
     try:
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         std_ctx = "\n".join(
             f"- {s['code']}: {s['description']}"
             + (f" | Misconceptions: {s['misconceptions'][:300]}" if s.get('misconceptions') else "")
@@ -2184,7 +2184,7 @@ def _llm_plan(standard: dict, group_size: int,
     except ImportError:
         return None
     try:
-        client = anthropic.Anthropic(api_key=settings.ai_api_key)
+        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0, max_retries=1)
         flags = [p.get("flags", {}) for p in student_profiles]
         prompt = (
             "You are an expert elementary instructional coach. Create a 7-day "

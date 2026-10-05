@@ -29,6 +29,7 @@ function DiFocusInner() {
   const [packets, setPackets] = useState<any>(null);
   const [packetId, setPacketId] = useState("");
   const [packetBusy, setPacketBusy] = useState(false);
+  const [packetMsg, setPacketMsg] = useState("");
   const [asd, setAsd] = useState(false);
   const [asdLocked, setAsdLocked] = useState(false);
   // Biggest number the packet may use. Picture-based tests (e.g. Kinder counting)
@@ -65,6 +66,8 @@ function DiFocusInner() {
   async function generatePackets() {
     setPacketBusy(true);
     setPackets(null);
+    setErr("");
+    setPacketMsg("Starting… a full 3-tier packet is written by AI and can take a few minutes.");
     try {
       const nm = numMax.trim() ? parseInt(numMax, 10) : null;
       const r = await api.createDiPackets(
@@ -72,21 +75,46 @@ function DiFocusInner() {
         Number.isFinite(nm as number) ? nm : null
       );
       setPacketId(r.packet_id);
-      // Poll until ready (DI packet is one AI call, usually under a minute).
-      for (let i = 0; i < 60; i++) {
+      // Poll until ready. A differentiated 3-tier packet is a large AI write and
+      // can take several minutes, so poll for up to ~10 minutes (the server marks
+      // a stuck job as errored by 15 min) and keep the user informed.
+      const start = Date.now();
+      let done = false;
+      for (let i = 0; i < 200; i++) {
         await new Promise((res) => setTimeout(res, 3000));
-        const p = await api.getDiPackets(r.packet_id);
+        const secs = Math.round((Date.now() - start) / 1000);
+        let p: any;
+        try {
+          p = await api.getDiPackets(r.packet_id);
+        } catch {
+          continue; // transient network blip — keep polling
+        }
         if (p.status === "ready") {
           setPackets(p.content);
+          setPacketMsg("");
+          done = true;
           break;
         }
         if (p.status === "error") {
-          setErr(p.error || "DI packet generation failed.");
+          setErr(p.error || "DI packet generation failed. Please try again.");
+          setPacketMsg("");
+          done = true;
           break;
         }
+        setPacketMsg(
+          `Still generating… (${secs}s). A full differentiated packet usually ` +
+            `takes 2–5 minutes. You can leave this open — it will appear when ready.`
+        );
+      }
+      if (!done) {
+        setPacketMsg(
+          "This is taking longer than usual. The packet is still being saved on " +
+            "the server — click “↻ Regenerate” in a moment to load it, or try again."
+        );
       }
     } catch (e) {
       setErr((e as Error).message);
+      setPacketMsg("");
     } finally {
       setPacketBusy(false);
     }
@@ -360,10 +388,12 @@ function DiFocusInner() {
               </div>
             </div>
 
-            {packetBusy && (
-              <p className="text-sm text-gray-400 mt-3">
-                Writing the three packets from the benchmark and missed questions —
-                about a minute…
+            {packetMsg && (
+              <p className="text-sm text-gray-500 mt-3">
+                {packetBusy && (
+                  <span className="inline-block animate-pulse mr-1">⏳</span>
+                )}
+                {packetMsg}
               </p>
             )}
 
