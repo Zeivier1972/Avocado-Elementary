@@ -42,6 +42,7 @@ export default function AssessmentsPage() {
   const [busy, setBusy] = useState(false);
   const [resBusy, setResBusy] = useState("");
   const [msg, setMsg] = useState("");
+  const [gradeView, setGradeView] = useState<string>("");
   const akRef = useRef<HTMLInputElement>(null);
   const testRef = useRef<HTMLInputElement>(null);
 
@@ -161,6 +162,11 @@ export default function AssessmentsPage() {
   const coverage = data?.coverage || {};
   const grades = Object.keys(byGrade);
   const hasData = (data?.total_forms || 0) > 0;
+  // Show one grade at a time so the page isn't a wall of every grade's tests.
+  // Default to the first grade; "All grades" brings them all back.
+  const activeGrade = gradeView || grades[0] || "ALL";
+  const shownGrades =
+    activeGrade === "ALL" ? grades : grades.filter((g) => g === activeGrade);
 
   return (
     <main className="min-h-screen bg-gray-50/60">
@@ -230,8 +236,34 @@ export default function AssessmentsPage() {
           </div>
         )}
 
+        {/* Grade selector — view one grade's tests at a time so the page isn't
+            a wall of every grade's assessments. */}
+        {hasData && grades.length > 1 && (
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="grade-view"
+              className="text-sm font-semibold text-gray-600"
+            >
+              Show grade:
+            </label>
+            <select
+              id="grade-view"
+              value={activeGrade}
+              onChange={(e) => setGradeView(e.target.value)}
+              className="text-sm font-semibold rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-gray-700"
+            >
+              {grades.map((g) => (
+                <option key={g} value={g}>
+                  {GRADE_LABEL(g)}
+                </option>
+              ))}
+              <option value="ALL">All grades</option>
+            </select>
+          </div>
+        )}
+
         {/* Per-grade: standards coverage + the topic tests */}
-        {grades.map((g) => (
+        {shownGrades.map((g) => (
           <div key={g} className="space-y-3">
             {coverage[g]?.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 p-5">

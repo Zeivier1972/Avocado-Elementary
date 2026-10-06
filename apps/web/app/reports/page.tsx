@@ -414,9 +414,39 @@ function TeacherView({
   report: any;
   onOpen: (id: string) => void;
 }) {
+  const [gf, setGf] = useState<string>("ALL");
+  // Grade options come from the teachers actually loaded, so the dropdown only
+  // ever lists grades that exist (K, 1, 2, 3 — or whatever the rosters hold).
+  const gradeOpts = Array.from(
+    new Set(teachers.flatMap((t) => (t.grades || []).filter(Boolean)))
+  ).sort();
+  const shown =
+    gf === "ALL"
+      ? teachers
+      : teachers.filter((t) => (t.grades || []).includes(gf));
   return (
     <div className="space-y-4">
-      <Card title="Teachers">
+      <Card
+        title={`Teachers${
+          gf === "ALL" ? "" : ` · Grade ${gf}`
+        } (${shown.length})`}
+        action={
+          gradeOpts.length > 1 ? (
+            <select
+              value={gf}
+              onChange={(e) => setGf(e.target.value)}
+              className="shrink-0 text-xs rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-gray-700"
+            >
+              <option value="ALL">All grades</option>
+              {gradeOpts.map((g) => (
+                <option key={g} value={g}>
+                  Grade {g}
+                </option>
+              ))}
+            </select>
+          ) : undefined
+        }
+      >
         {teachers.length === 0 ? (
           <div className="text-sm text-gray-500 space-y-1">
             <p>
@@ -444,7 +474,14 @@ function TeacherView({
                 </tr>
               </thead>
               <tbody>
-                {teachers.map((t) => (
+                {shown.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-3 text-center text-gray-400">
+                      No teachers in Grade {gf}.
+                    </td>
+                  </tr>
+                )}
+                {shown.map((t) => (
                   <tr key={t.teacher_id} className="border-b border-gray-50 last:border-0 hover:bg-avocado/5 transition-colors">
                     <td className="py-1 font-medium">{t.name}</td>
                     <td className="py-1 text-gray-500">
