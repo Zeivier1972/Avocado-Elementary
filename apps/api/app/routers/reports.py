@@ -898,19 +898,10 @@ def _goal_analysis_data(db, tenant_id, grade):
             "benchmark_coverage": coverage, "has_fast": summary["with_fast"] > 0}
 
 
-@router.get("/goal-analysis/{grade}")
-def goal_analysis(
-    grade: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    """FAST↔Topic goal analysis for a grade, from the Math Goal Setting Rubric:
-    each student's FAST-based topic goal, actual topic average, the topic level +
-    color code (L1 Red … L5 Orange), and an end-of-year projection toward Level
-    3+, plus benchmark coverage."""
-    return _goal_analysis_data(db, user.tenant_id, grade)
-
-
+# NOTE: the .xlsx route MUST be declared before the plain "{grade}" route.
+# FastAPI matches routes in definition order and a path param captures dots,
+# so "/goal-analysis/3.xlsx" would otherwise bind grade="3.xlsx" on the JSON
+# route and return JSON — which the browser then saves as a broken .xlsx.
 @router.get("/goal-analysis/{grade}.xlsx")
 def goal_analysis_xlsx(
     grade: str,
@@ -932,3 +923,16 @@ def goal_analysis_xlsx(
             "Content-Length": str(len(xlsx)),
             "Cache-Control": "no-store",
         })
+
+
+@router.get("/goal-analysis/{grade}")
+def goal_analysis(
+    grade: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """FAST↔Topic goal analysis for a grade, from the Math Goal Setting Rubric:
+    each student's FAST-based topic goal, actual topic average, the topic level +
+    color code (L1 Red … L5 Orange), and an end-of-year projection toward Level
+    3+, plus benchmark coverage."""
+    return _goal_analysis_data(db, user.tenant_id, grade)

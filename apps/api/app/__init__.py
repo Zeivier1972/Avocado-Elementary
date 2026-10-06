@@ -3,5 +3,5 @@
 # Bump BUILD whenever behavior changes so the running deploy is identifiable
 # from the UI (Coach header) and /health. This lets us confirm at a glance
 # whether the latest code is actually live before regenerating guides.
-__version__ = "0.91.1"
-__build__ = "2026-10-06-goal-analysis-xlsx-download-hardening"
+__version__ = "0.91.2"
+__build__ = "2026-10-06-fix-goal-analysis-xlsx-route-shadowing"
