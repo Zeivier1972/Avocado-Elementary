@@ -1051,6 +1051,36 @@ def dedupe_teachers(
     for t in teachers:
         groups.setdefault(_teacher_lastkey(t.name), []).append(t)
 
+    # Second pass: a class list sometimes records a teacher by FIRST name (e.g.
+    # "Simone" for the roster's "Harris-Dormer Simone"), which the last-name key
+    # can't catch. Attach a SINGLETON bare name to a full-name teacher when the
+    # bare name equals that teacher's first name AND exactly one such teacher
+    # exists — then it rides the normal merge/preview below.
+    def _single(nm: str) -> bool:
+        return len(re.sub(r"[^a-z ]", " ", (nm or "").lower()).split()) == 1
+
+    def _firstname(nm: str) -> str:
+        toks = re.sub(r"[^a-z ]", " ", (nm or "").lower()).split()
+        return toks[-1] if len(toks) >= 2 else ""
+
+    by_first: dict = {}
+    for t in teachers:
+        fn = _firstname(t.name)
+        if fn:
+            by_first.setdefault(fn, []).append(t)
+    for key in list(groups.keys()):
+        grp = groups[key]
+        if len(grp) != 1 or not _single(grp[0].name):
+            continue
+        bare = grp[0]
+        bn = re.sub(r"[^a-z]", "", (bare.name or "").lower())
+        cands = [t for t in by_first.get(bn, []) if t.id != bare.id]
+        if len(cands) == 1:
+            tkey = _teacher_lastkey(cands[0].name)
+            if tkey != key and cands[0] in groups.get(tkey, []):
+                groups[tkey].append(bare)
+                del groups[key]
+
     preview, merged, collapsed = [], 0, 0
     for key, grp in groups.items():
         if not key or len(grp) < 2:
