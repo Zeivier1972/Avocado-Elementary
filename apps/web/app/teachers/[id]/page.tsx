@@ -132,11 +132,25 @@ export default function TeacherProfilePage() {
   const topicCols: string[] = rep?.topic_columns || [];
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen print-landscape">
       <CoachHeader me={me} active="/teachers" build={build} />
       <div className="max-w-6xl mx-auto p-6 space-y-5">
+        {/* Print-only data-chat header */}
+        <div className="print-only mb-2" style={{ borderBottom: "2px solid #38601f", paddingBottom: 6 }}>
+          <div style={{ fontSize: 11, letterSpacing: 1, color: "#38601f", fontWeight: 700 }}>
+            DATA CHAT · MATH
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>
+            {rep?.teacher || "Teacher"} — {rep?.students ?? 0} students ·{" "}
+            {rep?.pct_level_3_plus ?? 0}% at Level 3+ (FAST Math)
+          </div>
+          <div style={{ fontSize: 11, color: "#555" }}>
+            Teacher: ____________________   Coach: ____________________   Date:{" "}
+            {new Date().toLocaleDateString()}
+          </div>
+        </div>
         <div>
-          <a href="/teachers" className="text-sm text-avocado-dark hover:underline">
+          <a href="/teachers" className="no-print text-sm text-avocado-dark hover:underline">
             ← All teachers
           </a>
           <div className="flex items-end justify-between flex-wrap gap-3 mt-1">
@@ -148,11 +162,19 @@ export default function TeacherProfilePage() {
                 {rep?.students ?? 0} students
               </p>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-avocado-dark tabular-nums">
-                {rep?.pct_level_3_plus ?? 0}%
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => window.print()}
+                className="no-print bg-avocado hover:bg-avocado-dark text-white text-sm font-semibold rounded-lg px-4 py-2"
+              >
+                🖨 Print for data chat
+              </button>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-avocado-dark tabular-nums">
+                  {rep?.pct_level_3_plus ?? 0}%
+                </div>
+                <div className="text-xs text-gray-500">at Level 3+ (FAST Math)</div>
               </div>
-              <div className="text-xs text-gray-500">at Level 3+ (FAST Math)</div>
             </div>
           </div>
         </div>
@@ -291,7 +313,7 @@ export default function TeacherProfilePage() {
             Capture a focus area, a running note, or a next step. Next steps with
             a due date show up on your Home follow-ups.
           </p>
-          <div className="flex flex-wrap gap-2 items-start">
+          <div className="no-print flex flex-wrap gap-2 items-start">
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value)}
@@ -370,7 +392,7 @@ export default function TeacherProfilePage() {
                     </div>
                     <button
                       onClick={() => remove(n.id)}
-                      className="text-gray-300 hover:text-red-500 text-sm"
+                      className="no-print text-gray-300 hover:text-red-500 text-sm"
                       title="Delete"
                     >
                       ✕

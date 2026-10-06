@@ -93,7 +93,7 @@ export default function CoachHeader({
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur border-b border-gray-100 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+    <header className="no-print bg-white/95 backdrop-blur border-b border-gray-100 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
       <div className="px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
         {/* Brand */}
         <a href="/home" className="flex items-center gap-2 min-w-0 shrink-0">

@@ -50,6 +50,28 @@ textarea:focus-visible {
   border-radius: 6px;
 }
 
+/* ---- Print (data-chat reports, guides, schedules) ---------------------- */
+.print-only { display: none; }
+@media print {
+  /* Hide app chrome / interactive bits; show print-only blocks. */
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  /* Clean white page — drop the canvas gradient and card shadows. */
+  html, body { background: #fff !important; }
+  body { background-image: none !important; }
+  .bg-white.rounded-2xl, .bg-white.rounded-xl { box-shadow: none !important; }
+  /* Widen content to the page and keep rows/cards from splitting. */
+  .max-w-6xl, .max-w-5xl, .max-w-4xl, .max-w-3xl { max-width: none !important; }
+  table { font-size: 10px !important; width: 100% !important; }
+  thead { display: table-header-group; }   /* repeat headers on each page */
+  tr, .bg-white.rounded-2xl, .bg-white.rounded-xl { break-inside: avoid; }
+  a[href]::after { content: ""; }           /* no URL spill after links */
+  @page { margin: 0.45in; }
+  /* Wide roster tables print better in landscape (named page). */
+  @page landscape { size: landscape; margin: 0.4in; }
+  .print-landscape { page: landscape; }
+}
+
 /* Quieter, thinner scrollbars so long lists feel lighter. */
 * {
   scrollbar-width: thin;
