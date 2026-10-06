@@ -397,9 +397,34 @@ export async function downloadGoalAnalysisXlsx(grade: string) {
   const res = await fetch(`${API_URL}/reports/goal-analysis/${grade}.xlsx`, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
-  if (!res.ok) throw new Error("Export failed");
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = (await res.text()).slice(0, 200);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(`Export failed (${res.status})${detail ? `: ${detail}` : ""}`);
+  }
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  // A real .xlsx is a ZIP archive, so it must start with "PK". If we got HTML
+  // or JSON instead (an error slipped through with a 200), surface that text
+  // rather than saving a file Excel will refuse to open.
+  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+  if (head[0] !== 0x50 || head[1] !== 0x4b) {
+    const txt = (await blob.text()).slice(0, 200);
+    throw new Error(
+      `Server did not return a valid Excel file.${txt ? ` Response: ${txt}` : ""}`
+    );
+  }
+  // Force the correct type on the blob we save, regardless of what the
+  // transport labeled it, so the browser writes a clean .xlsx.
+  const xlsxBlob = blob.type.includes("spreadsheet")
+    ? blob
+    : new Blob([await blob.arrayBuffer()], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+  const url = URL.createObjectURL(xlsxBlob);
   const a = document.createElement("a");
   a.href = url;
   a.download = `MathGoalAnalysis_Grade${grade}.xlsx`;

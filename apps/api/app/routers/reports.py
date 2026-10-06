@@ -927,4 +927,8 @@ def goal_analysis_xlsx(
     return Response(
         content=xlsx,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+        headers={
+            "Content-Disposition": f'attachment; filename="{fname}"',
+            "Content-Length": str(len(xlsx)),
+            "Cache-Control": "no-store",
+        })
