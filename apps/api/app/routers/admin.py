@@ -965,11 +965,23 @@ def dedupe_students(
 # with two homeroom classes. This merges them into one teacher with one class.
 
 def _teacher_lastkey(name: str) -> str:
-    """Group a teacher's duplicate accounts by LAST NAME: the roster stores
-    'Last First' and class lists store just 'Last', so key on the first token
-    (comma-stripped) — 'Ulloa Luz' and 'Ulloa' both key to 'ulloa'."""
+    """Group a teacher's duplicate accounts by LAST NAME. The roster stores the
+    full name 'Last First' (sometimes a two-word last name, e.g. 'Del Castillo
+    Maite') while a class list stores just the last name ('DelCastillo'). So the
+    last name is EVERY token except the final first-name token for a multi-word
+    name, and the whole thing for a single-token name; spaces/punctuation are
+    dropped so 'Del Castillo' == 'DelCastillo'. Examples that now collapse:
+      'Borges' / 'Borges Laura'         -> 'borges'
+      'DelCastillo' / 'Del Castillo Maite' -> 'delcastillo'
+      'Mallary' / 'Mallary Takeena'     -> 'mallary'
+    'Harris-Dormer Simone' keys to 'harrisdormer', NOT 'simone', so it is not
+    wrongly merged with a different teacher named 'Simone'."""
     toks = re.sub(r"[^a-z ]", " ", (name or "").lower().replace(",", " ")).split()
-    return toks[0] if toks else ""
+    if not toks:
+        return ""
+    if len(toks) == 1:
+        return toks[0]                 # single token = the last name itself
+    return "".join(toks[:-1])          # drop the trailing first name
 
 
 def _enroll_count(db, class_id) -> int:
@@ -1046,12 +1058,19 @@ def dedupe_teachers(
         keeper = max(grp, key=lambda t: (info[t.id]["enroll"],
                                          len(info[t.id]["classes"]), t.created_at))
         kg = info[keeper.id]["grades"]
+
+        def _bare(nm: str) -> bool:
+            # One token = just a last name (the class-list form), so it's the
+            # roster/class-list pair of the same teacher — safe to merge even
+            # across grade (two DIFFERENT teachers both carry a first name).
+            return len(re.sub(r"[^a-z ]", " ", (nm or "").lower()).split()) == 1
+
         losers, review = [], []
         for t in grp:
             if t.id == keeper.id:
                 continue
-            # Safe to merge: empty duplicate, or shares a grade with the keeper.
-            if info[t.id]["enroll"] == 0 or not kg or (info[t.id]["grades"] & kg):
+            if (info[t.id]["enroll"] == 0 or not kg or (info[t.id]["grades"] & kg)
+                    or _bare(t.name) or _bare(keeper.name)):
                 losers.append(t)
             else:
                 review.append(t)
@@ -1085,6 +1104,12 @@ def dedupe_teachers(
                     cm.user_id = keeper.id
                 db.delete(lo)
                 merged += 1
+            # Keep the FULLER name on the survivor (prefer 'Borges Laura' over a
+            # bare 'Borges'): the most tokens, tie-break longest string.
+            best = max([keeper] + losers,
+                       key=lambda u: (len((u.name or "").split()), len(u.name or "")))
+            if best.name and best.name != keeper.name:
+                keeper.name = best.name
             db.flush()  # make reassigned classes visible to the collapse query
             collapsed += _collapse_homeroom_classes(db, keeper)
 
