@@ -775,6 +775,24 @@ def _goal_analysis_data(db, tenant_id, grade):
         Student.tenant_id == user.tenant_id, Student.grade_level == grade)).all()
     sids = {s.id for s in students}
     name = {s.id: f"{s.first_name.title()} {s.last_name.title()}" for s in students}
+
+    # Homeroom teacher per student, so the UI can break a grade down by teacher.
+    # Prefer a HOMEROOM-subject class; otherwise take the first class found.
+    all_classes = {c.id: c for c in db.query(ClassRoom).filter(
+        ClassRoom.tenant_id == user.tenant_id).all()}
+    teacher_name = {u.id: u.name for u in db.query(User).filter(
+        User.tenant_id == user.tenant_id, User.role == "teacher").all()}
+    stu_teacher, stu_is_hr = {}, {}
+    if sids:
+        for e in db.query(Enrollment).filter(Enrollment.student_id.in_(sids)).all():
+            c = all_classes.get(e.class_id)
+            if not c:
+                continue
+            is_hr = (c.subject or "").upper() == "HOMEROOM"
+            if e.student_id not in stu_teacher or (is_hr and not stu_is_hr.get(e.student_id)):
+                stu_teacher[e.student_id] = teacher_name.get(c.teacher_id, "")
+                stu_is_hr[e.student_id] = is_hr
+
     rows = [a for a in db.query(StudentAssessment).filter(
         StudentAssessment.tenant_id == user.tenant_id).all() if a.student_id in sids]
 
@@ -840,6 +858,7 @@ def _goal_analysis_data(db, tenant_id, grade):
             summary["projected_goal"] += 1
         out.append({
             "student_id": s.id, "name": name[s.id],
+            "teacher": stu_teacher.get(s.id) or "—",
             "fast_scale": scale, "fast_level": ev["level"],
             "instructional": ev["instructional"],
             "goal_min": ev["goal_min"], "goal_max": ev["goal_max"],

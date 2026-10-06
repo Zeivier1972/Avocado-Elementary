@@ -67,6 +67,9 @@ export default function AnalysisPage() {
   useEffect(() => setSharedGrade(grade), [grade]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [teacherSel, setTeacherSel] = useState("ALL");
+  // Reset the teacher filter whenever the grade changes (its teachers differ).
+  useEffect(() => setTeacherSel("ALL"), [grade]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -90,10 +93,31 @@ export default function AnalysisPage() {
 
   if (!me) return <div className="p-10 text-gray-500">Loading…</div>;
 
-  const s = data?.summary;
   const students = data?.students || [];
   const coverage = data?.benchmark_coverage || [];
   const hasTopic = students.some((r: any) => r.topic_avg != null);
+
+  // Break a grade down by homeroom teacher. "All teachers" keeps the whole
+  // grade; picking one narrows the table AND the summary cards to that class.
+  const teacherOpts = Array.from(
+    new Set(
+      students.map((r: any) => r.teacher).filter((t: string) => t && t !== "—")
+    )
+  ).sort() as string[];
+  const shownStudents =
+    teacherSel === "ALL"
+      ? students
+      : students.filter((r: any) => r.teacher === teacherSel);
+  // Summary recomputed from the visible students so it matches the filter.
+  const s = {
+    students: shownStudents.length,
+    with_fast: shownStudents.filter((r: any) => r.fast_scale != null).length,
+    meeting: shownStudents.filter((r: any) => r.status === "meeting").length,
+    above: shownStudents.filter((r: any) => r.status === "above").length,
+    below: shownStudents.filter((r: any) => r.status === "below").length,
+    projected_goal: shownStudents.filter((r: any) => r.projected === true).length,
+    disagreements: shownStudents.filter((r: any) => r.level_disagree).length,
+  };
 
   return (
     <main className="min-h-screen">
@@ -126,6 +150,21 @@ export default function AnalysisPage() {
                 {GRADE_LABEL(g)}
               </button>
             ))}
+            {teacherOpts.length > 0 && (
+              <select
+                value={teacherSel}
+                onChange={(e) => setTeacherSel(e.target.value)}
+                className="px-3 py-2 rounded-lg text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:border-avocado"
+                title="Narrow this grade to one homeroom teacher's students"
+              >
+                <option value="ALL">All teachers</option>
+                {teacherOpts.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           {data?.has_fast && (
             <button
@@ -200,12 +239,17 @@ export default function AnalysisPage() {
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 font-semibold text-gray-800 text-sm">
                 FAST ↔ Topic goal — {GRADE_LABEL(grade)}
+                {teacherSel !== "ALL" && ` · ${teacherSel}`} (
+                {shownStudents.length})
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs min-w-[820px]">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50/80 border-b border-gray-100">
                       <th className="p-2 font-semibold">Student</th>
+                      {teacherSel === "ALL" && (
+                        <th className="p-2 font-semibold">Teacher</th>
+                      )}
                       <th className="p-2 font-semibold">FAST scale</th>
                       <th className="p-2 font-semibold">Level</th>
                       <th className="p-2 font-semibold">Instructional level</th>
@@ -228,7 +272,7 @@ export default function AnalysisPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {students.map((r: any) => {
+                    {shownStudents.map((r: any) => {
                       const st = STATUS[r.status] || STATUS.no_fast;
                       return (
                         <tr
@@ -236,6 +280,11 @@ export default function AnalysisPage() {
                           className="border-b border-gray-50 last:border-0 align-top hover:bg-avocado/5 transition-colors"
                         >
                           <td className="p-2 text-gray-800 whitespace-nowrap">{r.name}</td>
+                          {teacherSel === "ALL" && (
+                            <td className="p-2 text-gray-500 whitespace-nowrap">
+                              {r.teacher || "—"}
+                            </td>
+                          )}
                           <td className="p-2 tabular-nums text-gray-700">
                             {r.fast_scale ?? "—"}
                           </td>
