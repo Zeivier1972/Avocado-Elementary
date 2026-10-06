@@ -1051,33 +1051,43 @@ def dedupe_teachers(
     for t in teachers:
         groups.setdefault(_teacher_lastkey(t.name), []).append(t)
 
-    # Second pass: a class list sometimes records a teacher by FIRST name (e.g.
-    # "Simone" for the roster's "Harris-Dormer Simone"), which the last-name key
-    # can't catch. Attach a SINGLETON bare name to a full-name teacher when the
-    # bare name equals that teacher's first name AND exactly one such teacher
-    # exists — then it rides the normal merge/preview below.
+    # Second pass: a class list often records a teacher with a SHORTER form the
+    # last-name key can't match — the first of two last names ("Nieves" for
+    # "Nieves Garcia Esbeida"), or even the first name ("Simone" for "Harris-
+    # Dormer Simone"). Attach a SINGLETON bare (single-token) name to a full-name
+    # teacher when the bare name equals ANY leading-name prefix of the full name
+    # (first token, first two concatenated, …) OR its first name, AND exactly ONE
+    # such full-name teacher exists — then it rides the normal merge/preview.
     def _single(nm: str) -> bool:
         return len(re.sub(r"[^a-z ]", " ", (nm or "").lower()).split()) == 1
 
-    def _firstname(nm: str) -> str:
-        toks = re.sub(r"[^a-z ]", " ", (nm or "").lower()).split()
-        return toks[-1] if len(toks) >= 2 else ""
+    def _toks(nm: str) -> list:
+        return re.sub(r"[^a-z ]", " ", (nm or "").lower()).split()
 
-    by_first: dict = {}
-    for t in teachers:
-        fn = _firstname(t.name)
-        if fn:
-            by_first.setdefault(fn, []).append(t)
+    def _candidate_keys(nm: str) -> set:
+        """All ways the class list might shorten a full name: each leading-token
+        prefix (last-name forms) plus the trailing token (first name)."""
+        t = _toks(nm)
+        if len(t) < 2:
+            return set()
+        keys = {"".join(t[:k]) for k in range(1, len(t))}  # Nieves, NievesGarcia…
+        keys.add(t[-1])                                    # first name (Simone)
+        return keys
+
+    fulls = [t for t in teachers if not _single(t.name)]
     for key in list(groups.keys()):
         grp = groups[key]
         if len(grp) != 1 or not _single(grp[0].name):
             continue
         bare = grp[0]
-        bn = re.sub(r"[^a-z]", "", (bare.name or "").lower())
-        cands = [t for t in by_first.get(bn, []) if t.id != bare.id]
-        if len(cands) == 1:
-            tkey = _teacher_lastkey(cands[0].name)
-            if tkey != key and cands[0] in groups.get(tkey, []):
+        bn = "".join(_toks(bare.name))
+        cands = [t for t in fulls
+                 if t.id != bare.id and bn in _candidate_keys(t.name)]
+        ids = {t.id for t in cands}
+        if len(ids) == 1:
+            target = cands[0]
+            tkey = _teacher_lastkey(target.name)
+            if tkey != key and target in groups.get(tkey, []):
                 groups[tkey].append(bare)
                 del groups[key]
 
@@ -1087,23 +1097,30 @@ def dedupe_teachers(
             continue
         keeper = max(grp, key=lambda t: (info[t.id]["enroll"],
                                          len(info[t.id]["classes"]), t.created_at))
-        kg = info[keeper.id]["grades"]
 
-        def _bare(nm: str) -> bool:
-            # One token = just a last name (the class-list form), so it's the
-            # roster/class-list pair of the same teacher — safe to merge even
-            # across grade (two DIFFERENT teachers both carry a first name).
-            return len(re.sub(r"[^a-z ]", " ", (nm or "").lower()).split()) == 1
+        def _first(nm: str) -> str:
+            # First name = trailing token of a multi-token name ("ana" of
+            # "Perez Ana"). A bare last-name-only form ("Perez") has none.
+            tk = _toks(nm)
+            return tk[-1] if len(tk) >= 2 else ""
 
-        losers, review = [], []
-        for t in grp:
-            if t.id == keeper.id:
-                continue
-            if (info[t.id]["enroll"] == 0 or not kg or (info[t.id]["grades"] & kg)
-                    or _bare(t.name) or _bare(keeper.name)):
-                losers.append(t)
-            else:
-                review.append(t)
+        # Two FULL names that differ in first name are DIFFERENT teachers who
+        # merely share a last name ("Perez Ana" vs "Perez Luis") — never merge
+        # them. Only when the group resolves to ONE real person (at most one
+        # first name among the full-name members) do we collapse it; bare
+        # (last-name-only) forms are that one person's class-list abbreviation
+        # and ride along. When two real teachers collide, flag only the
+        # ambiguous bare members for manual review and merge nothing.
+        full_firsts = {_first(t.name) for t in grp
+                       if not _single(t.name) and _first(t.name)}
+        if len(full_firsts) >= 2:
+            review = [t for t in grp if t.id != keeper.id and _single(t.name)]
+            losers = []
+            if not review:
+                continue  # distinct teachers, same last name — leave them be
+        else:
+            losers = [t for t in grp if t.id != keeper.id]
+            review = []
         if not losers and not review:
             continue
         preview.append({

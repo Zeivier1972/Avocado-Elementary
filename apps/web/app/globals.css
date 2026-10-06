@@ -70,6 +70,18 @@ textarea:focus-visible {
   /* Wide roster tables print better in landscape (named page). */
   @page landscape { size: landscape; margin: 0.4in; }
   .print-landscape { page: landscape; }
+  /* Print ONE card in isolation (a single teacher's data-chat tracker): when a
+     .print-isolate element is on the page, hide everything else and float just
+     that card to the top. :has() scopes this so pages without one print as
+     usual. */
+  body:has(.print-isolate) * { visibility: hidden; }
+  body:has(.print-isolate) .print-isolate,
+  body:has(.print-isolate) .print-isolate * { visibility: visible; }
+  body:has(.print-isolate) .print-isolate {
+    position: absolute; left: 0; top: 0; width: 100%;
+  }
+  /* Let the wide tracker table spill its full width instead of being clipped. */
+  .print-isolate .overflow-x-auto { overflow: visible !important; }
 }
 
 /* Quieter, thinner scrollbars so long lists feel lighter. */

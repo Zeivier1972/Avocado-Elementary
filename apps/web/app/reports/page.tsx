@@ -485,6 +485,15 @@ function TeacherView({
       {report && (
         <Card
           title={`${report.teacher} — ${report.students} students · ${report.pct_level_3_plus}% Level 3+`}
+          className="print-isolate print-landscape"
+          action={
+            <button
+              onClick={() => window.print()}
+              className="no-print shrink-0 text-xs font-semibold rounded-lg border border-avocado/40 text-avocado-dark px-3 py-1.5 hover:bg-avocado/10"
+            >
+              🖨 Print for data chat
+            </button>
+          }
         >
           <p className="text-xs text-gray-400 mb-2">
             Combined tracker — FAST ELA &amp; Math, iReady ELA &amp; Math, and all
@@ -883,10 +892,27 @@ function ProficiencyCard({ title, data }: { title: string; data: any }) {
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  children,
+  className,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">{title}</h2>
+    <div
+      className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 ${
+        className || ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
+        {action}
+      </div>
       {children}
     </div>
   );
