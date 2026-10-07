@@ -189,6 +189,17 @@ def _count_choices(choices: list) -> str:
     return f'<div class="cchoices">{"".join(rows)}</div>'
 
 
+def _set_choices(kind: str, counts: list) -> str:
+    """Four labelled SETS of objects (A-D), each showing its number of objects —
+    the 'Which set shows N?' answer style (MA.K.NSO.1.2)."""
+    rows = []
+    for i, c in enumerate(counts[:4]):
+        rows.append(
+            f'<div class="cchoice"><span class="clet">{_LETTERS_C[i]}.</span>'
+            f'{_object_row(kind, _i(c))}</div>')
+    return f'<div class="cchoices">{"".join(rows)}</div>'
+
+
 def _numeral_choices(choices: list) -> str:
     """Four labelled numeral cards (A-D) — the 'how many?' answer style."""
     cells = []
@@ -228,6 +239,13 @@ def _count_item_html(item: dict, show_answer: bool = False, num: str = "") -> st
             f'<p class="cq">{lead}How many {obj} are there?</p>'
             f'<div class="cobjs">{_object_row(item.get("objects"), n)}</div>'
             f'{_numeral_choices(item.get("choices") or [])}{key}</div>')
+    if t == "show_set":
+        # Given a NUMBER, pick the set that shows that many — no lead row of objects
+        # (that would give it away); the four choices ARE sets of objects.
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}Which set shows {n} {obj}?</p>'
+            f'{_set_choices(item.get("objects"), item.get("choices") or [])}{key}</div>')
     # default: count -> match the set of counters (five-frames)
     return (
         '<div class="citem">'

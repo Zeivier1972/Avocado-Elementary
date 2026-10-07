@@ -82,6 +82,16 @@ def _count_numeral_item(rng: random.Random, ceiling: int) -> dict:
             "count": count, "choices": choices, "answer": answer}
 
 
+def _show_set_item(rng: random.Random, ceiling: int) -> dict:
+    """MA.K.NSO.1.2 — given a NUMBER, choose the SET that shows that many objects
+    (the reverse of counting: produce/identify a quantity). Four sets of the same
+    object with distinct counts; one shows the target number."""
+    target = rng.randint(1, ceiling)
+    counts, answer = _four_distinct(rng, target, ceiling)
+    return {"type": "show_set", "objects": rng.choice(OBJECTS),
+            "count": target, "choices": counts, "answer": answer}
+
+
 def _number_order_item(rng: random.Random, ceiling: int) -> dict:
     """Put numbers in order. Start number + direction; two number-string choices,
     one correct (in order), one scrambled — mirrors the 'reverse order' item."""
@@ -110,6 +120,7 @@ _BUILDERS = {
     "count_counters": _count_counters_item,
     "count_numeral": _count_numeral_item,
     "number_order": _number_order_item,
+    "show_set": _show_set_item,
 }
 
 
@@ -127,10 +138,15 @@ def _templates_for(code: str, description: str) -> tuple:
                 "cardinal", "match", "set")
     is_order = any(k in text for k in strong_order)
     is_count = any(k in text for k in count_kw)
+    # "count OUT that many" (MA.K.NSO.1.2) is the reverse skill: given a number,
+    # make/identify the set — a distinct item type from "count a set" (1.1).
+    is_make_set = ("count out" in text) or ("that many" in text)
     if is_order and is_count:          # spans both — order first, then counting
         return "number_order", ["number_order", "count_counters", "count_numeral"]
     if is_order:
         return "number_order", ["number_order"]
+    if is_make_set:
+        return "show_set", ["show_set", "count_counters"]
     return "count_counters", ["count_counters", "count_numeral"]
 
 
@@ -153,10 +169,12 @@ def _hints_from_missed(missed: list | None) -> tuple:
         if any(k in stem for k in ("order", "forward", "backward", "missing",
                                    "before", "after", "next")):
             types.append("number_order")
-        elif "how many" in stem and "counter" not in stem:
-            types.append("count_numeral")   # the "How many __ are there?" numeral item
+        elif "shows" in stem and "set" in stem and "counter" not in stem:
+            types.append("show_set")         # "Which set SHOWS 6 candies?" (1.2)
         elif ("counter" in stem or "which set" in stem or "match" in stem):
-            types.append("count_counters")  # the "which set of counters" item
+            types.append("count_counters")  # "which set of counters" item (1.1)
+        elif "how many" in stem:
+            types.append("count_numeral")    # the "How many __ are there?" numeral item
     ordered = [t for t, _ in Counter(types).most_common()]
     return ordered, (max(numbers) if numbers else 0), positions
 
@@ -191,6 +209,22 @@ def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
     to the more abstract type at the full range; Green adds the hardest applicable
     type / largest range and asks students to reason. Returns
     (tier_ceiling, tier_primary, tier_pool, approach, misconception)."""
+    # "Show the set for a number" (MA.K.NSO.1.2) is its own skill — reteach it with
+    # the make-the-set strategy, differentiated by range + rigor like the others.
+    if primary == "show_set":
+        low = max(3, min(ceiling, 5))
+        if tier_name == "Intensive":          # Red — build the set, most concrete
+            return (low, "show_set", ["show_set"],
+                    "Build the set to MATCH the number: say the number, then place one counter at a time until you reach it — point to each as you go.",
+                    "Stops before or past the target, so the set shows too few or too many.")
+        if tier_name == "Cusp":               # Yellow — choose + prove, fade support
+            return (ceiling, "show_set", ["show_set"],
+                    "Pick the set that shows the number, then PROVE it by counting; the support fades by the exit ticket.",
+                    "Recognizes small sets but miscounts the larger ones.")
+        return (ceiling, "show_set", ["show_set", "count_numeral"],  # Green — reason
+                "Match larger numbers to sets, make one-more / one-less, and explain how you know the set shows that many.",
+                "Accurate on small sets but slips on larger quantities or close distractors.")
+
     # Lead the reteach with what the class MISSED (the chosen primary), not merely
     # whatever the standard's text mentions — so a counting miss reteaches counting
     # even on a benchmark that also covers ordering, and vice-versa.
