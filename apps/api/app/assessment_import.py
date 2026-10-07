@@ -81,9 +81,12 @@ def _grade_topic_subject(test_name: str) -> tuple[str, str, str]:
 
 # One answer-key row: number, item id, standard-or-"No Standard", the interaction
 # type, then the correct response(s) and the points (float) — responses may wrap
-# across lines, so match lazily up to the trailing float.
+# across lines, so match lazily up to the trailing float. The item id, standard
+# and interaction type may be concatenated (older exports) OR space/newline
+# separated (Performance Matters K-2 exports: "14800394 FL.20.BEST.MA.K.NSO.1.1
+# Choice/Multi-Response C"), so allow optional whitespace between every field.
 _ROW = re.compile(
-    r"(?P<pos>\d+)\.\s*(?P<item>\d+)"
+    r"(?P<pos>\d+)\.\s*(?P<item>\d+)\s*"
     r"(?P<std>FL\.20\.BEST\.[A-Z0-9.]+|No Standard)"
     r"\s*Choice/Multi-Response"
     r"(?P<resp>.*?)"
@@ -146,6 +149,38 @@ _HEADER_LINE = re.compile(
     r"^\s*(20\d\d-.*-PBT|Test ID:.*|Name _.*|\d+\s*)$", re.M)
 _DASHES = re.compile(r"_{5,}")
 
+# Circled answer bullets Ⓐ Ⓑ Ⓒ Ⓓ (U+24B6–24B9) used on Performance Matters
+# paper tests. Their presence marks a real question (vs. a cover/admin page).
+_CIRCLED = "ⒶⒷⒸⒹ"
+
+
+def _questions_by_blocks(raw: str) -> dict:
+    """Fallback for test PDFs with NO inline item numbers (Performance Matters
+    paper tests number items with a graphic badge that doesn't extract, so only
+    page numbers show as text). Split on page headers (each page repeats
+    'Test ID: …') and the answer dividers, then every chunk carrying the circled
+    answer bullets (Ⓐ–Ⓓ) is the next question in order — position 1, 2, 3, ….
+    Order matches the answer key, which is also 1..N in order."""
+    marked = re.sub(r"Test ID:\s*\d+", "\x00", raw, flags=re.I)
+    marked = _DASHES.sub("\x00", marked)
+    out: dict = {}
+    pos = 0
+    for chunk in marked.split("\x00"):
+        if sum(1 for c in _CIRCLED if c in chunk) < 2:
+            continue  # no answer choices → cover / admin-instructions page
+        body = re.sub(r"20\d\d-\S*", " ", chunk)                 # running test name
+        body = re.sub(r"^\s*\d+\s*$", " ", body, flags=re.M)     # page #s / loose options
+        body = re.sub(r"Name\b.*?Date\b\S*", " ", body, flags=re.I | re.S)
+        body = re.sub(r"You have reached the end.*", " ", body, flags=re.I | re.S)
+        body = re.sub(f"[{_CIRCLED}]", " ", body)                # drop the choice bullets
+        body = re.sub(r"^[\W_]+", "", body)
+        body = re.sub(r"\s+", " ", body).strip()
+        if len(body) < 6:
+            continue
+        pos += 1
+        out[pos] = body[:1200]
+    return out
+
 
 def parse_test_questions(data: bytes) -> dict:
     """Best-effort: map question number -> its text (stem + choices). Figures in
@@ -156,10 +191,10 @@ def parse_test_questions(data: bytes) -> dict:
     bare number ('1 Count the starfish…'). A question starts at a 1-2 digit
     number followed by a capital-letter word (the stem), which avoids splitting
     on answer choices like '1 2 3 4' or on page numbers."""
-    text = _pdf_text(data)
-    if not text.strip():
+    raw = _pdf_text(data)
+    if not raw.strip():
         return {"questions": {}}
-    text = _DASHES.sub("\n", text)
+    text = _DASHES.sub("\n", raw)
     text = _HEADER_LINE.sub("", text)
     text = "\n" + text
     # A question starts at a 1-2 digit number (with optional . or )) then a
@@ -190,4 +225,11 @@ def parse_test_questions(data: bytes) -> dict:
         if body and len(body) > 8 and (num not in questions or
                                        len(body) > len(questions[num])):
             questions[num] = body[:1200]
+    # If the inline-number approach found little (e.g. a paper test whose item
+    # numbers are graphic badges, so only page numbers extract), fall back to
+    # splitting by page headers + answer dividers and numbering sequentially.
+    if len(questions) < 3:
+        blocks = _questions_by_blocks(raw)
+        if len(blocks) > len(questions):
+            questions = blocks
     return {"questions": questions}
