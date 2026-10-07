@@ -2146,7 +2146,7 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
         from app.count_match import build_count_match_packet, is_count_match_standard
         if is_count_match_standard(s.get("code", ""), s.get("description", ""), grade):
             packet = build_count_match_packet(s, grade, _DI_ROTATION,
-                                              number_max=number_max)
+                                              number_max=number_max, missed=missed)
             packet["teacher"] = teacher
         else:
             # The ACTUAL test questions for THIS standard (stem already includes the

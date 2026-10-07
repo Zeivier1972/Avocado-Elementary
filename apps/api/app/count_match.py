@@ -25,6 +25,8 @@ Day 2.
 from __future__ import annotations
 
 import random
+import re
+from collections import Counter
 
 # Generic, friendly object bank (theme-neutral per the teacher's request). Each
 # key has an SVG glyph in export_html._glyph().
@@ -132,6 +134,33 @@ def _templates_for(code: str, description: str) -> tuple:
     return "count_counters", ["count_counters", "count_numeral"]
 
 
+def _hints_from_missed(missed: list | None) -> tuple:
+    """Read the class's ACTUALLY-missed items (their captured stems) to infer the
+    question TYPES to emphasize and the number range those items used — so the
+    packet retates what the class got wrong, not a generic template for the
+    standard. Returns (ordered_types, max_number, positions)."""
+    types: list = []
+    numbers: list = []
+    positions: list = []
+    for m in missed or []:
+        stem = (m.get("stem") or "").lower()
+        if m.get("position") is not None:
+            positions.append(m["position"])
+        for tok in re.findall(r"\d+", stem):
+            n = int(tok)
+            if n <= 20:           # a real quantity, not a year/id
+                numbers.append(n)
+        if any(k in stem for k in ("order", "forward", "backward", "missing",
+                                   "before", "after", "next")):
+            types.append("number_order")
+        elif "how many" in stem and "counter" not in stem:
+            types.append("count_numeral")   # the "How many __ are there?" numeral item
+        elif ("counter" in stem or "which set" in stem or "match" in stem):
+            types.append("count_counters")  # the "which set of counters" item
+    ordered = [t for t, _ in Counter(types).most_common()]
+    return ordered, (max(numbers) if numbers else 0), positions
+
+
 def _item(rng: random.Random, ceiling: int, type_key: str) -> dict:
     return _BUILDERS[type_key](rng, ceiling)
 
@@ -162,7 +191,10 @@ def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
     to the more abstract type at the full range; Green adds the hardest applicable
     type / largest range and asks students to reason. Returns
     (tier_ceiling, tier_primary, tier_pool, approach, misconception)."""
-    has_order = "number_order" in pool
+    # Lead the reteach with what the class MISSED (the chosen primary), not merely
+    # whatever the standard's text mentions — so a counting miss reteaches counting
+    # even on a benchmark that also covers ordering, and vice-versa.
+    has_order = (primary == "number_order")
     easiest = "count_counters" if "count_counters" in pool else pool[0]
     harder = "count_numeral" if "count_numeral" in pool else pool[-1]
     low = max(3, min(ceiling, 5))
@@ -193,26 +225,47 @@ def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
 
 
 def build_count_match_packet(standard: dict, grade: str, tiers: list,
-                             number_max: int | None = None) -> dict:
+                             number_max: int | None = None,
+                             missed: list | None = None) -> dict:
     """Build the full three-tier Kinder number-sense packet deterministically.
 
     tiers is _DI_ROTATION (Intensive/Cusp/Strategic with tlc_sessions). ceiling is
     the biggest number to use (default 5 for Kinder Topic 1). Each tier is
     differentiated by number range, question rigor and reteach strategy — Red is
-    the most concrete/scaffolded, Green the most rigorous."""
+    the most concrete/scaffolded, Green the most rigorous.
+
+    When `missed` (the class's actually-missed items on this standard, with their
+    captured stems) is given, it DRIVES the packet: the question types lead with
+    what the class missed, the number range covers the quantities those items
+    used, and the content seed includes the misses so two tests on the same
+    standard don't produce an identical ('previous-looking') packet."""
     code = standard.get("code", "")
     desc = standard.get("description", "")
     ceiling = number_max if (number_max and number_max > 0) else 5
     ceiling = max(1, min(10, ceiling))
+
+    # Lead with the TYPES and RANGE the class actually missed, falling back to
+    # what the benchmark's text implies when no missed items are captured yet.
     primary, pool = _templates_for(code, desc)
+    miss_types, miss_max, miss_pos = _hints_from_missed(missed)
+    if miss_types:
+        pool = miss_types + [t for t in pool if t not in miss_types]
+        primary = miss_types[0]
+    if miss_max:
+        # The quantities on the missed items are real evidence of the range to
+        # practice; raise the ceiling to cover them (still capped at 10 for K).
+        ceiling = max(1, min(10, max(ceiling, miss_max)))
+    # A signature of the misses so the deterministic content varies per test.
+    miss_sig = "-".join(str(p) for p in sorted(miss_pos)) or "none"
 
     out_tiers = []
     for t in tiers:
         tc, tprimary, tpool, approach, misconception = _tier_plan(
             t["name"], primary, pool, ceiling)
-        # Seed per tier+standard so a regenerate is reproducible, yet each tier and
-        # day still gets its own fresh objects and amounts.
-        rng = random.Random(f"{code}|{t['name']}|{tc}")
+        # Seed per tier+standard+misses so a regenerate is reproducible, yet each
+        # tier/day gets fresh objects and amounts AND two tests with different
+        # misses produce different packets.
+        rng = random.Random(f"{code}|{t['name']}|{tc}|{miss_sig}")
         days = [_day(rng, d + 1, tc, tprimary, tpool)
                 for d in range(t.get("tlc_sessions", 1))]
         opm = ([_item(rng, tc, tpool[i % len(tpool)]) for i in range(10)]
@@ -238,6 +291,11 @@ def build_count_match_packet(standard: dict, grade: str, tiers: list,
         ],
         "number_max": ceiling,
         "tiers": out_tiers,
+        # Tie the packet to the class's real misses so the export shows "We are
+        # fixing the questions the class missed most: Q…" and the teacher can see
+        # this packet targets THIS test, not a generic template.
+        "test_items": (missed or [])[:8],
+        "items_captured": len(missed or []),
         "ai_generated": False,
         "generated_by": "deterministic",
     }

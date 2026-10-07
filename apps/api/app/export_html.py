@@ -1144,7 +1144,8 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         items = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
         out.append(f'<div class="missed"><b>We are fixing the questions the class missed most:</b> {items}. '
                    f'These packets reteach those exact ideas.</div>')
-    if not enrich and packet.get("items_captured") == 0:
+    if (not enrich and packet.get("items_captured") == 0
+            and packet.get("generated_by") != "deterministic"):
         out.append('<div class="missed" style="border-left-color:#C0392B;">'
                    '<b>⚠ Heads up:</b> the actual test questions for this standard '
                    'were not found, so these problems are generic (not built from '
