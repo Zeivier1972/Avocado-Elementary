@@ -820,6 +820,7 @@ _CSS = """
 .tier-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .pill{font-family:"Baloo 2";font-weight:800;font-size:15px;color:#fff;padding:4px 14px;border-radius:999px;}
 .tier-head h2{margin:0;font-size:22px;}
+.tier-std{margin-left:auto;font-family:"Atkinson Hyperlegible",monospace;font-weight:700;font-size:13px;color:#38601F;background:#eef3e6;border:1px solid #cfe0bd;border-radius:8px;padding:5px 10px;white-space:nowrap;}
 .tapproach{margin-top:10px;background:#F4F8EE;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink);display:grid;gap:4px;}
 .tapproach b{color:var(--brand-deep);}
 .day{display:flex;align-items:center;gap:10px;margin:18px 0 6px;padding:7px 14px;border-radius:12px;font-family:"Baloo 2";font-weight:800;font-size:17px;color:#fff;}
@@ -1011,6 +1012,7 @@ _CM_KEY_LABEL = {"i_do": "I Do", "we_do": "We Do", "cfu": "CFU",
 def _render_count_match(out: list, packet: dict) -> None:
     """Render the deterministic count-and-match packet: target + vocab, then each
     tier's days (I Do / We Do / CFU / You Do / Exit) and OPM, plus a teacher key."""
+    std = _esc(packet.get("standard"))
     target = _esc(packet.get("target"))
     if target:
         out.append(f'<div class="ctarget">🎯 Target: {target}</div>')
@@ -1041,7 +1043,8 @@ def _render_count_match(out: list, packet: dict) -> None:
         tpb = "" if ti == 0 else " pbreak"
         out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
         out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">'
-                   f'{stars} {_esc(red_yellow_green)}</span><h2>{_esc(t.get("band"))}</h2></div>')
+                   f'{stars} {_esc(red_yellow_green)}</span><h2>{_esc(t.get("band"))}</h2>'
+                   f'<span class="tier-std">📏 Benchmark {std}</span></div>')
         appr = _esc(t.get("approach"))
         misc = _esc(t.get("misconception"))
         if appr or misc:
@@ -1199,7 +1202,8 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         tpb = "" if ti == 0 else " pbreak"
         out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
         out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">{stars} {_esc(t.get("tier"))}</span>'
-                   f'<h2>{_esc(t.get("band"))}</h2></div>')
+                   f'<h2>{_esc(t.get("band"))}</h2>'
+                   f'<span class="tier-std">📏 Benchmark {std}</span></div>')
         appr = _esc(t.get("approach"))
         misc = _esc(t.get("misconception"))
         if appr or misc:
