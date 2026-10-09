@@ -1,0 +1,347 @@
+"""Deterministic Kindergarten number-sense DI packets (no AI).
+
+The Kinder number-sense test uses a handful of picture-based question TYPES, all
+fully algorithmic, so we BUILD the packets in code — the numbers always stay in
+range, the visuals are always correct, the answer key is exact, and it costs zero
+AI tokens. Question types (each mirrors a real test item the teacher shared):
+
+  * count_counters — "Count the ___. Which SET OF COUNTERS shows how many?"
+                     (objects to count; four five-frame choices)
+  * count_numeral  — "How many ___ are there?"  (objects to count; four numeral
+                     choices, like the frog item)
+  * number_order   — "Choose the numbers in ___ order. Start with ___."
+                     (order/sequence; two number-string choices)
+
+Which types a packet uses is DATA-DRIVEN: chosen from the benchmark being
+retaught (its code + description), so an ordering standard gets ordering items
+and a counting standard gets counting items — matching what the class missed.
+
+Output re-uses ai.generate_di_packets' tier envelope (tier / stars / band /
+tlc_sessions / days / opm) so student grouping and HTML/PDF export work
+unchanged. Each DAY carries the approved template: I DO -> WE DO -> CHECK FOR
+UNDERSTANDING -> YOU DO (4) -> EXIT SLIP; Red/Yellow get a 10-item OPM after
+Day 2.
+"""
+from __future__ import annotations
+
+import random
+import re
+from collections import Counter
+
+# Generic, friendly object bank (theme-neutral per the teacher's request). Each
+# key has an SVG glyph in export_html._glyph().
+OBJECTS = [
+    "suns", "stars", "apples", "fish", "flowers",
+    "balloons", "sailboats", "butterflies", "beach balls", "turtles", "frogs",
+]
+
+_LETTERS = ["A", "B", "C", "D"]
+
+# The five per-day blocks, in order, with how many items each holds.
+_SECTIONS = [
+    ("i_do", "I DO — Teacher Models",
+     "Touch each object once, count aloud, say the total, then check your answer."),
+    ("we_do", "WE DO — Guided Practice",
+     "Complete together. Ask: How do we know the amount matches?"),
+    ("cfu", "CHECK FOR UNDERSTANDING", "Student answers with minimal prompting."),
+    ("you_do", "YOU DO — Work independently",
+     "Each question and all answer choices stay together."),
+    ("exit", "EXIT SLIP", "One quick check before you finish."),
+]
+_SECTION_COUNT = {"i_do": 1, "we_do": 1, "cfu": 1, "you_do": 4, "exit": 1}
+
+
+# --- Individual question-type builders ---------------------------------------
+def _four_distinct(rng: random.Random, correct: int, ceiling: int) -> tuple:
+    """A shuffled set of four distinct amounts including `correct`, and the letter
+    that lands on the correct one."""
+    pool = [v for v in range(0, ceiling + 1) if v != correct]
+    rng.shuffle(pool)
+    choices = [correct] + pool[:3]
+    extra = [v for v in range(0, 6) if v != correct and v not in choices]
+    while len(choices) < 4 and extra:
+        choices.append(extra.pop(0))
+    choices = choices[:4]
+    rng.shuffle(choices)
+    return choices, _LETTERS[choices.index(correct)]
+
+
+def _count_counters_item(rng: random.Random, ceiling: int) -> dict:
+    """Count the objects; pick the five-frame with the matching number of dots."""
+    count = rng.randint(1, ceiling)
+    choices, answer = _four_distinct(rng, count, ceiling)
+    return {"type": "count_counters", "objects": rng.choice(OBJECTS),
+            "count": count, "choices": choices, "answer": answer}
+
+
+def _count_numeral_item(rng: random.Random, ceiling: int) -> dict:
+    """Count the objects; pick the NUMERAL (like the frog item)."""
+    count = rng.randint(1, ceiling)
+    choices, answer = _four_distinct(rng, count, ceiling)
+    return {"type": "count_numeral", "objects": rng.choice(OBJECTS),
+            "count": count, "choices": choices, "answer": answer}
+
+
+def _show_set_item(rng: random.Random, ceiling: int) -> dict:
+    """MA.K.NSO.1.2 — given a NUMBER, choose the SET that shows that many objects
+    (the reverse of counting: produce/identify a quantity). Four sets of the same
+    object with distinct counts; one shows the target number."""
+    target = rng.randint(1, ceiling)
+    counts, answer = _four_distinct(rng, target, ceiling)
+    return {"type": "show_set", "objects": rng.choice(OBJECTS),
+            "count": target, "choices": counts, "answer": answer}
+
+
+def _number_order_item(rng: random.Random, ceiling: int) -> dict:
+    """Put numbers in order. Start number + direction; two number-string choices,
+    one correct (in order), one scrambled — mirrors the 'reverse order' item."""
+    length = max(3, min(5, ceiling))
+    seq = list(range(1, length + 1))
+    reverse = rng.random() < 0.5
+    correct = seq[::-1] if reverse else seq[:]
+    # A near-miss distractor: swap two positions so it's clearly out of order.
+    wrong = correct[:]
+    i = rng.randint(0, length - 2)
+    wrong[i], wrong[i + 1] = wrong[i + 1], wrong[i]
+    if wrong == correct:  # guard (shouldn't happen for length>=2)
+        wrong[0], wrong[-1] = wrong[-1], wrong[0]
+    opts = [correct, wrong]
+    rng.shuffle(opts)
+    answer = _LETTERS[opts.index(correct)]
+    start = correct[0]
+    word = "reverse" if reverse else "counting"
+    return {"type": "number_order",
+            "prompt": f"Choose the numbers in {word} order. Start with number {start}.",
+            "sequences": [[str(n) for n in o] for o in opts], "answer": answer}
+
+
+# type key -> builder
+_BUILDERS = {
+    "count_counters": _count_counters_item,
+    "count_numeral": _count_numeral_item,
+    "number_order": _number_order_item,
+    "show_set": _show_set_item,
+}
+
+
+def _templates_for(code: str, description: str) -> tuple:
+    """Data-driven: pick the question TYPES that assess this benchmark.
+
+    Returns (primary, pool). `primary` is the type used for the worked I DO/WE DO
+    model; `pool` is every applicable type, mixed through the rest of the packet."""
+    text = f"{code} {description}".lower()
+    # Strong ordering signals — these standards are ABOUT sequence, so lead with
+    # the ordering model even when the word 'count' also appears.
+    strong_order = ("order", "sequence", "forward", "backward", "reverse",
+                    "before", "after", "next")
+    count_kw = ("count", "how many", "quantit", "number of", "represent",
+                "cardinal", "match", "set")
+    is_order = any(k in text for k in strong_order)
+    is_count = any(k in text for k in count_kw)
+    # "count OUT that many" (MA.K.NSO.1.2) is the reverse skill: given a number,
+    # make/identify the set — a distinct item type from "count a set" (1.1).
+    is_make_set = ("count out" in text) or ("that many" in text)
+    if is_order and is_count:          # spans both — order first, then counting
+        return "number_order", ["number_order", "count_counters", "count_numeral"]
+    if is_order:
+        return "number_order", ["number_order"]
+    if is_make_set:
+        return "show_set", ["show_set", "count_counters"]
+    return "count_counters", ["count_counters", "count_numeral"]
+
+
+def _hints_from_missed(missed: list | None) -> tuple:
+    """Read the class's ACTUALLY-missed items (their captured stems) to infer the
+    question TYPES to emphasize and the number range those items used — so the
+    packet retates what the class got wrong, not a generic template for the
+    standard. Returns (ordered_types, max_number, positions)."""
+    types: list = []
+    numbers: list = []
+    positions: list = []
+    for m in missed or []:
+        stem = (m.get("stem") or "").lower()
+        if m.get("position") is not None:
+            positions.append(m["position"])
+        for tok in re.findall(r"\d+", stem):
+            n = int(tok)
+            if n <= 20:           # a real quantity, not a year/id
+                numbers.append(n)
+        if any(k in stem for k in ("order", "forward", "backward", "missing",
+                                   "before", "after", "next")):
+            types.append("number_order")
+        elif "shows" in stem and "set" in stem and "counter" not in stem:
+            types.append("show_set")         # "Which set SHOWS 6 candies?" (1.2)
+        elif ("counter" in stem or "which set" in stem or "match" in stem):
+            types.append("count_counters")  # "which set of counters" item (1.1)
+        elif "how many" in stem:
+            types.append("count_numeral")    # the "How many __ are there?" numeral item
+    ordered = [t for t, _ in Counter(types).most_common()]
+    return ordered, (max(numbers) if numbers else 0), positions
+
+
+def _item(rng: random.Random, ceiling: int, type_key: str) -> dict:
+    return _BUILDERS[type_key](rng, ceiling)
+
+
+def _day(rng: random.Random, day_no: int, ceiling: int,
+         primary: str, pool: list) -> dict:
+    sections = {}
+    for key, _title, _note in _SECTIONS:
+        n = _SECTION_COUNT[key]
+        items = []
+        for i in range(n):
+            # Teach with the primary model; mix the applicable types elsewhere so
+            # the packet looks like the real test (which rotates formats).
+            if key in ("i_do", "we_do"):
+                tk = primary
+            else:
+                tk = pool[(day_no + i) % len(pool)]
+            items.append(_item(rng, ceiling, tk))
+        sections[key] = items
+    return {"day": day_no, "title": "Count, match, and order numbers",
+            "pacing": "I do 5 min · We do 5 min · You do 15 min · Exit 5 min",
+            "sections": sections}
+
+
+def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
+    """Differentiate the tier by RANGE + RIGOR + strategy (not just new objects):
+    Red reteaches the most concrete type with the smallest numbers; Yellow moves
+    to the more abstract type at the full range; Green adds the hardest applicable
+    type / largest range and asks students to reason. Returns
+    (tier_ceiling, tier_primary, tier_pool, approach, misconception)."""
+    # "Show the set for a number" (MA.K.NSO.1.2) is its own skill — reteach it with
+    # the make-the-set strategy, differentiated by range + rigor like the others.
+    if primary == "show_set":
+        low = max(3, min(ceiling, 5))
+        if tier_name == "Intensive":          # Red — build the set, most concrete
+            return (low, "show_set", ["show_set"],
+                    "Build the set to MATCH the number: say the number, then place one counter at a time until you reach it — point to each as you go.",
+                    "Stops before or past the target, so the set shows too few or too many.")
+        if tier_name == "Cusp":               # Yellow — choose + prove, fade support
+            return (ceiling, "show_set", ["show_set"],
+                    "Pick the set that shows the number, then PROVE it by counting; the support fades by the exit ticket.",
+                    "Recognizes small sets but miscounts the larger ones.")
+        return (ceiling, "show_set", ["show_set", "count_numeral"],  # Green — reason
+                "Match larger numbers to sets, make one-more / one-less, and explain how you know the set shows that many.",
+                "Accurate on small sets but slips on larger quantities or close distractors.")
+
+    # Lead the reteach with what the class MISSED (the chosen primary), not merely
+    # whatever the standard's text mentions — so a counting miss reteaches counting
+    # even on a benchmark that also covers ordering, and vice-versa.
+    has_order = (primary == "number_order")
+    easiest = "count_counters" if "count_counters" in pool else pool[0]
+    harder = "count_numeral" if "count_numeral" in pool else pool[-1]
+    low = max(3, min(ceiling, 5))
+    if tier_name == "Intensive":          # Red — reteach the foundation, concrete
+        if has_order:
+            return (low, "number_order", ["number_order"],
+                    "Rebuild the sequence with the number path shown every time — point to and say each number, one at a time.",
+                    "Loses track while counting, so numbers come out of order.")
+        return (low, easiest, [easiest],
+                "Count-and-MATCH with the five-frame shown on every item: touch each object, say the number, then find the counters that show the same amount.",
+                "Skips or double-counts objects, so the total is off by one.")
+    if tier_name == "Cusp":               # Yellow — target the error, fade support
+        if has_order:
+            return (ceiling, "number_order", ["number_order", easiest],
+                    "Order the numbers, then PROVE it by counting the set; the number path fades away by the exit ticket.",
+                    "Starts correctly but reverses direction or swaps two numbers.")
+        return (ceiling, harder, [harder, easiest],
+                "Count the set and name the NUMERAL (no counters to match) — move from matching a picture to identifying the number itself.",
+                "Counts aloud correctly but picks the wrong written numeral for the amount.")
+    # Strategic — Green: light scaffold, bigger range, reason/justify
+    if has_order:
+        return (ceiling, "number_order", pool,
+                "Order forward AND backward with larger sets, find the missing number, and explain how you know.",
+                "Mostly accurate — needs to reason about order and extend the pattern.")
+    return (ceiling, harder, [harder, easiest],
+            "Bigger sets and 'count on from' — name the numeral and explain how you counted so you can justify your answer.",
+            "Accurate on small sets but slips on larger quantities.")
+
+
+def build_count_match_packet(standard: dict, grade: str, tiers: list,
+                             number_max: int | None = None,
+                             missed: list | None = None) -> dict:
+    """Build the full three-tier Kinder number-sense packet deterministically.
+
+    tiers is _DI_ROTATION (Intensive/Cusp/Strategic with tlc_sessions). ceiling is
+    the biggest number to use (default 5 for Kinder Topic 1). Each tier is
+    differentiated by number range, question rigor and reteach strategy — Red is
+    the most concrete/scaffolded, Green the most rigorous.
+
+    When `missed` (the class's actually-missed items on this standard, with their
+    captured stems) is given, it DRIVES the packet: the question types lead with
+    what the class missed, the number range covers the quantities those items
+    used, and the content seed includes the misses so two tests on the same
+    standard don't produce an identical ('previous-looking') packet."""
+    code = standard.get("code", "")
+    desc = standard.get("description", "")
+    ceiling = number_max if (number_max and number_max > 0) else 5
+    ceiling = max(1, min(10, ceiling))
+
+    # Lead with the TYPES and RANGE the class actually missed, falling back to
+    # what the benchmark's text implies when no missed items are captured yet.
+    primary, pool = _templates_for(code, desc)
+    miss_types, miss_max, miss_pos = _hints_from_missed(missed)
+    if miss_types:
+        pool = miss_types + [t for t in pool if t not in miss_types]
+        primary = miss_types[0]
+    if miss_max:
+        # The quantities on the missed items are real evidence of the range to
+        # practice; raise the ceiling to cover them (still capped at 10 for K).
+        ceiling = max(1, min(10, max(ceiling, miss_max)))
+    # A signature of the misses so the deterministic content varies per test.
+    miss_sig = "-".join(str(p) for p in sorted(miss_pos)) or "none"
+
+    out_tiers = []
+    for t in tiers:
+        tc, tprimary, tpool, approach, misconception = _tier_plan(
+            t["name"], primary, pool, ceiling)
+        # Seed per tier+standard+misses so a regenerate is reproducible, yet each
+        # tier/day gets fresh objects and amounts AND two tests with different
+        # misses produce different packets.
+        rng = random.Random(f"{code}|{t['name']}|{tc}|{miss_sig}")
+        days = [_day(rng, d + 1, tc, tprimary, tpool)
+                for d in range(t.get("tlc_sessions", 1))]
+        opm = ([_item(rng, tc, tpool[i % len(tpool)]) for i in range(10)]
+               if t["name"] in ("Intensive", "Cusp") else [])
+        out_tiers.append({
+            "tier": t["name"], "stars": t["stars"], "band": t["band"],
+            "tlc_sessions": t["tlc_sessions"], "days": days, "opm": opm,
+            "approach": approach, "misconception": misconception,
+            "number_max": tc,
+        })
+
+    return {
+        "standard": code,
+        "description": desc,
+        "grade_level": grade,
+        "model": "five_frame",
+        "format": "count_match",
+        "target": desc or "Count objects, match the quantity, and order numbers.",
+        "vocab": [
+            ("count", "tell how many"), ("set", "a group"),
+            ("counter", "a dot that shows how many"),
+            ("order", "put in a row: 1, 2, 3…"), ("zero", "none"),
+        ],
+        "number_max": ceiling,
+        "tiers": out_tiers,
+        # Tie the packet to the class's real misses so the export shows "We are
+        # fixing the questions the class missed most: Q…" and the teacher can see
+        # this packet targets THIS test, not a generic template.
+        "test_items": (missed or [])[:8],
+        "items_captured": len(missed or []),
+        "ai_generated": False,
+        "generated_by": "deterministic",
+    }
+
+
+def is_count_match_standard(code: str, description: str, grade: str) -> bool:
+    """True when this K/PK benchmark is a number-sense skill we build
+    deterministically (count a set, match a quantity, or order numbers)."""
+    if (grade or "").upper() not in ("K", "PK"):
+        return False
+    text = f"{code} {description}".lower()
+    keys = ("count", "quantit", "how many", "number of objects", "represent",
+            "cardinal", "order", "sequence", "forward", "backward", "match",
+            "before", "after")
+    return any(k in text for k in keys)

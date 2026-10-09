@@ -1,0 +1,66 @@
+{
+  "title": "Math Goal Setting Rubric (DAS)",
+  "note": "Crosswalk: FAST scale score -> achievement level -> instructional level -> Topic Assessment Average goal. Goals are [min,max] percent (single value when min==max).",
+  "grades": {
+    "K": [
+      {"level": 1, "instructional": "Well below grade level", "fast": [0, 100],
+       "goals": [{"range": [0, 50], "goal": [45, 45]}, {"range": [51, 100], "goal": [50, 50]}]},
+      {"level": 2, "instructional": "Below grade level", "fast": [101, 118],
+       "goals": [{"range": [101, 109], "goal": [55, 55]}, {"range": [110, 118], "goal": [60, 60]}]},
+      {"level": 3, "instructional": "On grade level", "fast": [119, 132],
+       "goals": [{"range": [119, 125], "goal": [65, 65]}, {"range": [126, 132], "goal": [70, 70]}]},
+      {"level": 4, "instructional": "Proficient", "fast": [133, 146],
+       "goals": [{"range": [133, 139], "goal": [75, 75]}, {"range": [140, 146], "goal": [80, 80]}]},
+      {"level": 5, "instructional": "Exemplary", "fast": [147, null],
+       "goals": [{"range": [147, null], "goal": [85, 100]}]}
+    ],
+    "1": [
+      {"level": 1, "instructional": "Well below grade level", "fast": [0, 129],
+       "goals": [{"range": [0, 65], "goal": [45, 45]}, {"range": [66, 129], "goal": [50, 50]}]},
+      {"level": 2, "instructional": "Below grade level", "fast": [130, 146],
+       "goals": [{"range": [130, 138], "goal": [55, 55]}, {"range": [139, 146], "goal": [60, 60]}]},
+      {"level": 3, "instructional": "On grade level", "fast": [147, 159],
+       "goals": [{"range": [147, 153], "goal": [65, 65]}, {"range": [154, 159], "goal": [70, 70]}]},
+      {"level": 4, "instructional": "Proficient", "fast": [160, 171],
+       "goals": [{"range": [160, 165], "goal": [75, 75]}, {"range": [166, 171], "goal": [80, 80]}]},
+      {"level": 5, "instructional": "Exemplary", "fast": [172, null],
+       "goals": [{"range": [172, null], "goal": [85, 100]}]}
+    ],
+    "2": [
+      {"level": 1, "instructional": "Well below grade level", "fast": [0, 157],
+       "goals": [{"range": [0, 79], "goal": [45, 45]}, {"range": [80, 157], "goal": [50, 50]}]},
+      {"level": 2, "instructional": "Below grade level", "fast": [158, 170],
+       "goals": [{"range": [158, 164], "goal": [55, 55]}, {"range": [165, 170], "goal": [60, 60]}]},
+      {"level": 3, "instructional": "On grade level", "fast": [171, 184],
+       "goals": [{"range": [171, 177], "goal": [65, 65]}, {"range": [178, 184], "goal": [70, 70]}]},
+      {"level": 4, "instructional": "Proficient", "fast": [185, 200],
+       "goals": [{"range": [185, 192], "goal": [75, 75]}, {"range": [193, 200], "goal": [80, 80]}]},
+      {"level": 5, "instructional": "Exemplary", "fast": [201, null],
+       "goals": [{"range": [201, null], "goal": [85, 100]}]}
+    ],
+    "3": [
+      {"level": 1, "instructional": "Inadequate performance", "fast": [0, 182],
+       "goals": [{"range": [0, 154], "goal": [45, 45]}, {"range": [155, 168], "goal": [50, 50]}, {"range": [169, 182], "goal": [55, 55]}]},
+      {"level": 2, "instructional": "Below satisfactory", "fast": [183, 197],
+       "goals": [{"range": [183, 190], "goal": [60, 60]}, {"range": [191, 197], "goal": [65, 65]}]},
+      {"level": 3, "instructional": "Satisfactory / on grade level", "fast": [198, 208],
+       "goals": [{"range": [198, 203], "goal": [70, 75]}, {"range": [204, 208], "goal": [76, 79]}]},
+      {"level": 4, "instructional": "Proficient", "fast": [209, 224],
+       "goals": [{"range": [209, 216], "goal": [80, 85]}, {"range": [217, 224], "goal": [86, 90]}]},
+      {"level": 5, "instructional": "Exemplary", "fast": [225, null],
+       "goals": [{"range": [225, 242], "goal": [90, 95]}, {"range": [243, null], "goal": [96, 100]}]}
+    ],
+    "4": [
+      {"level": 1, "instructional": "Inadequate performance", "fast": [0, 199],
+       "goals": [{"range": [0, 169], "goal": [45, 45]}, {"range": [170, 184], "goal": [50, 50]}, {"range": [185, 199], "goal": [55, 55]}]},
+      {"level": 2, "instructional": "Below satisfactory", "fast": [200, 210],
+       "goals": [{"range": [200, 205], "goal": [60, 60]}, {"range": [206, 210], "goal": [65, 65]}]},
+      {"level": 3, "instructional": "Satisfactory / on grade level", "fast": [211, 220],
+       "goals": [{"range": [211, 215], "goal": [70, 75]}, {"range": [216, 220], "goal": [76, 79]}]},
+      {"level": 4, "instructional": "Proficient", "fast": [221, 237],
+       "goals": [{"range": [221, 229], "goal": [80, 85]}, {"range": [230, 237], "goal": [86, 89]}]},
+      {"level": 5, "instructional": "Exemplary", "fast": [238, null],
+       "goals": [{"range": [238, 255], "goal": [90, 95]}, {"range": [256, null], "goal": [96, 100]}]}
+    ]
+  }
+}
