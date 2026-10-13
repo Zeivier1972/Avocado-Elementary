@@ -165,19 +165,54 @@ def parse_pacing_schedule(pacing_text: str, year_start: int):
         return None, f"{type(e).__name__}: {str(e)[:200]}"
 
 
+def _lessons_from_objectives(text: str, tn: str) -> list[dict]:
+    """M-DCPS Academic Instructional Roadmap (AIR) layout: each lesson is
+    "Lesson 5.1 … Learning Objective/Target: <the real title> … Lesson
+    PowerPoint". The lesson TITLE is that Learning Objective, so pull it rather
+    than the "Practice (SE pp. …)" page reference that sits next to the number."""
+    import re as _re
+    seen: dict = {}
+    for m in _re.finditer(r"Lesson\s+(\d{1,2})\.(\d{1,2})\b", text, _re.I):
+        tnum, lnum = m.group(1), m.group(2)
+        if tn and tnum != tn:
+            continue
+        code = f"{tnum}-{lnum}"
+        if code in seen:  # first occurrence (the lesson header) wins
+            continue
+        tail = text[m.end():m.end() + 500]
+        obj = _re.search(
+            r"Learning\s+Objective/Target:\s*(.+?)\s*"
+            r"(?:Lesson\s+PowerPoint|Lesson\s+\d+\.\d|Lesson\s+Instructional|$)",
+            tail, _re.S | _re.I)
+        if not obj:
+            continue
+        title = _re.sub(r"\s+", " ", obj.group(1)).strip(" .:-–—")
+        if 5 <= len(title) <= 120:
+            seen[code] = {"code": code, "title": title,
+                          "benchmarks": [], "focus": ""}
+    return list(seen.values())
+
+
 def _lessons_from_text(pacing_text: str, topic_name: str,
                        benchmarks: list | None = None) -> list[dict]:
     """Deterministically pull the lesson OUTLINE from the pacing-guide text so the
-    calendar gets real lesson names even when AI is off. Handles the enVision /
-    district numbering the K-3 guides use: "5-1 Count to Find How Many",
-    "5.1 …", "Lesson 5-1 …". Restricts to the current topic's number when the
-    topic name gives one ("Topic 5" -> only 5-x lessons)."""
+    calendar gets real lesson names even when AI is off. Handles the M-DCPS
+    Instructional Roadmap ("Lesson 5.1 … Learning Objective/Target: …") first,
+    then the simpler enVision numbering ("5-1 Count to Find How Many", "5.1 …").
+    Restricts to the current topic's number when the topic name gives one."""
     import re as _re
     text = pacing_text or ""
     tn = ""
     m = _re.search(r"(\d{1,2})", topic_name or "")
     if m:
         tn = m.group(1)
+
+    # Preferred: the M-DCPS Roadmap's Learning Objective per lesson (real titles).
+    objective_lessons = _lessons_from_objectives(text, tn)
+    if objective_lessons:
+        for L in objective_lessons:
+            L["benchmarks"] = list(benchmarks or [])
+        return objective_lessons
     # <topic>-<lesson> <Title> — title runs to end of line; accept - . or the
     # unicode non-breaking hyphen between the two numbers.
     # The leading number must NOT be preceded by a dot or word char, so a
