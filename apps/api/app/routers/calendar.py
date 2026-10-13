@@ -322,6 +322,35 @@ def calendar_from_document(
 
     entries, err = parse_pacing_schedule(text, ys)
     if not entries:
+        # No AI (or it couldn't read dates): build the schedule DETERMINISTICALLY
+        # from the real lessons in the document laid across the pacing window's
+        # weekdays — so this works with the AI key off.
+        import re as _re
+        from app.ai import _lessons_from_text
+        lessons = _lessons_from_text(text, d.topic_code or d.name or "")
+        if lessons:
+            dts = []
+            for mm, dd, yy in _re.findall(r"(\d{1,2})/(\d{1,2})/(\d{4})", text):
+                try:
+                    dts.append(date(int(yy), int(mm), int(dd)))
+                except ValueError:
+                    pass
+            start = min(dts) if dts else date(ys, 8, 13)
+            assess = max(dts) if dts else None
+            cur = _weekday(start)
+            entries = []
+            for L in lessons:
+                entries.append({"date": cur.isoformat(), "lesson_code": L.get("code", ""),
+                                "title": L.get("title", ""), "kind": "lesson"})
+                cur = _next(cur)
+            entries.append({"date": cur.isoformat(),
+                            "title": f"{d.topic_code or 'Topic'} Review", "kind": "review"})
+            cur = _next(cur)
+            adate = assess if (assess and assess >= cur) else cur
+            entries.append({"date": adate.isoformat(),
+                            "title": f"{d.topic_code or 'Topic'} Assessment",
+                            "kind": "assessment"})
+    if not entries:
         raise HTTPException(
             400, err or "No dated schedule found in this pacing guide.")
 
