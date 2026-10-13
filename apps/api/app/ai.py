@@ -165,6 +165,43 @@ def parse_pacing_schedule(pacing_text: str, year_start: int):
         return None, f"{type(e).__name__}: {str(e)[:200]}"
 
 
+def _lessons_from_text(pacing_text: str, topic_name: str,
+                       benchmarks: list | None = None) -> list[dict]:
+    """Deterministically pull the lesson OUTLINE from the pacing-guide text so the
+    calendar gets real lesson names even when AI is off. Handles the enVision /
+    district numbering the K-3 guides use: "5-1 Count to Find How Many",
+    "5.1 …", "Lesson 5-1 …". Restricts to the current topic's number when the
+    topic name gives one ("Topic 5" -> only 5-x lessons)."""
+    import re as _re
+    text = pacing_text or ""
+    tn = ""
+    m = _re.search(r"(\d{1,2})", topic_name or "")
+    if m:
+        tn = m.group(1)
+    # <topic>-<lesson> <Title> — title runs to end of line; accept - . or the
+    # unicode non-breaking hyphen between the two numbers.
+    # The leading number must NOT be preceded by a dot or word char, so a
+    # standard code like "MA.K.DP.5.2 Collect…" is never read as lesson "5-2".
+    pat = _re.compile(
+        r"(?:lesson\s*)?(?<![.\w])(\d{1,2})\s*[-.‑]\s*(\d{1,2})\b[ \t]+"
+        r"([A-Za-z][^\n\r]{2,80})", _re.I)
+    seen: dict = {}
+    for mt in pat.finditer(text):
+        tnum, lnum, title = mt.group(1), mt.group(2), mt.group(3)
+        if tn and tnum != tn:
+            continue
+        code = f"{tnum}-{lnum}"
+        # Trim trailing column bleed (multiple spaces/tabs) and stray punctuation.
+        title = _re.split(r"\s{2,}|\t", title.strip())[0].strip(" .:-–—")
+        title = _re.sub(r"\s+", " ", title)
+        if len(title) < 3 or title.lower().startswith(("topic", "standard", "page")):
+            continue
+        if code not in seen:  # keep first (document order)
+            seen[code] = {"code": code, "title": title[:80],
+                          "benchmarks": list(benchmarks or []), "focus": ""}
+    return list(seen.values())
+
+
 def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
                                grade: str, subject: str, topic_name: str) -> dict:
     """Generate a Collaborative Planning Guide grounded in the coach's UPLOADED
@@ -214,6 +251,28 @@ def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
     else:
         ai_status = ("AI not enabled — set AI_PROVIDER=anthropic and AI_API_KEY "
                      "to auto-write the lesson-by-lesson guide from your pacing document.")
+
+    # No AI lessons — build the lesson OUTLINE straight from the pacing document
+    # (its numbered lesson list) so the calendar still shows real lesson names,
+    # then flesh each one out with the deterministic template. This is why the
+    # calendar no longer falls back to "Instructional Day 1, 2, …".
+    outline = _lessons_from_text(pacing_text, topic_name,
+                                 [s["code"] for s in standards])
+    if outline:
+        pseudo = {"grade_level": grade, "subject": subject, "name": topic_name,
+                  "vocabulary": [], "materials": [], "lessons": outline}
+        lessons = _template_lessons(pseudo, std_by_code)
+        for L in lessons:
+            code = (L.get("benchmarks") or [""])[0]
+            L["ald"] = std_by_code.get(code, {}).get("alds", {})
+            _ensure_lesson_extras(L, [])
+        base.update({"generated_by": "template", "ai_generated": False,
+                     "ai_status": ai_status, "lessons": lessons,
+                     "note": "Lessons read from your pacing document (outline + "
+                             "structured scaffold). Turn on the AI key, or edit "
+                             "with your team, to add full ACES detail."})
+        return base
+
     base.update({"generated_by": "template", "ai_generated": False,
                  "ai_status": ai_status, "lessons": [],
                  "note": "Benchmark clarifications, misconceptions, and ALDs are "
