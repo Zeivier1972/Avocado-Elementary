@@ -226,8 +226,8 @@ export const api = {
     req("/coach/documents", { method: "POST", body: form }),
   deleteDocument: (id: string) =>
     req(`/coach/documents/${id}`, { method: "DELETE" }),
-  generateGuideFromDoc: (id: string) =>
-    req(`/coach/documents/${id}/generate-guide`, { method: "POST" }),
+  generateGuideFromDoc: (id: string, mode: "full" | "one_pager" = "full") =>
+    req(`/coach/documents/${id}/generate-guide?mode=${mode}`, { method: "POST" }),
   createDiPackets: (
     grade: string,
     standard: string,
@@ -251,11 +251,12 @@ export const api = {
     grade_level: string,
     topic_code: string,
     subject = "MATH",
+    mode: "full" | "one_pager" = "full",
   ) =>
     req(`/coach/documents/generate-guide-combined`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grade_level, topic_code, subject }),
+      body: JSON.stringify({ grade_level, topic_code, subject, mode }),
     }),
   pacingFromDocument: (form: FormData) =>
     req("/coach/pacing/from-document", { method: "POST", body: form }),

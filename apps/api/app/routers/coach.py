@@ -112,7 +112,7 @@ def _lesson_stubs(guide) -> list[dict]:
 def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
                           grade_level: str, subject: str, topic_name: str,
                           assessment_code: str, topic_id: str | None,
-                          source_name: str = ""):
+                          source_name: str = "", mode: str = "full"):
     """Generate a planning guide from pacing-guide text OUT OF BAND (several model
     calls, up to a couple of minutes) and write the result onto the pre-created
     SavedGuide, so the HTTP request that triggered it returns immediately. Runs in
@@ -124,7 +124,7 @@ def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
     try:
         standards = _resolve_standards(db, benchmark_codes) if benchmark_codes else []
         guide = generate_guide_from_pacing(
-            text, standards, grade_level, subject or "MATH", topic_name)
+            text, standards, grade_level, subject or "MATH", topic_name, mode=mode)
         # Record WHAT this guide was built from so a mismatch (wrong file/topic)
         # is visible on the guide itself.
         guide["source_document"] = source_name
@@ -684,6 +684,7 @@ async def pacing_from_document(
     subject: str = Form("MATH"),
     topic_name: str = Form(""),
     generate: bool = Form(True),
+    guide_mode: str = Form("full"),
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
@@ -792,8 +793,11 @@ async def pacing_from_document(
     }
     guide_id = _save_guide(db, user, grade_level, code, subject, placeholder,
                            status="generating")
+    gmode = "one_pager" if (guide_mode or "").lower() in ("one_pager", "onepager",
+                                                           "one-pager") else "full"
     background.add_task(_run_pacing_guide_job, guide_id, text, benchmarks,
-                        grade_level, subject, name, code, topic.id, file.filename)
+                        grade_level, subject, name, code, topic.id, file.filename,
+                        gmode)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="upload_pacing_and_generate")
     return {
@@ -958,6 +962,7 @@ def download_document(
 def generate_guide_from_document(
     doc_id: str,
     background: BackgroundTasks,
+    mode: str = "full",
     db: Session = Depends(get_db),
     user: User = Depends(_require_coach),
 ):
@@ -999,9 +1004,11 @@ def generate_guide_from_document(
     }
     guide_id = _save_guide(db, user, d.grade_level, d.topic_code, d.subject,
                            placeholder, status="generating")
+    gmode = "one_pager" if (mode or "").lower() in (
+        "one_pager", "onepager", "one-pager") else "full"
     background.add_task(_run_pacing_guide_job, guide_id, text, codes,
                         d.grade_level, d.subject or "MATH", topic_name,
-                        d.topic_code, topic.id if topic else None, d.filename)
+                        d.topic_code, topic.id if topic else None, d.filename, gmode)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="guide_from_pacing_document")
     return {"topic": topic_name, "guide_id": guide_id, "status": "generating",
@@ -1030,6 +1037,7 @@ class _CombinedReq(BaseModel):
     grade_level: str
     topic_code: str
     subject: str = "MATH"
+    mode: str = "full"  # "full" = detailed lesson plans; "one_pager" = low cost
 
 
 @router.post("/documents/generate-guide-combined")
@@ -1110,9 +1118,12 @@ def generate_guide_combined(
     guide_id = _save_guide(db, user, req.grade_level, req.topic_code, req.subject,
                            placeholder, status="generating")
     source_name = " + ".join(used)
+    gmode = "one_pager" if (req.mode or "").lower() in (
+        "one_pager", "onepager", "one-pager") else "full"
     background.add_task(_run_pacing_guide_job, guide_id, combined, codes,
                         req.grade_level, (req.subject or "MATH").upper(), topic_name,
-                        req.topic_code, topic.id if topic else None, source_name)
+                        req.topic_code, topic.id if topic else None, source_name,
+                        gmode)
     audit(db, actor=user, action="generate", entity_type="planning_guide",
           entity_id=guide_id, purpose="guide_from_combined_documents")
     return {"topic": topic_name, "guide_id": guide_id, "status": "generating",

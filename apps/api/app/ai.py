@@ -203,10 +203,16 @@ def _lessons_from_text(pacing_text: str, topic_name: str,
 
 
 def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
-                               grade: str, subject: str, topic_name: str) -> dict:
+                               grade: str, subject: str, topic_name: str,
+                               mode: str = "full") -> dict:
     """Generate a Collaborative Planning Guide grounded in the coach's UPLOADED
-    pacing guide text (plus the B1G-M benchmark detail + FLDOE ALDs). The AI
-    reads the pacing content and writes the ACES lesson-by-lesson guide."""
+    pacing guide text (plus the B1G-M benchmark detail + FLDOE ALDs).
+
+    mode="full" (default): the AI writes the long, detailed ACES lesson-by-lesson
+    guide (more tokens = more cost). mode="one_pager": SKIP that expensive AI
+    write — read the lesson outline from the document deterministically and build
+    the structured scaffold, so the coach one-pager and the calendar lesson names
+    are correct at near-zero cost."""
     std_by_code = {s["code"]: s for s in standards}
     clarifications = [
         {"code": s["code"], "description": s.get("description", ""),
@@ -229,7 +235,8 @@ def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
         "common_misconceptions": misconceptions,
         "from_document": True,
     }
-    if settings.ai_provider == "anthropic" and settings.ai_api_key:
+    want_full = (mode or "full").lower() != "one_pager"
+    if want_full and settings.ai_provider == "anthropic" and settings.ai_api_key:
         lessons, err = _llm_lessons(
             {"grade_level": grade, "subject": subject, "topic_code": "",
              "name": topic_name, "learning_target": "", "success_criteria": [],
@@ -241,13 +248,18 @@ def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
                 L["ald"] = std_by_code.get(code, {}).get("alds", {})
                 _ensure_lesson_extras(L, [])
             base.update({"generated_by": settings.ai_model, "ai_generated": True,
-                         "ai_status": "ok", "lessons": lessons,
+                         "ai_status": "ok", "guide_mode": "full", "lessons": lessons,
                          "note": "AI-generated from your uploaded pacing guide — "
                                  "review with your team before teaching."})
             return base
         print(f"[guide] AI lesson generation FELL BACK (pacing) — reason: {err}",
               flush=True)
         ai_status = f"AI unavailable — showing benchmark detail only. Reason: {err}"
+    elif not want_full:
+        # One-pager mode: deliberately skip the expensive lesson-by-lesson AI call.
+        ai_status = ("One-pager mode — the lesson outline was read from your "
+                     "document and the coach one-pager is built from it; the full "
+                     "AI-written lesson detail was skipped to save cost.")
     else:
         ai_status = ("AI not enabled — set AI_PROVIDER=anthropic and AI_API_KEY "
                      "to auto-write the lesson-by-lesson guide from your pacing document.")
@@ -267,14 +279,18 @@ def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
             L["ald"] = std_by_code.get(code, {}).get("alds", {})
             _ensure_lesson_extras(L, [])
         base.update({"generated_by": "template", "ai_generated": False,
-                     "ai_status": ai_status, "lessons": lessons,
+                     "ai_status": ai_status,
+                     "guide_mode": "one_pager" if not want_full else "full",
+                     "lessons": lessons,
                      "note": "Lessons read from your pacing document (outline + "
                              "structured scaffold). Turn on the AI key, or edit "
                              "with your team, to add full ACES detail."})
         return base
 
     base.update({"generated_by": "template", "ai_generated": False,
-                 "ai_status": ai_status, "lessons": [],
+                 "ai_status": ai_status,
+                 "guide_mode": "one_pager" if not want_full else "full",
+                 "lessons": [],
                  "note": "Benchmark clarifications, misconceptions, and ALDs are "
                          "shown; turn on the AI key to write the ACES lessons."})
     return base

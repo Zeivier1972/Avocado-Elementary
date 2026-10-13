@@ -48,6 +48,9 @@ export default function CoachPage() {
   const [docBusy, setDocBusy] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [savedGuides, setSavedGuides] = useState<any>({});
+  // Full = detailed lesson-by-lesson plans (more AI, more cost). One-pager =
+  // the coach one-pager + lesson outline from the document (low cost).
+  const [guideMode, setGuideMode] = useState<"full" | "one_pager">("full");
 
   async function loadGuides(g: string) {
     try {
@@ -229,8 +232,14 @@ export default function CoachPage() {
     setGuide(null);
     setTopic(null);
     try {
-      const r = await api.generateGuideFromDoc(id);
-      if (r.guide_id) await pollGuide(r.guide_id);
+      const r = await api.generateGuideFromDoc(id, guideMode);
+      if (r.guide_id)
+        await pollGuide(
+          r.guide_id,
+          guideMode === "one_pager"
+            ? "Building the one-pager + lesson outline (low cost)…"
+            : undefined
+        );
       else if (r.guide) setGuide(r.guide);
     } catch (err) {
       alert("Generate failed: " + (err as Error).message);
@@ -244,12 +253,18 @@ export default function CoachPage() {
     setGuide(null);
     setTopic(null);
     try {
-      const r = await api.generateGuideCombined(grade, topicCode, "MATH");
+      const r = await api.generateGuideCombined(grade, topicCode, "MATH", guideMode);
       if (r.files_skipped && r.files_skipped.length)
         alert(
           `Building from ${r.files_used.join(", ")}.\nCouldn't read: ${r.files_skipped.join("; ")}`
         );
-      if (r.guide_id) await pollGuide(r.guide_id);
+      if (r.guide_id)
+        await pollGuide(
+          r.guide_id,
+          guideMode === "one_pager"
+            ? "Building the one-pager + lesson outline (low cost)…"
+            : undefined
+        );
       else if (r.guide) setGuide(r.guide);
     } catch (err) {
       alert("Generate failed: " + (err as Error).message);
@@ -693,6 +708,43 @@ export default function CoachPage() {
               onChange={uploadPacingDoc}
             />
           </label>
+        </div>
+
+        {/* What to generate — full detailed lesson plans, or the low-cost
+            one-pager. Applies to every Generate button below. */}
+        <div className="bg-white rounded-xl border border-gray-100 p-3 mb-4 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-gray-700">
+            When I generate, build:
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setGuideMode("full")}
+              className={`text-sm font-semibold rounded-lg px-3 py-1.5 border transition-colors ${
+                guideMode === "full"
+                  ? "bg-avocado text-white border-avocado"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              📘 Full lesson plans
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuideMode("one_pager")}
+              className={`text-sm font-semibold rounded-lg px-3 py-1.5 border transition-colors ${
+                guideMode === "one_pager"
+                  ? "bg-avocado text-white border-avocado"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              📄 One-pager (low cost)
+            </button>
+          </div>
+          <span className="text-xs text-gray-500 w-full sm:w-auto">
+            {guideMode === "full"
+              ? "Detailed, scripted lesson-by-lesson guide (uses more AI)."
+              : "Coach one-pager + lesson names/outline from your document — skips the long AI write to save money. Lesson plans stay available: switch back to Full anytime and regenerate."}
+          </span>
         </div>
 
         {/* Document folders — organized by topic for this grade */}
