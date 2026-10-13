@@ -442,8 +442,23 @@ export default function CoachPage() {
     setRosterMsg("");
     try {
       const p = await api.dedupeStudents(false); // preview first
-      if (!p.removable_total && !p.needs_review) {
-        setRosterMsg("No duplicate student names found. ✓");
+      if (!p.removable_total && !p.needs_review && !p.duplicate_enrollments_removed) {
+        setRosterMsg("No duplicate students found. ✓");
+        return;
+      }
+      if (!p.removable_total && !p.needs_review && p.duplicate_enrollments_removed) {
+        // Only stray double-enrollments to clean (no duplicate records).
+        if (
+          !confirm(
+            `No duplicate student records, but ${p.duplicate_enrollments_removed} student(s) are listed twice in a class roster. Remove the duplicate enrollment(s)?`
+          )
+        )
+          return;
+        const r0 = await api.dedupeStudents(true);
+        setRosterMsg(
+          `Cleaned ${r0.duplicate_enrollments_removed} duplicate roster listing(s).`
+        );
+        loadSummary();
         return;
       }
       const lines = (p.groups || [])
@@ -456,15 +471,23 @@ export default function CoachPage() {
         : "";
       if (
         !confirm(
-          `Found ${p.removable_total} duplicate copy(ies) to merge across ${p.duplicate_groups} name(s):\n\n${lines}${
+          `Found ${p.removable_total} duplicate copy(ies) to merge across ${p.duplicate_groups} student(s) (matched by district ID and by name):\n\n${lines}${
             p.removable_total > 12 ? "\n…and more" : ""
-          }${reviewNote}\n\nMerge each set into one record? The survivor keeps the scores AND gains the other copy's roster info (district ID, grade, homeroom). This can't be undone.`
+          }${
+            p.duplicate_enrollments_removed
+              ? `\n\nAlso cleaning ${p.duplicate_enrollments_removed} student(s) listed twice in a class roster.`
+              : ""
+          }${reviewNote}\n\nMerge each set into one record? The survivor keeps the scores AND gains the other copy's roster info, so uploaded scores stop hiding on a duplicate. This can't be undone.`
         )
       )
         return;
       const r = await api.dedupeStudents(true);
       setRosterMsg(
-        `Merged ${r.removed} duplicate copy(ies) into their matching record.` +
+        `Merged ${r.removed} duplicate copy(ies) into their matching record` +
+          (r.duplicate_enrollments_removed
+            ? ` · cleaned ${r.duplicate_enrollments_removed} duplicate roster listing(s)`
+            : "") +
+          `. Scores now show on the kept record.` +
           (r.needs_review ? ` ${r.needs_review} same-name pair(s) left for manual review.` : "")
       );
       loadSummary();
@@ -631,7 +654,7 @@ export default function CoachPage() {
               disabled={busy}
               className="text-xs text-gray-600 hover:text-avocado-dark underline disabled:opacity-50"
             >
-              Merge duplicate names
+              Merge duplicate students
             </button>
             <button
               onClick={onDedupeTeachers}

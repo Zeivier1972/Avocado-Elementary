@@ -901,39 +901,64 @@ def dedupe_students(
     students = active_students(
         db.query(Student).filter(Student.tenant_id == district.id)).all()
 
-    groups: dict = {}
-    for s in students:
-        key = (_name_key(f"{s.first_name} {s.last_name}"), s.grade_level or "")
-        groups.setdefault(key, []).append(s)
+    # Score + enrollment counts, cached across the passes below.
+    _sc: dict = {}
+    _en: dict = {}
+
+    def sc(s):
+        if s.id not in _sc:
+            _sc[s.id] = _score_count(db, s.id)
+        return _sc[s.id]
+
+    def en(s):
+        if s.id not in _en:
+            _en[s.id] = db.query(Enrollment).filter(
+                Enrollment.student_id == s.id).count()
+        return _en[s.id]
 
     def label(s):
         return {"id": s.id, "district_id": s.district_student_id,
-                "scores": scores[s.id], "enroll": enroll[s.id]}
+                "scores": sc(s), "enroll": en(s)}
 
     preview, removed = [], 0
-    for (nk, grade), grp in groups.items():
-        if not nk or len(grp) < 2:
-            continue
-        scores = {s.id: _score_count(db, s.id) for s in grp}
-        enroll = {s.id: db.query(Enrollment).filter(
-            Enrollment.student_id == s.id).count() for s in grp}
-        scored = [s for s in grp if scores[s.id] > 0]
+    handled: set = set()  # student ids already placed in a group (any pass)
+
+    def resolve(grp, match):
+        """Keep the record with the most scores (then enrollments), merge the
+        duplicates into it, and record a preview row. For an id-match group the
+        members share a district id, so they are the SAME student — every
+        non-keeper is merged, reuniting an uploaded score with the roster record.
+        For a name-match group, same-name records that BOTH carry scores are
+        flagged for review (never auto-deleted)."""
+        nonlocal removed
+        grp = [s for s in grp if s.id not in handled]
+        if len(grp) < 2:
+            return
+        scored = [s for s in grp if sc(s) > 0]
         if scored:
-            keeper = max(scored, key=lambda s: (scores[s.id], enroll[s.id], s.created_at))
-            removable = [s for s in grp if s is not keeper and scores[s.id] == 0]
-            review = [s for s in scored if s is not keeper]
+            keeper = max(scored, key=lambda s: (sc(s), en(s), s.created_at))
         else:
-            # No one has scores: keep the most-established shell, drop the rest.
-            keeper = max(grp, key=lambda s: (enroll[s.id],
+            keeper = max(grp, key=lambda s: (en(s),
                                              1 if s.district_student_id else 0,
                                              s.created_at))
+        if match == "id":
+            removable = [s for s in grp if s is not keeper]
+            review = []
+        elif scored:
+            removable = [s for s in grp if s is not keeper and sc(s) == 0]
+            review = [s for s in scored if s is not keeper]
+        else:
             removable = [s for s in grp if s is not keeper]
             review = []
         if not removable and not review:
-            continue
+            return
+        # Mark every member handled so a later pass doesn't regroup/double-count.
+        for s in grp:
+            handled.add(s.id)
         preview.append({
             "name": f"{keeper.first_name.title()} {keeper.last_name.title()}",
-            "grade": grade or "(blank)",
+            "grade": keeper.grade_level or "(blank)",
+            "match": match,
             "keep": label(keeper),
             "remove": [label(s) for s in removable],
             "needs_review": [label(s) for s in review],
@@ -942,6 +967,44 @@ def dedupe_students(
             for s in removable:
                 _merge_student(db, keeper, s)
                 removed += 1
+
+    # Pass 1 — same district id (leading-zero tolerant): unambiguously the same
+    # student, so a score that imported onto one copy is reunited with the roster
+    # copy shown on the report. This is what fixes "scores missing from a report."
+    id_groups: dict = {}
+    for s in students:
+        k = _idkey(s.district_student_id)
+        if k and (s.district_student_id or "").strip():
+            id_groups.setdefault(k, []).append(s)
+    for grp in id_groups.values():
+        resolve(grp, "id")
+
+    # Pass 2 — same name + grade (catches a duplicate whose id is blank/mistyped).
+    name_groups: dict = {}
+    for s in students:
+        if s.id in handled:
+            continue
+        nk = _name_key(f"{s.first_name} {s.last_name}")
+        if nk:
+            name_groups.setdefault((nk, s.grade_level or ""), []).append(s)
+    for grp in name_groups.values():
+        resolve(grp, "name")
+
+    # Pass 3 — drop duplicate ENROLLMENTS (the same student listed twice in one
+    # class roster), so a kid never shows twice on a class list.
+    enroll_removed = 0
+    seen: set = set()
+    rows = (db.query(Enrollment)
+            .join(ClassRoom, Enrollment.class_id == ClassRoom.id)
+            .filter(ClassRoom.tenant_id == district.id).all())
+    for e in rows:
+        key = (e.class_id, e.student_id)
+        if key in seen:
+            enroll_removed += 1
+            if apply:
+                db.delete(e)
+        else:
+            seen.add(key)
 
     if apply:
         db.commit()
@@ -952,6 +1015,7 @@ def dedupe_students(
         "applied": apply,
         "duplicate_groups": len(preview),
         "removed": removed,
+        "duplicate_enrollments_removed": enroll_removed,
         "removable_total": sum(len(p["remove"]) for p in preview),
         "needs_review": sum(len(p["needs_review"]) for p in preview),
         "groups": preview,
