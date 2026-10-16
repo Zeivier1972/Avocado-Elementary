@@ -201,6 +201,57 @@ def _object_row(kind: str, n: int) -> str:
     return "".join(parts)
 
 
+def _one_object(kind: str) -> str:
+    """A single glyph centered in a 92x92 box, scaled to the SAME target size as
+    every other object (used as the A/B label for a group in a compare item)."""
+    box = 92
+    target = box - 16
+    key = (kind or "").rstrip("s").lower()
+    bx0, by0, bx1, by1 = _GLYPH_BBOX.get(key, (2, 2, 46, 46))
+    gw, gh = max(1, bx1 - bx0), max(1, by1 - by0)
+    s = target / max(gw, gh)
+    tx = (box - gw * s) / 2 - bx0 * s
+    ty = (box - gh * s) / 2 - by0 * s
+    return (f'<svg width="{box}" height="{box}" viewBox="0 0 {box} {box}" role="img"'
+            f' aria-label="{_esc(kind)}"><g transform="translate({tx:.1f},{ty:.1f}) '
+            f'scale({s:.3f})">{_glyph(kind)}</g></svg>')
+
+
+def _compare_groups_html(k1: str, n1: int, k2: str, n2: int, labels: bool) -> str:
+    """Two object groups stacked for a compare item. When labels=True each group
+    is tagged A / B (the group itself is the answer choice)."""
+    rows = []
+    for letter, kind, n in (("A", k1, n1), ("B", k2, n2)):
+        tag = (f'<span style="font-family:\'Baloo 2\';font-weight:800;font-size:30px;'
+               f'color:var(--brand-deep);width:34px;flex:none;text-align:center;">'
+               f'{letter}</span>') if labels else ""
+        rows.append(f'<div style="display:flex;align-items:center;gap:8px;'
+                    f'justify-content:center;">{tag}'
+                    f'<div style="flex:none;">{_object_row(kind, n)}</div></div>')
+    return (f'<div class="cobjs" style="flex-direction:column;gap:8px;">'
+            f'{"".join(rows)}</div>')
+
+
+def _group_choices(k1: str, k2: str) -> str:
+    """Pick-a-group answer: A = one object of group 1, B = one of group 2."""
+    cells = []
+    for letter, kind in (("A", k1), ("B", k2)):
+        cells.append(f'<div class="cchoice"><span class="clet">{letter}.</span>'
+                     f'{_one_object(kind)}</div>')
+    return f'<div class="cchoices">{"".join(cells)}</div>'
+
+
+def _word_choices(pairs: list) -> str:
+    """Labelled word cards (e.g. yes / no) — a fixed-width card like a numeral card
+    so the two choices are the same size."""
+    cells = []
+    for word, letter in pairs:
+        cells.append(f'<div class="ncard" style="width:auto;padding:12px 26px;">'
+                     f'<span class="nnum" style="font-size:30px;">{_esc(word)}</span>'
+                     f'<span class="nlet">{_esc(letter)}</span></div>')
+    return f'<div class="nchoices">{"".join(cells)}</div>'
+
+
 _LETTERS_C = ["A", "B", "C", "D"]
 
 
@@ -271,6 +322,28 @@ def _count_item_html(item: dict, show_answer: bool = False, num: str = "") -> st
             '<div class="citem">'
             f'<p class="cq">{lead}Which set shows {n} {obj}?</p>'
             f'{_set_choices(item.get("objects"), item.get("choices") or [])}{key}</div>')
+    if t == "compare":
+        # MA.K.NSO.1.4 — greater / less / equal. Three formats mirror the test:
+        # which GROUP is greater/less, is X equal to Y (yes/no), which NUMBER.
+        mode = item.get("mode")
+        if mode == "number":
+            ch = item.get("choices") or [_i(item.get("a")), _i(item.get("b"))]
+            return (
+                '<div class="citem">'
+                f'<p class="cq">{lead}{_esc(item.get("prompt"))}</p>'
+                f'{_numeral_choices(ch)}{key}</div>')
+        k1, n1 = item.get("kind1"), _i(item.get("n1"))
+        k2, n2 = item.get("kind2"), _i(item.get("n2"))
+        if mode == "equal_yn":
+            groups = _compare_groups_html(k1, n1, k2, n2, labels=False)
+            choices = _word_choices([("yes", "A"), ("no", "B")])
+        else:  # group compare — the groups themselves are choices A / B
+            groups = _compare_groups_html(k1, n1, k2, n2, labels=True)
+            choices = _group_choices(k1, k2)
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}{_esc(item.get("prompt"))}</p>'
+            f'{groups}{choices}{key}</div>')
     # default: count -> match the set of counters (five-frames)
     return (
         '<div class="citem">'
@@ -942,7 +1015,9 @@ body{background:#fff;}
 
 
 def _esc(s) -> str:
-    return html.escape(str(s or ""))
+    # NB: use an explicit None check, not `s or ""` — the latter turns the integer
+    # 0 into an empty string, which blanks out numeral cards / counts of zero.
+    return html.escape("" if s is None else str(s))
 
 
 def _choices_html(choices) -> str:

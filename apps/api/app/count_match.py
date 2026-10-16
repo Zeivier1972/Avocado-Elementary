@@ -115,12 +115,60 @@ def _number_order_item(rng: random.Random, ceiling: int) -> dict:
             "sequences": [[str(n) for n in o] for o in opts], "answer": answer}
 
 
+def _distinct_val(rng: random.Random, val: int, ceiling: int) -> int:
+    """A value in [0, ceiling] different from `val` (for an unequal comparison)."""
+    opts = [v for v in range(0, ceiling + 1) if v != val]
+    return rng.choice(opts) if opts else val
+
+
+def _compare_item(rng: random.Random, ceiling: int) -> dict:
+    """MA.K.NSO.1.4 — compare two groups / two numbers with 'greater than, less
+    than, equal to'. Rotates the exact formats on the Topic test: which group is
+    greater/less, is the number of X equal to Y (yes/no), and which NUMBER is
+    greater/less. Answer is the letter of the correct choice."""
+    ceiling = max(2, ceiling)
+    mode = rng.choice(["greater_group", "less_group", "greater_group",
+                       "less_group", "equal_yn", "greater_number", "less_number"])
+    if mode in ("greater_group", "less_group", "equal_yn"):
+        k1, k2 = rng.sample(OBJECTS, 2)
+        if mode == "equal_yn":
+            equal = rng.random() < 0.5
+            n1 = rng.randint(1, ceiling)
+            n2 = n1 if equal else _distinct_val(rng, n1, ceiling)
+            return {"type": "compare", "mode": "equal_yn",
+                    "kind1": k1, "n1": n1, "kind2": k2, "n2": n2,
+                    "prompt": f"Is the number of {k1} equal to the number of {k2}?",
+                    "answer": "A" if equal else "B"}  # A = yes, B = no
+        n1 = rng.randint(1, ceiling)
+        n2 = _distinct_val(rng, n1, ceiling)
+        greater = mode == "greater_group"
+        # The winning group is A when group 1's count matches the asked relation.
+        win = "A" if ((n1 > n2) == greater) else "B"
+        word = "greater" if greater else "less"
+        return {"type": "compare", "mode": "group",
+                "kind1": k1, "n1": n1, "kind2": k2, "n2": n2,
+                "prompt": f"Which group is {word} than the other group?",
+                "answer": win}
+    # Two written numerals: which number is greater / less?
+    a = rng.randint(0, ceiling)
+    b = _distinct_val(rng, a, ceiling)
+    greater = mode == "greater_number"
+    win_val = max(a, b) if greater else min(a, b)
+    word = "greater" if greater else "less"
+    return {"type": "compare", "mode": "number", "a": a, "b": b,
+            "choices": [a, b],
+            "prompt": f"Compare the numbers. Which number is {word} than the "
+                      f"other number?",
+            "answer": "A" if a == win_val else "B"}
+
+
 # type key -> builder
 _BUILDERS = {
     "count_counters": _count_counters_item,
     "count_numeral": _count_numeral_item,
     "number_order": _number_order_item,
     "show_set": _show_set_item,
+    "compare": _compare_item,
 }
 
 
@@ -136,8 +184,14 @@ def _templates_for(code: str, description: str) -> tuple:
                     "before", "after", "next")
     count_kw = ("count", "how many", "quantit", "number of", "represent",
                 "cardinal", "match", "set")
+    # Comparing TWO groups / numbers (MA.K.NSO.1.4) — 'greater than, less than,
+    # equal to'. This is its OWN skill, NOT counting; a compare test must reteach
+    # comparing, so detect it before the generic counting fallback.
+    compare_kw = ("compare", "greater than", "less than", "equal to", "more than",
+                  "fewer", "greater", " less ")
     is_order = any(k in text for k in strong_order)
     is_count = any(k in text for k in count_kw)
+    is_compare = any(k in text for k in compare_kw)
     # "count OUT that many" (MA.K.NSO.1.2) is the reverse skill: given a number,
     # make/identify the set — a distinct item type from "count a set" (1.1).
     is_make_set = ("count out" in text) or ("that many" in text)
@@ -145,6 +199,8 @@ def _templates_for(code: str, description: str) -> tuple:
         return "number_order", ["number_order", "count_counters", "count_numeral"]
     if is_order:
         return "number_order", ["number_order"]
+    if is_compare:                     # greater / less / equal — compare, not count
+        return "compare", ["compare", "count_counters"]
     if is_make_set:
         return "show_set", ["show_set", "count_counters"]
     return "count_counters", ["count_counters", "count_numeral"]
@@ -169,6 +225,10 @@ def _hints_from_missed(missed: list | None) -> tuple:
         if any(k in stem for k in ("order", "forward", "backward", "missing",
                                    "before", "after", "next")):
             types.append("number_order")
+        elif any(k in stem for k in ("greater than", "less than", "equal to",
+                                     "greater", " less ", "more than", "fewer",
+                                     "compare")):
+            types.append("compare")          # "Which group is greater?" (1.4)
         elif "shows" in stem and "set" in stem and "counter" not in stem:
             types.append("show_set")         # "Which set SHOWS 6 candies?" (1.2)
         elif ("counter" in stem or "which set" in stem or "match" in stem):
@@ -209,6 +269,22 @@ def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
     to the more abstract type at the full range; Green adds the hardest applicable
     type / largest range and asks students to reason. Returns
     (tier_ceiling, tier_primary, tier_pool, approach, misconception)."""
+    # "Compare two groups" (MA.K.NSO.1.4) is its own skill — reteach greater / less
+    # / equal with one-to-one matching, differentiated by range + rigor.
+    if primary == "compare":
+        low = max(2, min(ceiling, 5))
+        if tier_name == "Intensive":          # Red — match one-to-one, most concrete
+            return (low, "compare", ["compare"],
+                    "Compare by MATCHING one-to-one: line the two groups up, pair them off, and the group with leftovers is greater (none left over = equal).",
+                    "Picks the group that 'looks bigger' without counting or matching, so misses on close groups.")
+        if tier_name == "Cusp":               # Yellow — count both, name the relation
+            return (ceiling, "compare", ["compare"],
+                    "Count BOTH groups, say each number, then decide greater / less / equal and prove it.",
+                    "Counts correctly but swaps the words — says 'greater' for the smaller number.")
+        return (ceiling, "compare", ["compare", "count_numeral"],  # Green — reason
+                "Compare larger groups AND written numbers, then explain how you know using 'greater than / less than / equal to'.",
+                "Accurate with objects but slips comparing written numerals or very close quantities.")
+
     # "Show the set for a number" (MA.K.NSO.1.2) is its own skill — reteach it with
     # the make-the-set strategy, differentiated by range + rigor like the others.
     if primary == "show_set":
@@ -343,5 +419,5 @@ def is_count_match_standard(code: str, description: str, grade: str) -> bool:
     text = f"{code} {description}".lower()
     keys = ("count", "quantit", "how many", "number of objects", "represent",
             "cardinal", "order", "sequence", "forward", "backward", "match",
-            "before", "after")
+            "before", "after", "compare", "greater", "less than", "equal to")
     return any(k in text for k in keys)
