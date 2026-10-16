@@ -61,7 +61,7 @@ def _five_frame(n: int) -> str:
     5. Kids count by ONES; there is no grouping by ten."""
     n = max(0, min(10, n))
     rows = 1 if n <= 5 else 2
-    cw, ch = 54, 58
+    cw, ch = 64, 68
     W, H = 5 * cw + 2, rows * ch + 2
     parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
              f'aria-label="five frame showing {n}">']
@@ -77,7 +77,7 @@ def _five_frame(n: int) -> str:
         for c in range(5):
             if placed < n:
                 cx = 1 + c * cw + cw / 2
-                parts.append(f'<circle cx="{cx:.0f}" cy="{oy+ch/2:.0f}" r="17" '
+                parts.append(f'<circle cx="{cx:.0f}" cy="{oy+ch/2:.0f}" r="20" '
                              f'fill="{RED_CTR}"/>')
                 placed += 1
     parts.append("</svg>")
@@ -164,7 +164,7 @@ def _object_row(kind: str, n: int) -> str:
     n = max(0, min(10, n))
     per = 5
     rows = max(1, (n + per - 1) // per)
-    box = 74
+    box = 92
     gs = (box - 6) / 48.0  # scale the 48px glyph up to fill the larger cell
     W, H = per * box, rows * box
     parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img"'
@@ -869,7 +869,7 @@ _CSS = """
 .cchoice .clet{font-family:"Baloo 2";font-weight:800;font-size:18px;color:var(--ink);width:22px;flex:none;}
 .nchoices{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;}
 .ncard{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 20px;min-width:64px;}
-.ncard .nnum{font-family:"Baloo 2";font-weight:800;font-size:34px;color:var(--ink);line-height:1;}
+.ncard .nnum{font-family:"Baloo 2";font-weight:800;font-size:40px;color:var(--ink);line-height:1;}
 .ncard .nlet{font-family:"Baloo 2";font-weight:800;font-size:12px;color:var(--muted);margin-top:4px;}
 .ochoices{display:grid;gap:7px;}
 .ochoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:7px 12px;}
@@ -892,8 +892,8 @@ _CSS = """
 .phase-body{padding-left:14px;}.example,.prob{padding:8px 12px;}.modelsteps{padding:8px 12px;}
 .grid{gap:9px;}.drawbox{min-height:56px;}
 /* Kinder count-match: keep the objects + choice frames LARGE for little kids. */
-.cobjs{padding:4px 0 8px;}.cobjs svg{max-height:1.5in;}
-.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:58px;width:auto;}
+.cobjs{padding:4px 0 8px;}.cobjs svg{max-height:2in;}
+.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:72px;width:auto;}
 .citem{padding:10px 12px;}.cq{font-size:14px;margin:0 0 6px;}.cnote{margin:2px 0 6px;}
 .nchoices .ncard{padding:4px 12px;min-width:48px;}
 .wrap{padding-bottom:0;}@page{margin:1cm;}}
@@ -906,8 +906,8 @@ body{font-size:11pt;}
 .phase,.day,.mslabel,.practicelabel{break-after:avoid;}.day{break-inside:avoid;}
 .pbreak{break-before:page;page-break-before:always;}
 .example svg,.prob svg,.modelsteps svg,.cobjs svg,.drawbox svg{max-height:2.3in;width:auto;}
-.cobjs{padding:4px 0 8px;}.cobjs svg{max-height:1.5in;}
-.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:58px;width:auto;}
+.cobjs{padding:4px 0 8px;}.cobjs svg{max-height:2in;}
+.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:72px;width:auto;}
 .citem{padding:10px 12px;}.cq{font-size:14px;margin:0 0 6px;}.cnote{margin:2px 0 6px;}
 .nchoices .ncard{padding:6px 16px;min-width:58px;}
 @page{size:Letter;margin:1cm;}
