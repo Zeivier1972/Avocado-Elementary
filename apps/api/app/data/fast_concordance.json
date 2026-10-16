@@ -1,0 +1,13 @@
+{
+  "_note": "M-DCPS concordance tables: convert an i-Ready Math (grades 3-5) or STAR Math (grades K-2) scale score to its FAST achievement level (1-5). MATH only. Each grade lists [min_scale_inclusive, level] thresholds for levels 2-5; a score below the first threshold is Level 1. Source: district i-Ready/STAR-to-FAST alignment charts.",
+  "IREADY": {
+    "3": [[428, 2], [447, 3], [464, 4], [492, 5]],
+    "4": [[450, 2], [467, 3], [481, 4], [505, 5]],
+    "5": [[465, 2], [484, 3], [499, 4], [517, 5]]
+  },
+  "STAR": {
+    "K": [[751, 2], [794, 3], [828, 4], [862, 5]],
+    "1": [[821, 2], [862, 3], [894, 4], [923, 5]],
+    "2": [[889, 2], [920, 3], [954, 4], [993, 5]]
+  }
+}

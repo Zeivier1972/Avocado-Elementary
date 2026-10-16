@@ -1,0 +1,234 @@
+{
+  "title": "Framework of Effective Instruction",
+  "source": "Miami-Dade County Public Schools",
+  "intro": "Six interdependent components of effective teaching. Used as the coaching lens: each week leads with one component so growth is focused, cumulative, and visible.",
+  "components": [
+    {
+      "key": "instructional_planning",
+      "name": "Instructional Planning",
+      "essence": "Great teaching is designed before it is delivered. Planning is where standards become a coherent, rigorous, learner-ready sequence.",
+      "district_lookfors": [
+        "Use both formative and summative student learning data to guide planning",
+        "Develop plans that are clear, logical, sequential, and aligned to standards-based learning",
+        "Plan instruction effectively for content mastery, pacing, and transitions",
+        "Identify and plan for the instructional and developmental needs of all learners",
+        "Gather, evaluate, and/or create appropriate instructional materials"
+      ],
+      "in_math": "Plans start from the B.E.S.T. benchmark and its ALDs — what a Level 3 actually looks like — then build backward: the worked example, the CPA progression (concrete → pictorial → abstract), the anticipated misconceptions, and the exit ticket that proves mastery. The lesson is scripted enough to deliver and flexible enough to adjust.",
+      "coach_lookfors": [
+        "The learning goal is the benchmark in student-friendly language, not the activity",
+        "Success criteria are observable and tied to the exit ticket",
+        "Anticipated misconceptions are named before the lesson, with a planned fix",
+        "The CPA sequence and the specific problems are chosen on purpose (not random numbers)",
+        "Differentiation is planned up front for ELL/ESE and for above-grade learners"
+      ],
+      "coaching_questions": [
+        "What does a Level 3 response look like for this benchmark — can you show me one?",
+        "Where in this lesson do students move from concrete to pictorial to abstract?",
+        "What's the one misconception you're most planning for, and how will you catch it?",
+        "How will you know, by the end of the period, who mastered it?"
+      ],
+      "growth_moves": [
+        "Co-plan one lesson backward from the exit ticket and the ALD Level-3 example",
+        "Use the Collaborative Planning Guide + one-pager as the plan-of-record for the week",
+        "Build a 'misconception + fix' column into every lesson and rehearse the fix aloud"
+      ],
+      "pitfalls": [
+        "Planning activities instead of planning for learning (fun ≠ rigorous)",
+        "Same numbers/problem reused across the lesson so practice isn't really new",
+        "Differentiation added as an afterthought instead of designed in"
+      ],
+      "connects_to": "ACES gradual-release, CPA model, ALDs, pacing guide, the Collaborative Planning Guide"
+    },
+    {
+      "key": "instructional_delivery",
+      "name": "Instructional Delivery",
+      "essence": "The moment of teaching: clear, explicit, sequenced content with the right questions at the right time, adjusted live to what students show.",
+      "district_lookfors": [
+        "Demonstrate current knowledge of content in a sequential manner",
+        "Use multiple levels of questions, make necessary adjustments",
+        "Connect students' knowledge, experiences, and interests to learning goals",
+        "Present lessons clearly and skillfully use explicit instruction",
+        "Use appropriate literacy strategies to build academic vocabulary",
+        "Use technology to differentiate instruction and enhance learning",
+        "Provide ongoing, timely, and specific feedback to students"
+      ],
+      "in_math": "The teacher models thinking out loud (Assemble/I Do), releases responsibility through We Do and Y'all Do, and lands on independent Solo work. Questioning climbs DOK levels — from 'what did you do?' to 'why does that work?' to 'when would that not work?' Vocabulary is precise and required in student talk.",
+      "coach_lookfors": [
+        "A genuine think-aloud during modeling — the teacher shows the reasoning, not just the steps",
+        "Gradual release is real: students do progressively more of the cognitive work",
+        "Questions span DOK 1–3; wait time is used; wrong answers are mined for reasoning",
+        "Academic vocabulary is modeled and expected back from students",
+        "Feedback is specific and actionable ('label your groups' > 'good job')"
+      ],
+      "coaching_questions": [
+        "Where did you make your own math thinking visible today?",
+        "Which question did the most cognitive work — and who was doing the thinking?",
+        "How did you use a wrong answer to teach?",
+        "What feedback did a struggling student get that they could act on immediately?"
+      ],
+      "growth_moves": [
+        "Script the I Do think-aloud word-for-word for one lesson and rehearse it",
+        "Plan 3 questions in advance at DOK 1, 2, and 3 for the key problem",
+        "Practice a 10-second specific-feedback stem the teacher can reuse"
+      ],
+      "pitfalls": [
+        "Modeling that shows steps but hides the thinking",
+        "Gradual release that jumps straight from I Do to independent work",
+        "Praise ('good job') mistaken for feedback"
+      ],
+      "connects_to": "ACES gradual-release (I Do / We Do / Y'all Do / Solo), CUBS, academic vocabulary"
+    },
+    {
+      "key": "engagement",
+      "name": "Engagement",
+      "essence": "Engagement is cognitive, not just compliant. The goal is every student doing the mathematical thinking, talking, and justifying — not just watching.",
+      "district_lookfors": [
+        "Engage students in diverse activity structures",
+        "Use a variety of strategies to engage students in higher-order learning tasks",
+        "Engage students in authentic learning, real-life applications, and interdisciplinary connections",
+        "Use appropriate pace and maximize instructional time for student learning",
+        "Reinforce learning goals throughout the lesson"
+      ],
+      "in_math": "Students explain and justify using math discourse — sentence frames, Rally Coach in pairs, Numbered Heads Together in groups of 4. Manipulatives are in students' hands, not just on the document camera. Tasks connect to real contexts, and the ratio of student-thinking-time to teacher-talk-time is high.",
+      "coach_lookfors": [
+        "A high 'student talk : teacher talk' ratio; every student accountable to explain",
+        "Named collaborative structures with clear roles, not vague 'group work'",
+        "Manipulatives and models in students' hands during We Do / Y'all Do",
+        "Students reference the learning goal and success criteria in their own words",
+        "Pacing keeps momentum — minimal dead time in transitions"
+      ],
+      "coaching_questions": [
+        "What percentage of students explained their reasoning out loud today?",
+        "Which collaborative structure did you use, and what was each partner responsible for?",
+        "Where were students doing the thinking versus receiving it?",
+        "How did you keep the quiet students accountable to talk?"
+      ],
+      "growth_moves": [
+        "Introduce one named structure (Rally Coach) and post partner roles",
+        "Require the lesson's sentence frame in every explanation",
+        "Time teacher-talk vs student-talk for one lesson and set a ratio goal"
+      ],
+      "pitfalls": [
+        "Hands-on that isn't minds-on (busy, not thinking)",
+        "'Group work' with no roles, where one student does it all",
+        "Engagement measured by compliance/behavior instead of thinking"
+      ],
+      "connects_to": "Explore/Y'all Do collaborative structures, sentence frames, MTR practices, manipulatives"
+    },
+    {
+      "key": "knowledge_of_learners",
+      "name": "Knowledge of Learners",
+      "essence": "Teaching the students in front of you — their developmental level, prior knowledge, language, and needs — not a generic class.",
+      "district_lookfors": [
+        "Respond to students' developmental levels",
+        "Present concepts at different levels of complexity",
+        "Provide a range of differentiated activities",
+        "Provide instruction based on students' learning needs"
+      ],
+      "in_math": "The teacher knows each student's entry point from data (FAST level, i-Ready, topic mastery) and plans tiered tasks: scaffolds and sentence frames for ELL, concrete supports for students below grade, and extension/enrichment for Level 4–5. Differentiated Instruction (DI) groups are formed from evidence and revisited.",
+      "coach_lookfors": [
+        "DI groups are based on current data and are fluid, not fixed",
+        "The same benchmark is offered at different complexity levels",
+        "ELL scaffolds (visuals, frames, native-language bridges) are visible",
+        "Above-grade students get depth, not just more of the same",
+        "The teacher can name why each student is in their group"
+      ],
+      "coaching_questions": [
+        "Who are your bubble students (Level 2 → 3), and what's the specific gap?",
+        "How is this task different for your below-grade group and your enrichment group?",
+        "What data formed these DI groups, and when did you last regroup?",
+        "What scaffold does your newest ELL need for this lesson?"
+      ],
+      "growth_moves": [
+        "Use the Teachers hub + FAST analysis to form data-based DI groups",
+        "Plan one benchmark at three complexity levels (access / on-grade / stretch)",
+        "Build a scaffold bank (frames, visuals) for the topic's vocabulary"
+      ],
+      "pitfalls": [
+        "Whole-group everything — teaching to the middle",
+        "DI groups set in September and never revisited",
+        "Enrichment = more worksheets instead of deeper reasoning"
+      ],
+      "connects_to": "Differentiated Instruction groups, ALDs (Level 2–5), FAST/i-Ready data, ELL/ESE scaffolds"
+    },
+    {
+      "key": "learning_environment",
+      "name": "Learning Environment",
+      "essence": "The conditions that make learning possible: routines, safety, high expectations, and a culture where mistakes are part of thinking.",
+      "district_lookfors": [
+        "Establish and maintain effective classroom rules and procedures",
+        "Create an environment that is stimulating, challenging, and fosters intellectual risk-taking",
+        "Organize a safe physical environment conducive to student learning and collaborative work",
+        "Maintain an environment that reflects a culture of inclusivity, equity, and respect",
+        "Promote accountability for learning and hold high academic expectations for all students",
+        "Use verbal, nonverbal, and electronic communication tools to challenge and support students positively",
+        "Encourage students to receive and accept constructive feedback on individual work and behavior"
+      ],
+      "in_math": "A math community where productive struggle is normal and errors are celebrated as thinking. Routines are automatic (materials, transitions, turn-and-talk), the room is set for collaboration, the math word wall and anchor charts are used, and expectations are high for every learner — including ELL and ESE.",
+      "coach_lookfors": [
+        "Routines run without the teacher — transitions are fast and calm",
+        "Mistakes are treated as learning ('great error — let's use it')",
+        "Anchor charts / word wall are current and referenced by students",
+        "The room is arranged for partner and group work",
+        "High expectations are voiced for every group, not just the top"
+      ],
+      "coaching_questions": [
+        "What routine, if it ran itself, would give you back the most teaching time?",
+        "How do students in this room react to being wrong?",
+        "Which anchor chart did students actually use today?",
+        "Where did you communicate a high expectation to a struggling student?"
+      ],
+      "growth_moves": [
+        "Tighten one transition to a timed, practiced routine",
+        "Adopt a visible 'mistakes are thinking' norm and model it",
+        "Co-build one anchor chart students help create and reference"
+      ],
+      "pitfalls": [
+        "Quiet compliance mistaken for a strong environment",
+        "Anchor charts as decoration no one uses",
+        "Lower expectations quietly set for ELL/ESE students"
+      ],
+      "connects_to": "Math discourse norms, MTR practices, collaborative structures, productive struggle"
+    },
+    {
+      "key": "assessment",
+      "name": "Assessment",
+      "essence": "Assessment is a compass, not a verdict — the constant read of what students know, used to decide what happens next.",
+      "district_lookfors": [
+        "Use local and state summative assessment data to design instruction that meets students' needs",
+        "Use pre-assessment data, formative and summative assessments to inform instruction",
+        "Use formative assessments to adjust instruction for re-teaching, remediation, and enrichment",
+        "Help students understand assessment criteria, monitor, and reflect on their work",
+        "Maintain sufficient assessment data to support accurate reporting of student progress",
+        "Align student assessments to learning goals and standards",
+        "Provide timely and specific feedback to students, parents, and stakeholders"
+      ],
+      "in_math": "Checks for understanding happen all lesson (mini-whiteboards, targeted questions, exit tickets), and the data actually changes tomorrow's lesson. Students know the success criteria and track their own growth. FAST, i-Ready, and topic assessments feed the reteach/enrich cycle and the DI groups — every data point points at the goal (Level 3+).",
+      "coach_lookfors": [
+        "Frequent checks for understanding that the teacher acts on in the moment",
+        "The exit ticket is aligned to the goal and scored the same day",
+        "Data visibly drives the next lesson and the DI groups",
+        "Students know their target and can talk about their own progress",
+        "Feedback is timely and specific, not just a grade"
+      ],
+      "coaching_questions": [
+        "What did today's exit ticket tell you, and what changes tomorrow because of it?",
+        "Which students do you need to pull tomorrow, and for exactly what?",
+        "How do students know whether they hit the success criteria?",
+        "Where did a formative check make you change course mid-lesson?"
+      ],
+      "growth_moves": [
+        "Make the exit ticket match the ALD Level-3 example, scored same-day",
+        "Set up a simple reteach loop: check → sort → small-group tomorrow",
+        "Start student data chats so learners own their FAST/topic growth"
+      ],
+      "pitfalls": [
+        "Collecting data that never changes instruction",
+        "Exit tickets that don't match the day's goal",
+        "Grades in place of specific, usable feedback"
+      ],
+      "connects_to": "Exit tickets, FAST/i-Ready/topic assessments, DI grouping, the school goal (Level 3+)"
+    }
+  ]
+}
