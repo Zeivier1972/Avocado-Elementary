@@ -56,12 +56,14 @@ def _ten_frame(n: int, filled=True) -> str:
 
 
 def _five_frame(n: int) -> str:
-    """A FIVE-frame (a row of 5 cells) with red counters — the exact Kinder
-    representation on the Topic test (count to 5). Numbers 6-10 use two rows of
-    5. Kids count by ONES; there is no grouping by ten."""
+    """A TEN-frame (two rows of 5 cells) with red counters — the exact Kinder
+    representation on the Topic test. ALWAYS 2 rows regardless of the count so
+    every frame is the same size (3 counters and 8 counters look identical in
+    footprint), which keeps the answer choices from confusing little kids. Kids
+    count by ONES; there is no grouping by ten."""
     n = max(0, min(10, n))
-    rows = 1 if n <= 5 else 2
-    cw, ch = 64, 68
+    rows = 2  # ALWAYS a full ten-frame (2 rows of 5) so every frame is the SAME
+    cw, ch = 64, 68  # size regardless of the count — never bigger/smaller item to item
     W, H = 5 * cw + 2, rows * ch + 2
     parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
              f'aria-label="five frame showing {n}">']
@@ -159,20 +161,42 @@ def _glyph(kind: str) -> str:
     return g
 
 
+# The true drawn extent (x0,y0,x1,y1) of each glyph inside its 48x48 box. Glyphs
+# differ in shape (a sun fills the box; a fish is small and flat), so without
+# this a "count the suns" item would show bigger art than "count the fish". We
+# scale EVERY object to the same target size, so all objects look identical in
+# size across every question — one less thing to confuse a kindergartener.
+_GLYPH_BBOX = {
+    "sun": (2, 2, 46, 46), "star": (4, 4, 44, 42), "apple": (12, 8, 36, 44),
+    "fish": (7, 15, 46, 33), "flower": (6, 6, 42, 42), "balloon": (11, 4, 37, 46),
+    "sailboat": (8, 6, 40, 40), "butterflie": (6, 9, 42, 39),
+    "beach ball": (9, 9, 39, 39), "turtle": (9, 16, 43, 36), "frog": (9, 8, 39, 41),
+}
+
+
 def _object_row(kind: str, n: int) -> str:
-    """n object glyphs in a row (wraps at 5), for the 'count the ___' prompt."""
+    """n object glyphs in a row (wraps at 5), for the 'count the ___' prompt.
+    Every glyph is scaled to the SAME visual size (its longer side = target),
+    centered in its cell, so objects never look bigger or smaller item to item."""
     n = max(0, min(10, n))
     per = 5
     rows = max(1, (n + per - 1) // per)
     box = 92
-    gs = (box - 6) / 48.0  # scale the 48px glyph up to fill the larger cell
+    target = box - 16  # uniform drawn size for every object, centered in the cell
+    key = (kind or "").rstrip("s").lower()
+    bx0, by0, bx1, by1 = _GLYPH_BBOX.get(key, (2, 2, 46, 46))
+    gw, gh = max(1, bx1 - bx0), max(1, by1 - by0)
+    s = target / max(gw, gh)
     W, H = per * box, rows * box
     parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img"'
              f' aria-label="{n} {_esc(kind)}">']
     for i in range(n):
-        x = (i % per) * box + 3
-        y = (i // per) * box + 3
-        parts.append(f'<g transform="translate({x},{y}) scale({gs:.3f})">{_glyph(kind)}</g>')
+        cx0 = (i % per) * box
+        cy0 = (i // per) * box
+        tx = cx0 + (box - gw * s) / 2 - bx0 * s
+        ty = cy0 + (box - gh * s) / 2 - by0 * s
+        parts.append(f'<g transform="translate({tx:.1f},{ty:.1f}) scale({s:.3f})">'
+                     f'{_glyph(kind)}</g>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -868,8 +892,10 @@ _CSS = """
 .cchoice svg{max-width:100%;height:auto;}
 .cchoice .clet{font-family:"Baloo 2";font-weight:800;font-size:18px;color:var(--ink);width:22px;flex:none;}
 .nchoices{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;}
-.ncard{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 20px;min-width:64px;}
-.ncard .nnum{font-family:"Baloo 2";font-weight:800;font-size:40px;color:var(--ink);line-height:1;}
+/* Fixed width (not min-width) so every numeral card is the SAME size — a "10"
+   card is never wider than a "5" card, so the numbers never look different. */
+.ncard{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;padding:12px 8px;width:96px;}
+.ncard .nnum{font-family:"Baloo 2";font-weight:800;font-size:44px;color:var(--ink);line-height:1;}
 .ncard .nlet{font-family:"Baloo 2";font-weight:800;font-size:12px;color:var(--muted);margin-top:4px;}
 .ochoices{display:grid;gap:7px;}
 .ochoice{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:7px 12px;}
@@ -893,9 +919,9 @@ _CSS = """
 .grid{gap:9px;}.drawbox{min-height:56px;}
 /* Kinder count-match: keep the objects + choice frames LARGE for little kids. */
 .cobjs{padding:4px 0 8px;}.cobjs svg{max-height:2in;}
-.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:72px;width:auto;}
+.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:96px;width:auto;}
 .citem{padding:10px 12px;}.cq{font-size:14px;margin:0 0 6px;}.cnote{margin:2px 0 6px;}
-.nchoices .ncard{padding:4px 12px;min-width:48px;}
+.nchoices .ncard{padding:8px 8px;width:84px;}
 .wrap{padding-bottom:0;}@page{margin:1cm;}}
 """
 # For PDF rendering (WeasyPrint) the same rules apply without @media print.
@@ -907,9 +933,9 @@ body{font-size:11pt;}
 .pbreak{break-before:page;page-break-before:always;}
 .example svg,.prob svg,.modelsteps svg,.cobjs svg,.drawbox svg{max-height:2.3in;width:auto;}
 .cobjs{padding:4px 0 8px;}.cobjs svg{max-height:2in;}
-.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:72px;width:auto;}
+.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:96px;width:auto;}
 .citem{padding:10px 12px;}.cq{font-size:14px;margin:0 0 6px;}.cnote{margin:2px 0 6px;}
-.nchoices .ncard{padding:6px 16px;min-width:58px;}
+.nchoices .ncard{padding:8px 8px;width:84px;}
 @page{size:Letter;margin:1cm;}
 body{background:#fff;}
 """
