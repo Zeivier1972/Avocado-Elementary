@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # samples). ~5x cheaper than Sonnet; the scripted lesson detail still uses
     # ai_model. Override with AI_MODEL_LIGHT.
     ai_model_light: str = "claude-haiku-4-5"
+    # Model used to READ the test images (vision). Defaults to a vision-capable
+    # model so that even if ai_model is set to something that can't see images,
+    # reading the test figures still works. Override with AI_MODEL_VISION.
+    ai_model_vision: str = "claude-sonnet-5"
 
     @property
     def sqlalchemy_url(self) -> str:

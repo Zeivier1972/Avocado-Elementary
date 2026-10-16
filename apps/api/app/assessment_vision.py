@@ -124,20 +124,36 @@ def enrich_questions_with_vision(data: bytes, items: list | None = None) -> dict
         import anthropic
     except Exception:
         return {}
+    content: list = [
+        {"type": "image",
+         "source": {"type": "base64", "media_type": "image/png",
+                    "data": base64.b64encode(png).decode("ascii")}}
+        for png in images
+    ]
+    content.append({"type": "text", "text": _prompt(positions, standards)})
     try:
         client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0,
                                      max_retries=2)
-        content: list = [
-            {"type": "image",
-             "source": {"type": "base64", "media_type": "image/png",
-                        "data": base64.b64encode(png).decode("ascii")}}
-            for png in images
-        ]
-        content.append({"type": "text", "text": _prompt(positions, standards)})
-        msg = client.messages.create(
-            model=settings.ai_model, max_tokens=6000, system=_SYSTEM,
-            messages=[{"role": "user", "content": content}])
     except Exception:
+        return {}
+    # Try the configured model first; if it can't read images (or otherwise
+    # errors), fall back to a known vision-capable model so reading the test
+    # figures still works regardless of how AI_MODEL is set. De-duplicated and
+    # order-preserving.
+    models = list(dict.fromkeys(
+        m for m in (settings.ai_model_vision, settings.ai_model,
+                    "claude-sonnet-5") if m))
+    msg = None
+    for mdl in models:
+        try:
+            msg = client.messages.create(
+                model=mdl, max_tokens=6000, system=_SYSTEM,
+                messages=[{"role": "user", "content": content}])
+            break
+        except Exception:
+            msg = None
+            continue
+    if msg is None:
         return {}
     text = "".join(getattr(b, "text", "") for b in msg.content
                    if getattr(b, "type", "") == "text").strip()
