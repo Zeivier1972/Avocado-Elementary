@@ -1049,6 +1049,24 @@ def _render_count_match(out: list, packet: dict) -> None:
         cells = " ".join(f'<span><b>{_esc(w)}</b> = {_esc(d)}</span>' for w, d in vocab)
         out.append(f'<div class="cvocab">{cells}</div>')
 
+    # Make the targeting VISIBLE to the teacher: either the exact questions this
+    # packet reteaches, or an honest note that no item-level misses were captured
+    # so it reteaches the whole standard instead of the class's specific misses.
+    missed = packet.get("test_items") or []
+    if missed:
+        qs = " · ".join(f'Q{_esc(m.get("position"))}' for m in missed[:8])
+        out.append('<div class="missed"><b>We are fixing the questions the class '
+                   f'missed most:</b> {qs}. The question types and number range below '
+                   'are built from those exact misses.</div>')
+    elif packet.get("items_captured") == 0:
+        out.append('<div class="missed" style="border-left-color:#E67E22;">'
+                   '<b>Note:</b> no item-level results were found for this class, so '
+                   'this packet reteaches the <b>whole standard</b> rather than the '
+                   'exact questions your class missed. Upload the topic <b>results</b> '
+                   'with each student’s missed question numbers and regenerate — '
+                   'the packet will then lead with the question types and number range '
+                   'your class actually got wrong.</div>')
+
     tiers = packet.get("tiers", []) or []
     tcount = {t.get("tier"): t.get("student_count", 0) for t in tiers}
     total = sum(tcount.values())
