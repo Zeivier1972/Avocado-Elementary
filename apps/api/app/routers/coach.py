@@ -2667,10 +2667,29 @@ async def import_assessment(
                  "answer-key PDF (the item/standard/answer table).")
 
     stems: dict = {}
+    vision_count = 0
     if test is not None:
         tb = await test.read()
         if len(tb) <= _MAX_DOC_BYTES:
             stems = parse_test_questions(tb).get("questions", {})
+            # Also LOOK at the test: render each page and let the vision model read
+            # the figures (objects + counts, the numbers, what each choice shows),
+            # so visual items — "which group is greater?" over two piles — carry
+            # their real quantities into DI instead of losing them. Vision wins
+            # over the text-only stem when it has one; text remains the fallback.
+            try:
+                from starlette.concurrency import run_in_threadpool
+                from app.assessment_vision import enrich_questions_with_vision
+                # Vision is a blocking SDK call (up to minutes); run it off the
+                # event loop so the import request doesn't stall the server.
+                seen = await run_in_threadpool(
+                    enrich_questions_with_vision, tb, res["items"])
+                for pos, enriched in seen.items():
+                    if enriched:
+                        stems[pos] = enriched
+                vision_count = len(seen)
+            except Exception:
+                vision_count = 0
 
     # Re-uploading a test with the same Test Id (or name) REFRESHES it in place —
     # we keep the same form row and swap its items — instead of deleting the form.
@@ -2715,7 +2734,8 @@ async def import_assessment(
     audit(db, actor=user, action="import", entity_type="assessment_form",
           entity_id=form.id, purpose="topic_test_blueprint")
     return {"form": _form_summary(db, form),
-            "questions_captured": len(stems)}
+            "questions_captured": len(stems),
+            "questions_seen_with_vision": vision_count}
 
 
 @router.get("/assessments")
