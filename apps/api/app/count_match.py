@@ -162,6 +162,39 @@ def _compare_item(rng: random.Random, ceiling: int) -> dict:
             "answer": "A" if a == win_val else "B"}
 
 
+def _classify_item(rng: random.Random, ceiling: int) -> dict:
+    """MA.K.DP.1.1 — sort/classify. Rotates the Topic-test formats: which picture
+    does NOT belong, which one BELONGS, and sort-and-count a category ("how many
+    are X?"). Answer is the letter of the correct choice."""
+    mode = rng.choice(["odd_out", "belongs", "sort_count", "odd_out", "belongs"])
+    kind_a, kind_b = rng.sample(OBJECTS, 2)
+    if mode == "sort_count":
+        a = rng.randint(2, min(max(2, ceiling), 7))
+        b = rng.randint(1, max(1, min(ceiling, 10 - a)))
+        members = [kind_a] * a + [kind_b] * b
+        rng.shuffle(members)
+        choices, answer = _four_distinct(rng, a, max(ceiling, a))
+        return {"type": "classify", "mode": "sort_count", "members": members,
+                "kind_a": kind_a, "kind_b": kind_b, "choices": choices,
+                "prompt": f"Sort the pictures. How many are {kind_a}?",
+                "answer": answer}
+    maj = rng.randint(4, 6)
+    if mode == "odd_out":
+        members = [kind_a] * maj + [kind_b]
+        prompt = "Choose the picture that does NOT belong in the group."
+        pairs = [(kind_a, False), (kind_b, True)]  # kind_b is the odd one
+    else:  # belongs — the group is all one kind; pick the one that fits
+        members = [kind_a] * maj
+        prompt = "Choose the picture that BELONGS in the group."
+        pairs = [(kind_a, True), (kind_b, False)]
+    rng.shuffle(members)
+    rng.shuffle(pairs)
+    answer = _LETTERS[[correct for _, correct in pairs].index(True)]
+    return {"type": "classify", "mode": mode, "members": members,
+            "choice_kinds": [k for k, _ in pairs], "prompt": prompt,
+            "answer": answer}
+
+
 # type key -> builder
 _BUILDERS = {
     "count_counters": _count_counters_item,
@@ -169,6 +202,7 @@ _BUILDERS = {
     "number_order": _number_order_item,
     "show_set": _show_set_item,
     "compare": _compare_item,
+    "classify": _classify_item,
 }
 
 
@@ -189,8 +223,14 @@ def _templates_for(code: str, description: str) -> tuple:
     # comparing, so detect it before the generic counting fallback.
     compare_kw = ("compare", "greater than", "less than", "equal to", "more than",
                   "fewer", "greater", " less ")
+    # Sort / classify (MA.K.DP.1.1) — group objects into categories, find what does
+    # / doesn't belong, then count the categories. Detect BEFORE compare, because
+    # DP.1.1's text says "compare the categories by counting" yet the skill is
+    # sorting, not greater/less/equal.
+    classify_kw = ("sort", "categor", "classif", "belong", "does not belong")
     is_order = any(k in text for k in strong_order)
     is_count = any(k in text for k in count_kw)
+    is_classify = any(k in text for k in classify_kw)
     is_compare = any(k in text for k in compare_kw)
     # "count OUT that many" (MA.K.NSO.1.2) is the reverse skill: given a number,
     # make/identify the set — a distinct item type from "count a set" (1.1).
@@ -199,6 +239,8 @@ def _templates_for(code: str, description: str) -> tuple:
         return "number_order", ["number_order", "count_counters", "count_numeral"]
     if is_order:
         return "number_order", ["number_order"]
+    if is_classify:                    # sort into categories — classify, not count
+        return "classify", ["classify", "count_numeral"]
     if is_compare:                     # greater / less / equal — compare, not count
         return "compare", ["compare", "count_counters"]
     if is_make_set:
@@ -225,6 +267,9 @@ def _hints_from_missed(missed: list | None) -> tuple:
         if any(k in stem for k in ("order", "forward", "backward", "missing",
                                    "before", "after", "next")):
             types.append("number_order")
+        elif any(k in stem for k in ("belong", "does not belong", "sort",
+                                     "categor", "classif")):
+            types.append("classify")         # "Which does NOT belong?" (DP.1.1)
         elif any(k in stem for k in ("greater than", "less than", "equal to",
                                      "greater", " less ", "more than", "fewer",
                                      "compare")):
@@ -258,7 +303,13 @@ def _day(rng: random.Random, day_no: int, ceiling: int,
                 tk = pool[(day_no + i) % len(pool)]
             items.append(_item(rng, ceiling, tk))
         sections[key] = items
-    return {"day": day_no, "title": "Count, match, and order numbers",
+    title = {
+        "compare": "Compare numbers: greater, less, and equal",
+        "classify": "Sort objects and compare the groups",
+        "number_order": "Count and order numbers",
+        "show_set": "Make and match sets",
+    }.get(primary, "Count, match, and order numbers")
+    return {"day": day_no, "title": title,
             "pacing": "I do 5 min · We do 5 min · You do 15 min · Exit 5 min",
             "sections": sections}
 
@@ -269,6 +320,22 @@ def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
     to the more abstract type at the full range; Green adds the hardest applicable
     type / largest range and asks students to reason. Returns
     (tier_ceiling, tier_primary, tier_pool, approach, misconception)."""
+    # "Sort into categories" (MA.K.DP.1.1) is its own skill — reteach classifying
+    # (what belongs / doesn't belong, then sort and count), by range + rigor.
+    if primary == "classify":
+        low = max(3, min(ceiling, 6))
+        if tier_name == "Intensive":          # Red — sort by one clear attribute
+            return (low, "classify", ["classify"],
+                    "Sort by ONE thing you can see (same kind / not that kind): point to each picture, say which group it goes in, then find the one that does not match.",
+                    "Sorts by the wrong feature (color instead of kind), so the odd one is missed.")
+        if tier_name == "Cusp":               # Yellow — sort, then count each group
+            return (ceiling, "classify", ["classify", "count_numeral"],
+                    "Sort the set, then COUNT how many are in each category and name the one that does / doesn't belong.",
+                    "Finds the odd one but miscounts the categories.")
+        return (ceiling, "classify", ["classify", "count_numeral"],  # Green — compare
+                "Sort, count, and COMPARE the categories (which has more), and explain the rule you used to sort.",
+                "Sorts correctly but struggles to compare the categories by count.")
+
     # "Compare two groups" (MA.K.NSO.1.4) is its own skill — reteach greater / less
     # / equal with one-to-one matching, differentiated by range + rigor.
     if primary == "compare":
@@ -419,5 +486,6 @@ def is_count_match_standard(code: str, description: str, grade: str) -> bool:
     text = f"{code} {description}".lower()
     keys = ("count", "quantit", "how many", "number of objects", "represent",
             "cardinal", "order", "sequence", "forward", "backward", "match",
-            "before", "after", "compare", "greater", "less than", "equal to")
+            "before", "after", "compare", "greater", "less than", "equal to",
+            "sort", "categor", "classif", "belong")
     return any(k in text for k in keys)

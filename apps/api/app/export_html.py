@@ -232,6 +232,34 @@ def _compare_groups_html(k1: str, n1: int, k2: str, n2: int, labels: bool) -> st
             f'{"".join(rows)}</div>')
 
 
+def _mixed_row(kinds: list) -> str:
+    """A row of DIFFERENT objects (wraps at 5) for a classify item — each glyph
+    scaled to the same target size and centered in its cell, like _object_row but
+    one kind per position."""
+    kinds = [k for k in (kinds or []) if k][:10]
+    per = 5
+    n = len(kinds)
+    rows = max(1, (n + per - 1) // per)
+    box = 92
+    target = box - 16
+    W, H = per * box, rows * box
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img"'
+             f' aria-label="group of {n} objects">']
+    for i, kind in enumerate(kinds):
+        key = (kind or "").rstrip("s").lower()
+        bx0, by0, bx1, by1 = _GLYPH_BBOX.get(key, (2, 2, 46, 46))
+        gw, gh = max(1, bx1 - bx0), max(1, by1 - by0)
+        s = target / max(gw, gh)
+        cx0 = (i % per) * box
+        cy0 = (i // per) * box
+        tx = cx0 + (box - gw * s) / 2 - bx0 * s
+        ty = cy0 + (box - gh * s) / 2 - by0 * s
+        parts.append(f'<g transform="translate({tx:.1f},{ty:.1f}) scale({s:.3f})">'
+                     f'{_glyph(kind)}</g>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 def _group_choices(k1: str, k2: str) -> str:
     """Pick-a-group answer: A = one object of group 1, B = one of group 2."""
     cells = []
@@ -344,6 +372,19 @@ def _count_item_html(item: dict, show_answer: bool = False, num: str = "") -> st
             '<div class="citem">'
             f'<p class="cq">{lead}{_esc(item.get("prompt"))}</p>'
             f'{groups}{choices}{key}</div>')
+    if t == "classify":
+        # MA.K.DP.1.1 — sort / classify. Show the group of objects, then the
+        # choices: two objects (belongs / doesn't belong) or numerals (sort+count).
+        group = f'<div class="cobjs">{_mixed_row(item.get("members") or [])}</div>'
+        if item.get("mode") == "sort_count":
+            choices = _numeral_choices(item.get("choices") or [])
+        else:
+            ck = item.get("choice_kinds") or []
+            choices = _group_choices(ck[0], ck[1]) if len(ck) >= 2 else ""
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}{_esc(item.get("prompt"))}</p>'
+            f'{group}{choices}{key}</div>')
     # default: count -> match the set of counters (five-frames)
     return (
         '<div class="citem">'
@@ -1100,9 +1141,9 @@ def _extra_review_html(packet: dict) -> str:
 
 _CM_SECTIONS = [
     ("i_do", "I DO — Teacher Models",
-     "Touch each object once, count aloud, say the total, then check the counters."),
+     "Work through one together: look carefully, think aloud, then check the answer."),
     ("we_do", "WE DO — Guided Practice",
-     "Complete together. Ask: Which counter set has the same amount?"),
+     "Complete together. Ask: How do we know this answer is right?"),
     ("cfu", "CHECK FOR UNDERSTANDING", "Student answers with minimal prompting."),
     ("you_do", "YOU DO — Work independently",
      "Each question and all answer choices stay together."),
