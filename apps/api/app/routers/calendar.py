@@ -89,6 +89,33 @@ def generate_calendar(
     n = 0
     for t in _dedupe_topics(topics):
         lessons = t.lessons or []
+        # Roadmap-dated topic: place every day on its REAL district date (and
+        # kind), honoring the uploaded Instructional Framework exactly instead of
+        # re-sequencing weekdays from the start date.
+        dated = [L for L in lessons if L.get("date")]
+        if dated:
+            last = d
+            for L in sorted(dated, key=lambda x: x["date"]):
+                try:
+                    ld = date.fromisoformat(L["date"])
+                except (ValueError, TypeError):
+                    continue
+                k = (L.get("kind") or "lesson").lower()
+                entry_kind = ("assessment" if k == "assessment"
+                              else "review" if k == "review" else "lesson")
+                note = "Prerequisite / Launch the Chapter" if k == "prerequisite" else ""
+                db.add(CalendarEntry(
+                    tenant_id=user.tenant_id, grade_level=grade, subject=subject,
+                    date=ld.isoformat(), topic_code=t.topic_code,
+                    lesson_code=L.get("code", ""),
+                    title=L.get("title", "") or f"{t.topic_code} Day",
+                    kind=entry_kind, note=note))
+                n += 1
+                if ld > last:
+                    last = ld
+            # Continue any later (non-dated) topics after this one's last day.
+            d = _next(_weekday(last))
+            continue
         if not lessons:
             # No lesson breakdown yet — reserve the topic's instructional span so
             # the calendar reflects real pacing. Estimate days from the time frame

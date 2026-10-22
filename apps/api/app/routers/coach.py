@@ -134,7 +134,11 @@ def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
             guide.setdefault("quick_facts", {})["assessment_date"] = an
         if topic_id and guide.get("lessons"):
             topic = db.get(PacingTopic, topic_id)
-            if topic:
+            # Don't overwrite a roadmap-parsed lesson list: it carries the real
+            # per-day DATES the calendar needs. Only fill lessons from the AI when
+            # the topic has none with dates (a plain pacing guide, not a roadmap).
+            if topic and not any((L or {}).get("date")
+                                 for L in (topic.lessons or [])):
                 topic.lessons = _lesson_stubs(guide)
                 db.add(topic)
         rec = db.get(SavedGuide, guide_id)
@@ -732,6 +736,23 @@ async def pacing_from_document(
             code = name = _re.sub(r"[_\s]+", " ", label).strip()[:40]
     benchmarks = list(dict.fromkeys(_re.findall(r"MA\.\w+\.\w+\.\d+\.\d+", text)))
 
+    # If this is an M-DCPS Academic Instructional Roadmap, parse its day-by-day
+    # table deterministically — the real lessons, their standards, AND the exact
+    # calendar dates — so the lessons and calendar don't depend on the model
+    # re-reading flattened table text. Roadmap values are authoritative here.
+    from app.roadmap import parse_roadmap
+    roadmap = parse_roadmap(text)
+    if roadmap:
+        if roadmap.get("grade"):
+            grade_level = roadmap["grade"]
+        if roadmap.get("topic_code"):
+            code = roadmap["topic_code"]
+            name = roadmap.get("topic_name") or name
+        rb = list(dict.fromkeys(
+            b for d in roadmap["days"] for b in d.get("benchmarks", [])))
+        if rb:
+            benchmarks = rb
+
     # Reuse an existing topic with the SAME grade+subject+code instead of adding a
     # duplicate — re-uploading a topic's pacing guide should refresh it in place,
     # not schedule it onto the calendar twice.
@@ -760,6 +781,20 @@ async def pacing_from_document(
             week_order=((last.week_order + 1) if last else 0),
             source="Uploaded pacing guide", lessons=[])
         db.add(topic)
+        db.flush()
+
+    # Seed the topic's lessons + pacing window straight from the roadmap (with the
+    # real dates and kinds), so the calendar can place each day on its true date
+    # and the lesson list is correct even before/without the AI guide.
+    if roadmap and roadmap.get("days"):
+        topic.lessons = [
+            {"code": d["code"], "title": d["title"], "benchmarks": d["benchmarks"],
+             "focus": d.get("focus", ""), "date": d["date"], "kind": d["kind"]}
+            for d in roadmap["days"]
+        ]
+        if roadmap.get("pacing_start") and roadmap.get("pacing_end"):
+            topic.time_frame = (f'{roadmap["pacing_start"]} – '
+                                f'{roadmap["pacing_end"]}')
         db.flush()
 
     doc = PlanningDocument(
