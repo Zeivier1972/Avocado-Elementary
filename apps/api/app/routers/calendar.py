@@ -93,6 +93,15 @@ def generate_calendar(
         # kind), honoring the uploaded Instructional Framework exactly instead of
         # re-sequencing weekdays from the start date.
         dated = [L for L in lessons if L.get("date")]
+        # Self-heal: a topic uploaded before roadmap parsing (or whose lessons
+        # have no dates) but that HAS a stored roadmap document — re-parse the
+        # document now so the real dates are used without a re-upload.
+        if not dated:
+            healed = _roadmap_days_for_topic(db, user, t)
+            if healed:
+                t.lessons = healed
+                db.add(t)
+                dated = healed
         if dated:
             last = d
             for L in sorted(dated, key=lambda x: x["date"]):
@@ -180,6 +189,34 @@ def generate_calendar(
           purpose="pacing_calendar")
     return {"created": n, "topics": len(topics),
             "start": body.start_date, "through": d.isoformat()}
+
+
+def _roadmap_days_for_topic(db, user, t) -> list | None:
+    """If this topic has an uploaded M-DCPS roadmap document, parse it and return
+    its dated day list (as lesson dicts). Lets the calendar pick up the real
+    dates for topics uploaded before roadmap parsing existed, with no re-upload."""
+    from app.doc_text import extract_document_text
+    from app.roadmap import parse_roadmap
+    doc = (db.query(PlanningDocument)
+           .filter(PlanningDocument.tenant_id == user.tenant_id,
+                   PlanningDocument.grade_level == t.grade_level,
+                   PlanningDocument.subject == t.subject,
+                   PlanningDocument.topic_code == t.topic_code)
+           .order_by(PlanningDocument.created_at.desc()).first())
+    if not doc or not doc.data:
+        return None
+    try:
+        text, _ = extract_document_text(doc.filename, doc.content_type, doc.data)
+    except Exception:
+        return None
+    r = parse_roadmap(text or "")
+    if not r or not r.get("days"):
+        return None
+    return [
+        {"code": d["code"], "title": d["title"], "benchmarks": d["benchmarks"],
+         "focus": d.get("focus", ""), "date": d["date"], "kind": d["kind"]}
+        for d in r["days"]
+    ]
 
 
 def _place_topic(db, user, grade, subject, t, d):
