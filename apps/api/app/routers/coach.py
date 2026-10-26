@@ -123,8 +123,39 @@ def _run_pacing_guide_job(guide_id: str, text: str, benchmark_codes: list,
     db = SessionLocal()
     try:
         standards = _resolve_standards(db, benchmark_codes) if benchmark_codes else []
+        # Seed with lessons already parsed from the document (roadmap days), so a
+        # long/multi-file upload can't collapse the guide to a plain template just
+        # because the skeleton call struggled — the lesson LIST is guaranteed.
+        seed_lessons = []
+        if topic_id:
+            _tp = db.get(PacingTopic, topic_id)
+            if _tp and _tp.lessons:
+                seed_lessons = [
+                    {"code": L.get("code", ""), "title": L.get("title", ""),
+                     "benchmarks": L.get("benchmarks", []),
+                     "focus": L.get("focus", "")}
+                    for L in _tp.lessons
+                    if (L or {}).get("code") or (L or {}).get("kind") == "lesson"
+                ]
+        if not seed_lessons:
+            # Fallback: parse a roadmap straight out of the generation text (works
+            # for a combined 'all files' upload whose AIR carries the day table, and
+            # for topics uploaded before roadmap parsing existed).
+            try:
+                from app.roadmap import parse_roadmap
+                _r = parse_roadmap(text)
+                if _r and _r.get("days"):
+                    seed_lessons = [
+                        {"code": d["code"], "title": d["title"],
+                         "benchmarks": d["benchmarks"], "focus": d.get("focus", "")}
+                        for d in _r["days"]
+                        if d.get("code") or d.get("kind") == "lesson"
+                    ]
+            except Exception:
+                seed_lessons = seed_lessons or []
         guide = generate_guide_from_pacing(
-            text, standards, grade_level, subject or "MATH", topic_name, mode=mode)
+            text, standards, grade_level, subject or "MATH", topic_name, mode=mode,
+            seed_lessons=seed_lessons)
         # Record WHAT this guide was built from so a mismatch (wrong file/topic)
         # is visible on the guide itself.
         guide["source_document"] = source_name

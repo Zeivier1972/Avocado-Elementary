@@ -239,7 +239,8 @@ def _lessons_from_text(pacing_text: str, topic_name: str,
 
 def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
                                grade: str, subject: str, topic_name: str,
-                               mode: str = "full") -> dict:
+                               mode: str = "full",
+                               seed_lessons: list | None = None) -> dict:
     """Generate a Collaborative Planning Guide grounded in the coach's UPLOADED
     pacing guide text (plus the B1G-M benchmark detail + FLDOE ALDs).
 
@@ -272,10 +273,15 @@ def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
     }
     want_full = (mode or "full").lower() != "one_pager"
     if want_full and settings.ai_provider == "anthropic" and settings.ai_api_key:
+        # Seed the lesson list with any lessons already parsed from the document
+        # (e.g. a roadmap's Instructional Framework). _llm_lessons uses it as the
+        # skeleton fallback, so the guide can't collapse to a full template just
+        # because the cheap skeleton call struggled on a long, multi-file upload.
         lessons, err = _llm_lessons(
             {"grade_level": grade, "subject": subject, "topic_code": "",
              "name": topic_name, "learning_target": "", "success_criteria": [],
-             "vocabulary": [], "mtr_practices": [], "materials": [], "lessons": []},
+             "vocabulary": [], "mtr_practices": [], "materials": [],
+             "lessons": seed_lessons or []},
             standards, pacing_text=pacing_text)
         if lessons:
             for L in lessons:
@@ -1997,7 +2003,10 @@ def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = N
         std_ctx = _std_context(standards)
         std_by_code = {s["code"]: s for s in standards}
 
-        skeleton = _lesson_skeleton(client, topic, std_ctx, pacing_text)
+        try:
+            skeleton = _lesson_skeleton(client, topic, std_ctx, pacing_text)
+        except Exception:
+            skeleton = []  # a failed skeleton call must not sink the whole guide
         if not skeleton:
             skeleton = [
                 {"code": L.get("code", ""), "title": L.get("title", ""),
