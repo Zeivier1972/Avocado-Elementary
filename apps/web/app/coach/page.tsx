@@ -241,7 +241,7 @@ export default function CoachPage() {
           guideMode === "one_pager"
             ? "Building the one-pager + lesson outline (low cost)…"
             : guideMode === "brief"
-            ? "Writing the short guide — the key info per lesson…"
+            ? "Writing the short guide — full lesson plans, trimmed extras…"
             : undefined
         );
       else if (r.guide) setGuide(r.guide);
@@ -268,7 +268,7 @@ export default function CoachPage() {
           guideMode === "one_pager"
             ? "Building the one-pager + lesson outline (low cost)…"
             : guideMode === "brief"
-            ? "Writing the short guide — the key info per lesson…"
+            ? "Writing the short guide — full lesson plans, trimmed extras…"
             : undefined
         );
       else if (r.guide) setGuide(r.guide);
@@ -782,7 +782,7 @@ export default function CoachPage() {
           </div>
           <span className="text-xs text-gray-500 w-full sm:w-auto">
             {guideMode === "brief"
-              ? "Short guide — the key information per lesson (goal, vocabulary, the main teaching moves, a common misconception + fix, book pages, exit ticket). ~1 page a lesson."
+              ? "Short guide — the SAME full lesson plans (I Do / We Do / You Do, misconceptions, CFU, exit ticket), with the extra reference sections trimmed (ALDs, benchmark clarifications, worked examples, activities)."
               : guideMode === "full"
               ? "Detailed, scripted lesson-by-lesson guide (uses more AI, can run long)."
               : "Coach one-pager + lesson names/outline from your document — skips the long AI write to save money. Switch to Short or Full anytime and regenerate."}

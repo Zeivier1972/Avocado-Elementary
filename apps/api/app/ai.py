@@ -272,24 +272,30 @@ def generate_guide_from_pacing(pacing_text: str, standards: list[dict],
         "from_document": True,
     }
     mode_l = (mode or "full").lower()
-    # SHORT guide: the essentials per lesson (~1 page each), no long ACES scripts.
+    # SHORT guide: the SAME full lesson plans as Full mode (so the lesson plans do
+    # NOT change), with the bulky surrounding reference sections trimmed out —
+    # ALD tables, benchmark clarifications, worked-example blocks and activities.
     if mode_l == "brief" and settings.ai_provider == "anthropic" and settings.ai_api_key:
-        brief_seed = seed_lessons or _lessons_from_text(
-            pacing_text, topic_name, [s["code"] for s in standards])
-        lessons, err = _llm_lessons_brief(
-            standards, brief_seed, grade, subject, topic_name, pacing_text)
+        lessons, err = _llm_lessons(
+            {"grade_level": grade, "subject": subject, "topic_code": "",
+             "name": topic_name, "learning_target": "", "success_criteria": [],
+             "vocabulary": [], "mtr_practices": [], "materials": [],
+             "lessons": seed_lessons or []},
+            standards, pacing_text=pacing_text)
         if lessons:
-            clean = [L for L in lessons if isinstance(L, dict)]
-            for L in clean:
-                L.setdefault("benchmarks", [])
+            for L in lessons:
+                _ensure_lesson_extras(L, [])
+                _short_strip_lesson(L)
+            base["benchmark_clarifications"] = []  # trim the verbose top-level block
             base.update({"generated_by": settings.ai_model, "ai_generated": True,
-                         "ai_status": "ok", "guide_mode": "brief", "lessons": clean,
-                         "note": "Short guide — the key information per lesson. "
-                                 "Regenerate in Full mode for the scripted ACES "
-                                 "detail."})
+                         "ai_status": "ok", "guide_mode": "brief", "lessons": lessons,
+                         "note": "Short guide — the full lesson plans, with the "
+                                 "extra reference sections (ALDs, benchmark "
+                                 "clarifications, worked examples, activities) "
+                                 "trimmed. Switch to Full to include them."})
             return base
         print(f"[guide] SHORT guide fell back — reason: {err}", flush=True)
-        # fall through to the template outline below if the brief call failed.
+        # fall through to the template outline below if generation failed.
 
     want_full = mode_l not in ("one_pager", "brief")
     if want_full and settings.ai_provider == "anthropic" and settings.ai_api_key:
@@ -2009,59 +2015,27 @@ def _lesson_detail(client, topic, std_ctx, batch, pacing_text, max_tokens=20000)
     return _llm_json(client, prompt, system, max_tokens, cache_system=True)
 
 
-_BRIEF_SCHEMA = (
-    '[{"code":"<lesson code e.g. 5.1>","title":"<lesson title>",'
-    '"benchmarks":["MA..."],'
-    '"learning_goal":"one student-friendly I can... statement",'
-    '"vocabulary":["the 2-4 key terms for this lesson"],'
-    '"teaching_strategy":["3-5 SHORT bullets: the key teaching moves / the '
-    'strategy for THIS lesson, with the actual model, numbers or materials"],'
-    '"misconceptions":[{"misconception":"the one most common error",'
-    '"example":"a quick example of that error","fix":"the correction move"}],'
-    '"book_reference":{"lesson":"book lesson number/name","pages":"TE pp. ..."},'
-    '"exit_ticket":{"problem":"one quick check problem","answer":"the answer"}}]'
+# The SHORT guide keeps the full ACES lesson plans but drops these bulky extra
+# sections from each lesson (they stay in Full mode).
+_SHORT_DROP = (
+    "ald", "level3_look_like", "level3_example", "cpa", "activities",
+    "success_criteria", "success_example", "benchmark_clarification",
+    "benchmark_example",
 )
 
 
-def _llm_lessons_brief(standards: list[dict], seed_lessons: list, grade: str,
-                       subject: str, topic_name: str,
-                       pacing_text: str | None = None):
-    """One small call: the SHORT guide — concise essentials per lesson (learning
-    goal, key vocabulary, the key teaching moves, one misconception + fix, book
-    pages, exit ticket) with NO long ACES scripts. Grounded in the lesson list +
-    standards + the uploaded document. Returns (lessons | None, reason)."""
-    try:
-        import anthropic
-    except ImportError:
-        return None, "anthropic SDK not installed"
-    stub = "\n".join(
-        f"- Lesson {L.get('code')}: {L.get('title')} "
-        f"(benchmarks {', '.join(L.get('benchmarks', []))})"
-        for L in (seed_lessons or []) if (L or {}).get("code") or (L or {}).get("title"))
-    if not stub:
-        return None, "no lesson list to summarize"
-    try:
-        client = anthropic.Anthropic(api_key=settings.ai_api_key, timeout=480.0,
-                                     max_retries=2)
-        std_ctx = _std_context(standards)
-        doc_block = (f"\n\nUse the uploaded pacing guide / book — the real lesson "
-                     f"names, page numbers, strategies and examples:\n"
-                     f"{pacing_text.strip()[:120000]}" if pacing_text else "")
-        system = (
-            "You are an elementary math instructional coach writing a SHORT "
-            "planning guide. For EACH lesson give ONLY the essentials a teacher "
-            "needs — no long scripts, no step-by-step ACES. Keep every field tight: "
-            "a sentence or a short bullet. You output ONLY a valid JSON array, no "
-            "prose or fences.\n\n"
-            f"Grade {grade} {subject} — {topic_name}\n"
-            f"Benchmarks (use these):\n{std_ctx}{doc_block}\n\n"
-            f"Return ONLY a JSON array (one object per lesson) matching:\n"
-            f"{_BRIEF_SCHEMA}")
-        prompt = (f"Write the SHORT essentials for EXACTLY these lessons, in "
-                  f"order:\n{stub}")
-        return _llm_json(client, prompt, system, 8000, cache_system=True)
-    except Exception as e:
-        return None, f"{type(e).__name__}: {str(e)[:200]}"
+def _short_strip_lesson(L: dict) -> dict:
+    """Trim a fully-generated lesson down for the SHORT guide: keep the complete
+    lesson plan (ACES I Do / We Do / You Do, misconceptions, CFU, vocabulary,
+    learning goal, exit ticket) and drop the bulky reference sections."""
+    for k in _SHORT_DROP:
+        L.pop(k, None)
+    # Keep just the book lesson + page span, not the long per-part page breakdown.
+    br = L.get("book_reference")
+    if isinstance(br, dict):
+        L["book_reference"] = {"lesson": br.get("lesson", ""),
+                               "pages": br.get("pages", "")}
+    return L
 
 
 def _llm_lessons(topic: dict, standards: list[dict], pacing_text: str | None = None):
