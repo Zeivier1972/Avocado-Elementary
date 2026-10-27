@@ -48,9 +48,11 @@ export default function CoachPage() {
   const [docBusy, setDocBusy] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [savedGuides, setSavedGuides] = useState<any>({});
-  // Full = detailed lesson-by-lesson plans (more AI, more cost). One-pager =
-  // the coach one-pager + lesson outline from the document (low cost).
-  const [guideMode, setGuideMode] = useState<"full" | "one_pager">("full");
+  // Short (default) = the key info per lesson (~1 page each). Full = detailed
+  // scripted lesson-by-lesson plans (more AI, more cost). One-pager = coach
+  // one-pager + lesson outline from the document (lowest cost).
+  const [guideMode, setGuideMode] =
+    useState<"brief" | "full" | "one_pager">("brief");
 
   async function loadGuides(g: string) {
     try {
@@ -238,6 +240,8 @@ export default function CoachPage() {
           r.guide_id,
           guideMode === "one_pager"
             ? "Building the one-pager + lesson outline (low cost)…"
+            : guideMode === "brief"
+            ? "Writing the short guide — the key info per lesson…"
             : undefined
         );
       else if (r.guide) setGuide(r.guide);
@@ -263,6 +267,8 @@ export default function CoachPage() {
           r.guide_id,
           guideMode === "one_pager"
             ? "Building the one-pager + lesson outline (low cost)…"
+            : guideMode === "brief"
+            ? "Writing the short guide — the key info per lesson…"
             : undefined
         );
       else if (r.guide) setGuide(r.guide);
@@ -742,6 +748,17 @@ export default function CoachPage() {
           <div className="flex gap-2">
             <button
               type="button"
+              onClick={() => setGuideMode("brief")}
+              className={`text-sm font-semibold rounded-lg px-3 py-1.5 border transition-colors ${
+                guideMode === "brief"
+                  ? "bg-avocado text-white border-avocado"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              ✅ Short (recommended)
+            </button>
+            <button
+              type="button"
               onClick={() => setGuideMode("full")}
               className={`text-sm font-semibold rounded-lg px-3 py-1.5 border transition-colors ${
                 guideMode === "full"
@@ -764,9 +781,11 @@ export default function CoachPage() {
             </button>
           </div>
           <span className="text-xs text-gray-500 w-full sm:w-auto">
-            {guideMode === "full"
-              ? "Detailed, scripted lesson-by-lesson guide (uses more AI)."
-              : "Coach one-pager + lesson names/outline from your document — skips the long AI write to save money. Lesson plans stay available: switch back to Full anytime and regenerate."}
+            {guideMode === "brief"
+              ? "Short guide — the key information per lesson (goal, vocabulary, the main teaching moves, a common misconception + fix, book pages, exit ticket). ~1 page a lesson."
+              : guideMode === "full"
+              ? "Detailed, scripted lesson-by-lesson guide (uses more AI, can run long)."
+              : "Coach one-pager + lesson names/outline from your document — skips the long AI write to save money. Switch to Short or Full anytime and regenerate."}
           </span>
         </div>
 

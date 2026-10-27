@@ -226,7 +226,10 @@ export const api = {
     req("/coach/documents", { method: "POST", body: form }),
   deleteDocument: (id: string) =>
     req(`/coach/documents/${id}`, { method: "DELETE" }),
-  generateGuideFromDoc: (id: string, mode: "full" | "one_pager" = "full") =>
+  generateGuideFromDoc: (
+    id: string,
+    mode: "brief" | "full" | "one_pager" = "brief",
+  ) =>
     req(`/coach/documents/${id}/generate-guide?mode=${mode}`, { method: "POST" }),
   createDiPackets: (
     grade: string,
@@ -251,7 +254,7 @@ export const api = {
     grade_level: string,
     topic_code: string,
     subject = "MATH",
-    mode: "full" | "one_pager" = "full",
+    mode: "brief" | "full" | "one_pager" = "brief",
   ) =>
     req(`/coach/documents/generate-guide-combined`, {
       method: "POST",

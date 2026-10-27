@@ -100,6 +100,17 @@ def _save_guide(db, user, grade_level, topic_code, subject, guide,
     return rec.id
 
 
+def _norm_guide_mode(raw: str) -> str:
+    """Normalize a requested guide length to 'brief' | 'one_pager' | 'full'.
+    'brief'/'short' => the short guide (key info per lesson, ~1 page each)."""
+    g = (raw or "").lower().strip()
+    if g in ("brief", "short"):
+        return "brief"
+    if g in ("one_pager", "onepager", "one-pager"):
+        return "one_pager"
+    return "full"
+
+
 def _lesson_stubs(guide) -> list[dict]:
     """The lesson outline saved back onto a topic for the pacing calendar."""
     return [
@@ -859,8 +870,7 @@ async def pacing_from_document(
     }
     guide_id = _save_guide(db, user, grade_level, code, subject, placeholder,
                            status="generating")
-    gmode = "one_pager" if (guide_mode or "").lower() in ("one_pager", "onepager",
-                                                           "one-pager") else "full"
+    gmode = _norm_guide_mode(guide_mode)
     background.add_task(_run_pacing_guide_job, guide_id, text, benchmarks,
                         grade_level, subject, name, code, topic.id, file.filename,
                         gmode)
@@ -1070,8 +1080,7 @@ def generate_guide_from_document(
     }
     guide_id = _save_guide(db, user, d.grade_level, d.topic_code, d.subject,
                            placeholder, status="generating")
-    gmode = "one_pager" if (mode or "").lower() in (
-        "one_pager", "onepager", "one-pager") else "full"
+    gmode = _norm_guide_mode(mode)
     background.add_task(_run_pacing_guide_job, guide_id, text, codes,
                         d.grade_level, d.subject or "MATH", topic_name,
                         d.topic_code, topic.id if topic else None, d.filename, gmode)
@@ -1184,8 +1193,7 @@ def generate_guide_combined(
     guide_id = _save_guide(db, user, req.grade_level, req.topic_code, req.subject,
                            placeholder, status="generating")
     source_name = " + ".join(used)
-    gmode = "one_pager" if (req.mode or "").lower() in (
-        "one_pager", "onepager", "one-pager") else "full"
+    gmode = _norm_guide_mode(req.mode)
     background.add_task(_run_pacing_guide_job, guide_id, combined, codes,
                         req.grade_level, (req.subject or "MATH").upper(), topic_name,
                         req.topic_code, topic.id if topic else None, source_name,
