@@ -2285,6 +2285,11 @@ def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
             t["students"] = g
             t["student_count"] = len(g)
         packet["groups_total"] = sum(len(v) for v in groups.values()) if groups else 0
+        # Stamp the topic/chapter onto the packet so it's clear WHICH topic test
+        # this reteaches — the same standard can appear on more than one topic.
+        if f:
+            packet["topic_code"] = f.topic_code or ""
+            packet["test_name"] = f.test_name or ""
 
         rec.content = packet
         rec.ai_generated = bool(packet.get("ai_generated"))
@@ -2365,6 +2370,9 @@ def _run_enrichment_packet_job(packet_id: str, grade: str, form_id: str,
         for t in packet.get("tiers", []):
             t["student_count"] = n
         packet["groups_total"] = n
+        if f:
+            packet["topic_code"] = f.topic_code or ""
+            packet["test_name"] = f.test_name or ""
 
         rec.content = packet
         rec.ai_generated = bool(packet.get("ai_generated"))
@@ -2497,7 +2505,11 @@ def di_packets_pdf(
         raise HTTPException(404, "DI packet not found")
     if rec.status != "ready":
         raise HTTPException(409, "Packets are not ready yet.")
-    base = f"DI-Packet-G{rec.grade_level}-{rec.standard}"
+    tc = (rec.content or {}).get("topic_code", "") if isinstance(rec.content, dict) else ""
+    tc_slug = tc.replace(" ", "-").replace("/", "-").strip("-")
+    base = (f"DI-Packet-G{rec.grade_level}"
+            + (f"-{tc_slug}" if tc_slug else "")
+            + f"-{rec.standard}")
     pdf = render_di_packet_pdf(rec.content)
     if pdf:
         return Response(

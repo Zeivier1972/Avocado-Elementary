@@ -1298,13 +1298,21 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
     kind = "Enrichment · Dig Deeper" if enrich else "DI Center Packet"
     if asd:
         kind += " · ASD supports"
-    eyebrow = f"Grade {grade} · Math · {kind}"
+    topic_code = _esc(packet.get("topic_code"))
+    eyebrow = f"Grade {grade} · Math · "
+    if topic_code:
+        eyebrow += f"{topic_code} · "
+    eyebrow += kind
     if teacher:
         n_classes = teacher.count(",") + 1
         eyebrow += (f" · {n_classes} classes: {teacher}" if n_classes > 1
                     else f" · {teacher}'s class")
+    # Lead the standard line with the topic so a packet is never mistaken for the
+    # same standard on a different topic.
+    std_line = (f"{topic_code} · B.E.S.T. — {std}" if topic_code
+                else f"B.E.S.T. — {std}")
     out.append(f'<div class="band"><div><div class="eyebrow">{eyebrow}</div>'
-               f'<h1>{desc or std}</h1><div class="std">B.E.S.T. — {std}</div></div>'
+               f'<h1>{desc or std}</h1><div class="std">{std_line}</div></div>'
                f'<div class="namebar"><span>Name</span><span>Date</span></div></div>')
 
     # Deterministic 'count the objects -> match the set of counters' packet: its
