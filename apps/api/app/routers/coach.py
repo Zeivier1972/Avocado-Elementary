@@ -2158,28 +2158,56 @@ def _effective_number_max(auto: int | None, override: int | None,
     return _GRADE_CEILING.get((grade or "").upper())
 
 
-def _fix_bar_answers(packet: dict) -> None:
-    """For every bar-model problem, compute the answer IN CODE from the bar's
-    numbers and rebuild the multiple-choice options from it — so the keyed answer
-    and the choices can never disagree with the picture (the Grade-2 compare /
-    multi-addend / two-step fix)."""
+def _ensure_answer_in_choices(it: dict, seed: str) -> None:
+    """Guarantee a multiple-choice item's correct answer is actually one of the
+    choices. Numeric items (bar-derived or a plain-number answer) get choices
+    rebuilt from the answer with common-error distractors; items with a worded
+    answer have the correct answer injected if it's missing. No-op when the item
+    has no choices (a write-in / show-your-work problem)."""
+    import re as _re
     from app.export_html import bar_answer, bar_choices
+    if not isinstance(it, dict):
+        return
+    ch = it.get("choices")
+    if not isinstance(ch, list) or not ch:
+        return  # not multiple choice — nothing to reconcile
+    # 1) A numeric answer we can verify: from the structured bar, else a plain
+    #    integer answer field. Rebuild the options so the answer is always present.
+    ans_num = bar_answer(it["bar"]) if isinstance(it.get("bar"), dict) else None
+    if ans_num is None:
+        a = str(it.get("answer", "")).strip()
+        if _re.fullmatch(r"-?\d+", a):   # a clean integer, not "7 apples" / "3+4"
+            ans_num = int(a)
+    if ans_num is not None:
+        it["answer"] = str(ans_num)
+        it["choices"] = bar_choices(ans_num, seed=seed)
+        return
+    # 2) Worded / non-numeric answer: make sure the stated answer is a choice.
+    a = str(it.get("answer", "")).strip()
+    if a and not any(str(c).strip() == a for c in ch):
+        ch = [str(c) for c in ch]
+        ch[-1] = a                       # replace a distractor with the real answer
+        it["choices"] = ch
+
+
+def _fix_bar_answers(packet: dict) -> None:
+    """Reconcile EVERY multiple-choice problem so the keyed answer and the choices
+    can never disagree (the correct answer is always one of the options), across
+    the practice, exit ticket, quick check, and the fix-the-misses samples."""
     for t in packet.get("tiers", []) or []:
         tier = t.get("tier", "")
         for day in t.get("days", []) or []:
             dn = day.get("day", "")
             for i, it in enumerate(day.get("on_your_own") or []):
-                if isinstance(it, dict) and isinstance(it.get("bar"), dict):
-                    ans = bar_answer(it["bar"])
-                    if ans is not None:
-                        it["answer"] = str(ans)
-                        it["choices"] = bar_choices(ans, seed=f"{tier}|{dn}|oyo|{i}")
-            ex = day.get("exit_ticket")
-            if isinstance(ex, dict) and isinstance(ex.get("bar"), dict):
-                ans = bar_answer(ex["bar"])
-                if ans is not None:
-                    ex["answer"] = str(ans)
-                    ex["choices"] = bar_choices(ans, seed=f"{tier}|{dn}|exit")
+                _ensure_answer_in_choices(it, seed=f"{tier}|{dn}|oyo|{i}")
+            ex = day.get("exit_ticket") or day.get("exit_slip")
+            _ensure_answer_in_choices(ex, seed=f"{tier}|{dn}|exit")
+        for i, it in enumerate(t.get("opm") or []):
+            _ensure_answer_in_choices(it, seed=f"{tier}|opm|{i}")
+    # Fix-the-misses + extra-review samples carry their own choices too.
+    for ci, cl in enumerate(packet.get("target_the_misses") or []):
+        for i, s in enumerate(cl.get("fix_samples") or []):
+            _ensure_answer_in_choices(s, seed=f"miss|{ci}|{i}")
 
 
 def _run_di_packet_job(packet_id: str, grade: str, standard: str, form_id: str,
@@ -2364,6 +2392,7 @@ def _run_enrichment_packet_job(packet_id: str, grade: str, form_id: str,
             _form_number_ceiling(db, f), number_max_override, grade)
         packet = generate_enrichment_packet(
             standards, grade, tier2, number_max=number_max)
+        _fix_bar_answers(packet)  # keep every MC answer inside its choices
         packet["number_max"] = number_max
         packet["teacher"] = teacher
         n = _enrichment_student_count(db, f, teacher) if f else 0

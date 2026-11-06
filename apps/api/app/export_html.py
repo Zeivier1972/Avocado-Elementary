@@ -1399,14 +1399,19 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
             # heavy visual for Red & Yellow). The answer belongs here, not later.
             w = day.get("watch_it") or {}
             if w:
-                wvis = (svg_model(dmodel, w, reveal=True)
+                # I DO is the TEACHER modeling: draw the model with the answer
+                # BLANKED (reveal=False) so the teacher works the steps live and
+                # fills it in — not a picture that already shows the answer. The
+                # written steps carry the full solution for the teacher to follow.
+                wvis = (svg_model(dmodel, w, reveal=False)
                         if _has_model_fields(w, dmodel) else "")
                 wsteps = _steps_html(w.get("steps"), asd)
-                steps_block = (f'<div class="modelsteps"><div class="mslabel">How we did it — '
-                               f'follow these steps:</div><div class="steps">{wsteps}</div></div>'
+                steps_block = (f'<div class="modelsteps"><div class="mslabel">Model these '
+                               f'steps for students (fill the model in as you go):</div>'
+                               f'<div class="steps">{wsteps}</div></div>'
                                if wsteps else "")
                 out.append('<div class="phaseblock"><div class="phase"><span class="pn" style="background:%s">1</span><h3>Watch it</h3><span class="gr">I do</span></div>' % hexc)
-                out.append('<div class="phase-body"><div class="example"><div class="tag">Study this one</div>'
+                out.append('<div class="phase-body"><div class="example"><div class="tag">Model this with students</div>'
                            + wvis
                            + f'<div class="st">{_esc(w.get("statement"))}</div></div>'
                            + steps_block + '</div></div>')
