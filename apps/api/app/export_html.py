@@ -1157,6 +1157,8 @@ def _render_count_match(out: list, packet: dict) -> None:
     """Render the deterministic count-and-match packet: target + vocab, then each
     tier's days (I Do / We Do / CFU / You Do / Exit) and OPM, plus a teacher key."""
     std = _esc(packet.get("standard"))
+    tc = _esc(packet.get("topic_code"))
+    std_badge = f"{tc} · {std}" if tc else std
     target = _esc(packet.get("target"))
     if target:
         out.append(f'<div class="ctarget">🎯 Target: {target}</div>')
@@ -1206,7 +1208,7 @@ def _render_count_match(out: list, packet: dict) -> None:
         out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
         out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">'
                    f'{stars} {_esc(red_yellow_green)}</span><h2>{_esc(t.get("band"))}</h2>'
-                   f'<span class="tier-std">📏 Benchmark {std}</span></div>')
+                   f'<span class="tier-std">📏 {std_badge}</span></div>')
         appr = _esc(t.get("approach"))
         misc = _esc(t.get("misconception"))
         if appr or misc:
@@ -1373,7 +1375,7 @@ def render_di_packet_html(packet: dict, for_pdf: bool = False) -> str:
         out.append(f'<section class="tier{tpb}" style="border-top-color:{hexc}">')
         out.append(f'<div class="tier-head"><span class="pill" style="background:{hexc}">{stars} {_esc(t.get("tier"))}</span>'
                    f'<h2>{_esc(t.get("band"))}</h2>'
-                   f'<span class="tier-std">📏 Benchmark {std}</span></div>')
+                   f'<span class="tier-std">📏 {topic_code + " · " if topic_code else ""}{std}</span></div>')
         appr = _esc(t.get("approach"))
         misc = _esc(t.get("misconception"))
         if appr or misc:
