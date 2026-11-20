@@ -195,6 +195,41 @@ def _classify_item(rng: random.Random, ceiling: int) -> dict:
             "answer": answer}
 
 
+def _bond_distractor(rng: random.Random, whole: int, a: int, b: int,
+                     hi: int) -> dict:
+    """A number bond that does NOT match the picture — usually a DIFFERENT whole
+    (so the total is visibly wrong), the clearest distractor for little kids."""
+    tries = []
+    for w2 in (whole + 1, whole - 1, whole + 2, whole - 2):
+        if 2 <= w2 <= hi:
+            a2 = rng.randint(1, w2 - 1)
+            tries.append((w2, a2, w2 - a2))
+    for _ in range(4):                       # a wrong split of the same whole
+        a2 = rng.randint(1, whole - 1)
+        if a2 != a:
+            tries.append((whole, a2, whole - a2))
+    rng.shuffle(tries)
+    for w2, a2, b2 in tries:
+        if not (w2 == whole and a2 == a and b2 == b):
+            return {"whole": w2, "a": a2, "b": b2}
+    return {"whole": max(2, whole - 1), "a": 1, "b": max(1, whole - 2)}
+
+
+def _number_bond_item(rng: random.Random, ceiling: int) -> dict:
+    """MA.K.AR.1.2 — decompose a number into two parts. A two-color ten-frame
+    shows the whole split into `a` red + `b` yellow; choose the number bond
+    (whole + two parts) that matches — the exact Topic-5 test format."""
+    hi = max(3, min(10, ceiling))
+    whole = rng.randint(3, hi)
+    a = rng.randint(1, whole - 1)
+    b = whole - a
+    correct = {"whole": whole, "a": a, "b": b}
+    opts = [correct, _bond_distractor(rng, whole, a, b, hi)]
+    rng.shuffle(opts)
+    return {"type": "number_bond", "whole": whole, "part_a": a, "part_b": b,
+            "choices": opts, "answer": _LETTERS[opts.index(correct)]}
+
+
 # type key -> builder
 _BUILDERS = {
     "count_counters": _count_counters_item,
@@ -203,6 +238,7 @@ _BUILDERS = {
     "show_set": _show_set_item,
     "compare": _compare_item,
     "classify": _classify_item,
+    "number_bond": _number_bond_item,
 }
 
 
@@ -228,10 +264,17 @@ def _templates_for(code: str, description: str) -> tuple:
     # DP.1.1's text says "compare the categories by counting" yet the skill is
     # sorting, not greater/less/equal.
     classify_kw = ("sort", "categor", "classif", "belong", "does not belong")
+    # Number bonds / decompose a number into two parts (MA.K.AR.1.2, which also
+    # carries MA.K.NSO.3.1). The Topic-5 test is "choose the number bond that
+    # matches the picture", so this is its OWN item type, not counting.
+    bond_kw = ("number bond", "sum of two", "decompose", "represented as the sum",
+               "two numbers", "addition of two", "makes 10", "make ten",
+               "makes ten", "break apart")
     is_order = any(k in text for k in strong_order)
     is_count = any(k in text for k in count_kw)
     is_classify = any(k in text for k in classify_kw)
     is_compare = any(k in text for k in compare_kw)
+    is_bond = any(k in text for k in bond_kw)
     # "count OUT that many" (MA.K.NSO.1.2) is the reverse skill: given a number,
     # make/identify the set — a distinct item type from "count a set" (1.1).
     is_make_set = ("count out" in text) or ("that many" in text)
@@ -239,6 +282,8 @@ def _templates_for(code: str, description: str) -> tuple:
         return "number_order", ["number_order", "count_counters", "count_numeral"]
     if is_order:
         return "number_order", ["number_order"]
+    if is_bond:                        # decompose into two parts — number bonds
+        return "number_bond", ["number_bond"]
     if is_classify:                    # sort into categories — classify, not count
         return "classify", ["classify", "count_numeral"]
     if is_compare:                     # greater / less / equal — compare, not count
@@ -274,6 +319,9 @@ def _hints_from_missed(missed: list | None) -> tuple:
                                      "greater", " less ", "more than", "fewer",
                                      "compare")):
             types.append("compare")          # "Which group is greater?" (1.4)
+        elif any(k in stem for k in ("number bond", "bond", "decompose",
+                                     "break apart")):
+            types.append("number_bond")      # "Choose the number bond..." (AR.1.2)
         elif "shows" in stem and "set" in stem and "counter" not in stem:
             types.append("show_set")         # "Which set SHOWS 6 candies?" (1.2)
         elif ("counter" in stem or "which set" in stem or "match" in stem):
@@ -308,6 +356,7 @@ def _day(rng: random.Random, day_no: int, ceiling: int,
         "classify": "Sort objects and compare the groups",
         "number_order": "Count and order numbers",
         "show_set": "Make and match sets",
+        "number_bond": "Number bonds: break a number into two parts",
     }.get(primary, "Count, match, and order numbers")
     return {"day": day_no, "title": title,
             "pacing": "I do 5 min · We do 5 min · You do 15 min · Exit 5 min",
@@ -320,6 +369,22 @@ def _tier_plan(tier_name: str, primary: str, pool: list, ceiling: int) -> tuple:
     to the more abstract type at the full range; Green adds the hardest applicable
     type / largest range and asks students to reason. Returns
     (tier_ceiling, tier_primary, tier_pool, approach, misconception)."""
+    # "Decompose a number" (MA.K.AR.1.2) — number bonds: reteach matching the
+    # two-color ten-frame to the whole + two parts, by range + rigor.
+    if primary == "number_bond":
+        low = max(3, min(ceiling, 5))
+        if tier_name == "Intensive":          # Red — build the bond, most concrete
+            return (low, "number_bond", ["number_bond"],
+                    "Build the bond with the two colors: count the RED part, count the YELLOW part, then the WHOLE is how many in all — touch and say each number.",
+                    "Reads the whole as a part, or miscounts one color of the ten-frame.")
+        if tier_name == "Cusp":               # Yellow — match + prove
+            return (ceiling, "number_bond", ["number_bond"],
+                    "Match the picture to the bond: find the whole, then the two parts, and PROVE the parts add to the whole.",
+                    "Finds the whole but picks a bond whose two parts don't add up to it.")
+        return (ceiling, "number_bond", ["number_bond", "count_numeral"],  # Green
+                "Decompose the bigger numbers (8, 9, 10) more than one way and explain why both parts still make the same whole.",
+                "Accurate on small numbers but slips decomposing 8, 9 and 10.")
+
     # "Sort into categories" (MA.K.DP.1.1) is its own skill — reteach classifying
     # (what belongs / doesn't belong, then sort and count), by range + rigor.
     if primary == "classify":
@@ -461,11 +526,15 @@ def build_count_match_packet(standard: dict, grade: str, tiers: list,
         "model": "five_frame",
         "format": "count_match",
         "target": desc or "Count objects, match the quantity, and order numbers.",
-        "vocab": [
-            ("count", "tell how many"), ("set", "a group"),
-            ("counter", "a dot that shows how many"),
-            ("order", "put in a row: 1, 2, 3…"), ("zero", "none"),
-        ],
+        "vocab": (
+            [("whole", "how many in all"), ("part", "one of the groups"),
+             ("number bond", "a whole broken into two parts"),
+             ("count", "tell how many"), ("zero", "none")]
+            if primary == "number_bond" else
+            [("count", "tell how many"), ("set", "a group"),
+             ("counter", "a dot that shows how many"),
+             ("order", "put in a row: 1, 2, 3…"), ("zero", "none")]
+        ),
         "number_max": ceiling,
         "tiers": out_tiers,
         # Tie the packet to the class's real misses so the export shows "We are
@@ -487,5 +556,7 @@ def is_count_match_standard(code: str, description: str, grade: str) -> bool:
     keys = ("count", "quantit", "how many", "number of objects", "represent",
             "cardinal", "order", "sequence", "forward", "backward", "match",
             "before", "after", "compare", "greater", "less than", "equal to",
-            "sort", "categor", "classif", "belong")
+            "sort", "categor", "classif", "belong",
+            "number bond", "sum of two", "decompose", "two numbers",
+            "addition of two", "makes 10", "break apart")
     return any(k in text for k in keys)

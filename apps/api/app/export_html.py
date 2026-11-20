@@ -86,6 +86,84 @@ def _five_frame(n: int) -> str:
     return "".join(parts)
 
 
+YELLOW_CTR = "#F2C300"  # yellow counters — the second part on the K number-bond test
+
+
+def _two_color_frame(a: int, b: int) -> str:
+    """A full TEN-frame (2 rows of 5) with `a` RED counters then `b` YELLOW — the
+    exact 'number bond' picture on the Kinder Topic-5 test. Big counters so little
+    kids can see each part clearly."""
+    a = max(0, min(10, _i(a)))
+    b = max(0, min(10 - a, _i(b)))
+    cw, ch, r = 64, 68, 22
+    W, H = 5 * cw + 2, 2 * ch + 2
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+             f'aria-label="ten frame showing {a} red and {b} yellow">']
+    placed = 0
+    for row in range(2):
+        oy = row * ch + 1
+        parts.append(f'<rect x="1" y="{oy}" width="{5*cw}" height="{ch}" fill="#fff" '
+                     f'stroke="{FRAME}" stroke-width="2"/>')
+        for k in range(1, 5):
+            x = 1 + k * cw
+            parts.append(f'<line x1="{x}" y1="{oy}" x2="{x}" y2="{oy+ch}" '
+                         f'stroke="{FRAME}" stroke-width="1.5"/>')
+        for c in range(5):
+            if placed < a + b:
+                fill = RED_CTR if placed < a else YELLOW_CTR
+                cx = 1 + c * cw + cw / 2
+                parts.append(f'<circle cx="{cx:.0f}" cy="{oy+ch/2:.0f}" r="{r}" '
+                             f'fill="{fill}" stroke="#9aa98c" stroke-width="1"/>')
+                placed += 1
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _number_bond_svg(whole: int, a: int, b: int) -> str:
+    """A number bond: the WHOLE on top joined to its two PARTS below. Big circles
+    and numerals so kindergarteners can read the numbers at a glance."""
+    whole, a, b = _i(whole), _i(a), _i(b)
+    R = 40          # circle radius — large for little kids
+    W, H = 300, 220
+    cxw, cyw = W / 2, 54
+    cxa, cya = 78, 166
+    cxb, cyb = W - 78, 166
+    fs = 40
+    def circle(cx, cy, val):
+        return (f'<line x1="{cxw:.0f}" y1="{cyw+R-6:.0f}" x2="{cx:.0f}" y2="{cy-R+6:.0f}" '
+                f'stroke="#6B7A6E" stroke-width="3"/>'
+                f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="{R}" fill="#fff" '
+                f'stroke="#38601F" stroke-width="3"/>'
+                f'<text x="{cx:.0f}" y="{cy+fs*0.36:.0f}" text-anchor="middle" '
+                f'font-family="Baloo 2, sans-serif" font-weight="800" font-size="{fs}" '
+                f'fill="#26302A">{_esc(val)}</text>')
+    parts = [f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+             f'aria-label="number bond {whole} is {a} and {b}">']
+    # draw the two connector lines first (behind the circles)
+    parts.append(circle(cxa, cya, a))
+    parts.append(circle(cxb, cyb, b))
+    # the whole circle on top, drawn last so it sits above the lines
+    parts.append(f'<circle cx="{cxw:.0f}" cy="{cyw:.0f}" r="{R}" fill="#EAF3DF" '
+                 f'stroke="#38601F" stroke-width="3"/>'
+                 f'<text x="{cxw:.0f}" y="{cyw+fs*0.36:.0f}" text-anchor="middle" '
+                 f'font-family="Baloo 2, sans-serif" font-weight="800" font-size="{fs}" '
+                 f'fill="#26302A">{_esc(whole)}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _bond_choices(choices: list) -> str:
+    """Labelled number-bond answer choices (A, B, …) — the Kinder Topic-5 style."""
+    rows = []
+    for i, c in enumerate(choices[:4]):
+        if not isinstance(c, dict):
+            continue
+        rows.append(
+            f'<div class="cchoice"><span class="clet">{_LETTERS_C[i]}.</span>'
+            f'{_number_bond_svg(c.get("whole"), c.get("a"), c.get("b"))}</div>')
+    return f'<div class="cchoices">{"".join(rows)}</div>'
+
+
 def _counters(n: int) -> str:
     """Just n countable objects (red dots), no frame — pure count-by-ones for the
     youngest kids. Wraps at 5 per row."""
@@ -350,6 +428,14 @@ def _count_item_html(item: dict, show_answer: bool = False, num: str = "") -> st
             '<div class="citem">'
             f'<p class="cq">{lead}Which set shows {n} {obj}?</p>'
             f'{_set_choices(item.get("objects"), item.get("choices") or [])}{key}</div>')
+    if t == "number_bond":
+        # MA.K.AR.1.2 — decompose a number. A two-color ten-frame shows the parts;
+        # the choices are number bonds (whole + two parts), as on the Topic-5 test.
+        return (
+            '<div class="citem">'
+            f'<p class="cq">{lead}Choose the number bond that matches the picture.</p>'
+            f'<div class="cobjs">{_two_color_frame(item.get("part_a"), item.get("part_b"))}</div>'
+            f'{_bond_choices(item.get("choices") or [])}{key}</div>')
     if t == "compare":
         # MA.K.NSO.1.4 — greater / less / equal. Three formats mirror the test:
         # which GROUP is greater/less, is X equal to Y (yes/no), which NUMBER.
@@ -1033,7 +1119,7 @@ _CSS = """
 .grid{gap:9px;}.drawbox{min-height:56px;}
 /* Kinder count-match: keep the objects + choice frames LARGE for little kids. */
 .cobjs{padding:4px 0 8px;}.cobjs svg{max-height:2in;}
-.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:96px;width:auto;}
+.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:118px;width:auto;}
 .citem{padding:10px 12px;}.cq{font-size:14px;margin:0 0 6px;}.cnote{margin:2px 0 6px;}
 .nchoices .ncard{padding:8px 8px;width:84px;}
 .wrap{padding-bottom:0;}@page{margin:1cm;}}
@@ -1047,7 +1133,7 @@ body{font-size:11pt;}
 .pbreak{break-before:page;page-break-before:always;}
 .example svg,.prob svg,.modelsteps svg,.cobjs svg,.drawbox svg{max-height:2.3in;width:auto;}
 .cobjs{padding:4px 0 8px;}.cobjs svg{max-height:2in;}
-.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:96px;width:auto;}
+.cchoice{padding:5px 10px;gap:10px;}.cchoice svg{height:118px;width:auto;}
 .citem{padding:10px 12px;}.cq{font-size:14px;margin:0 0 6px;}.cnote{margin:2px 0 6px;}
 .nchoices .ncard{padding:8px 8px;width:84px;}
 @page{size:Letter;margin:1cm;}
